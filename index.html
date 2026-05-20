@@ -782,6 +782,65 @@
   .apt-card, .todo-item, .acq-item {
     animation: fadeUp 0.3s ease both;
   }
+
+  /* ── GREEN / RED ── */
+  :root {
+    --green: #1A7A3A; --green-light: #E6F5EC;
+    --red: #8B2020; --red-light: #FAE8E8;
+  }
+  .kpi-num.green { color: var(--green); }
+  .kpi-num.red   { color: var(--red); }
+
+  /* ── DASHBOARD ── */
+  .dash-date-hero { text-align:center; padding:20px 0 16px; margin-bottom:20px; border-bottom:1px solid var(--border); }
+  .dash-date-day  { font-family:'DM Serif Display',serif; font-size:56px; line-height:1; color:var(--text); }
+  .dash-date-weekday   { font-size:16px; color:var(--text2); margin-top:4px; text-transform:capitalize; }
+  .dash-date-monthyear { font-size:13px; color:var(--text3); font-weight:300; text-transform:capitalize; }
+  .dash-date-nav  { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .dash-nav-btn   { background:var(--surface2); border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px; color:var(--text2); display:flex; align-items:center; justify-content:center; }
+  .dash-date-input { font-size:13px; padding:5px 12px; border:1px solid var(--border-strong); border-radius:20px; background:var(--surface); color:var(--text); font-family:'DM Sans',sans-serif; outline:none; }
+  .dash-today-btn { font-size:12px; padding:5px 14px; border-radius:20px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .dash-sections  { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:650px){ .dash-sections { grid-template-columns:1fr; } }
+  .dash-sec-title { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.08em; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px; }
+  .dash-sec-title.ci { color:var(--green); }
+  .dash-sec-title.co { color:var(--red); }
+  .dash-count     { font-size:11px; padding:2px 8px; border-radius:20px; font-weight:500; }
+  .dash-count.ci  { background:var(--green-light); color:var(--green); }
+  .dash-count.co  { background:var(--red-light); color:var(--red); }
+  .dash-card      { background:var(--surface); border:1px solid var(--border); border-left:3px solid transparent; border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:8px; }
+  .dash-card.ci   { border-left-color:var(--green); }
+  .dash-card.co   { border-left-color:var(--red); }
+  .dash-guest-name { font-size:15px; font-weight:500; color:var(--text); margin-bottom:4px; }
+  .dash-meta      { font-size:11px; color:var(--text3); margin-bottom:6px; }
+  .dash-wa-btn    { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; padding:5px 12px; border-radius:20px; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; min-height:30px; }
+  .dash-wa-btn.ci { background:var(--green-light); color:var(--green); }
+  .dash-wa-btn.co { background:var(--red-light); color:var(--red); }
+  .dash-empty     { padding:16px; text-align:center; font-size:13px; color:var(--text3); font-style:italic; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); }
+
+  /* ── TODO COLORS ── */
+  .todo-card.ci   { border-left:3px solid var(--green); }
+  .todo-card.co   { border-left:3px solid var(--red); }
+  .tc-wa.ci       { background:var(--green-light); color:var(--green); }
+  .tc-wa.co       { background:var(--red-light); color:var(--red); }
+  .tc-wa.pul      { background:var(--accent-light); color:var(--accent); }
+  .count-ci       { background:var(--green-light); color:var(--green); }
+  .count-co       { background:var(--red-light); color:var(--red); }
+  .count-pul      { background:var(--accent-light); color:var(--accent); }
+
+  /* ── PLANNING MODAL ── */
+  .planning-btn   { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:20px; font-size:12px; font-weight:500; background:var(--accent-light); color:var(--accent); border:1px solid rgba(13,90,142,0.2); cursor:pointer; font-family:'DM Sans',sans-serif; margin-left:auto; }
+  .pulizie-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:500; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .pulizie-modal  { background:var(--surface); border-radius:var(--radius); padding:24px; width:100%; max-width:400px; border:1px solid var(--border); }
+  .pulizie-modal-title { font-size:16px; font-weight:500; color:var(--text); margin-bottom:4px; }
+  .pulizie-modal-sub   { font-size:12px; color:var(--text3); margin-bottom:18px; }
+  .pm-row  { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:8px; gap:12px; background:var(--bg); }
+  .pm-persona { display:flex; align-items:center; gap:10px; }
+  .pm-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .pm-name { font-size:14px; font-weight:500; color:var(--text); }
+  .pm-info { font-size:11px; color:var(--text3); margin-top:1px; }
+  .pm-btn  { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:20px; font-size:12px; font-weight:500; background:var(--green-light); color:var(--green); border:none; cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .pm-close { margin-top:14px; width:100%; padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-strong); background:transparent; color:var(--text2); font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; }
 </style>
 </head>
 <body>
@@ -823,19 +882,25 @@
 
 <!-- TABS -->
 <div class="tabs-wrap">
-  <button class="tab-btn active" onclick="switchTab('appartamenti',this)">Appartamenti</button>
-  <button class="tab-btn" onclick="switchTab('todo',this)">To-do</button>
+  <button class="tab-btn active" onclick="switchTab('dashboard',this)">📋 Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('appartamenti',this)">🏠 Appartamenti</button>
+  <button class="tab-btn" onclick="switchTab('todo',this)">✅ To-do</button>
   <button class="tab-btn" onclick="switchTab('pulizie',this)">🧹 Pulizie</button>
-  <button class="tab-btn" onclick="switchTab('acquisti',this)">Acquisti</button>
-  <button class="tab-btn" onclick="switchTab('tasse',this)">Tasse soggiorno</button>
-  <button class="tab-btn" onclick="switchTab('pricing',this)">Pricing</button>
+  <button class="tab-btn" onclick="switchTab('acquisti',this)">🛒 Acquisti</button>
+  <button class="tab-btn" onclick="switchTab('tasse',this)">💶 Tasse</button>
+  <button class="tab-btn" onclick="switchTab('pricing',this)">📈 Pricing</button>
 </div>
 
 <!-- CONTENT -->
 <div class="content">
 
+  <!-- TAB: DASHBOARD -->
+  <div id="tab-dashboard" class="tab-pane active">
+    <div id="dashboardContent"></div>
+  </div>
+
   <!-- TAB: APPARTAMENTI -->
-  <div id="tab-appartamenti" class="tab-pane active">
+  <div id="tab-appartamenti" class="tab-pane">
     <div class="apt-grid" id="aptGrid"></div>
   </div>
 
@@ -912,6 +977,16 @@
     </div>
   </div>
 
+</div>
+
+<!-- PLANNING MODAL -->
+<div id="planningModal" class="pulizie-modal-overlay" style="display:none" onclick="if(event.target===this)closePlanningModal()">
+  <div class="pulizie-modal">
+    <div class="pulizie-modal-title">📋 Manda planning pulizie</div>
+    <div class="pulizie-modal-sub" id="planningModalSub"></div>
+    <div id="planningModalRows"></div>
+    <button class="pm-close" onclick="closePlanningModal()">Chiudi</button>
+  </div>
 </div>
 
 <script>
@@ -1121,6 +1196,7 @@ function resetDay()   { offset=0;  updateDates(); renderAll(); }
 
 function renderAll() {
   renderKPI();
+  renderDashboard();
   renderApts();
   renderTodo();
   renderAcquisti();
@@ -1144,11 +1220,11 @@ function renderKPI() {
     .reduce((s,r) => s + (parseFloat(r['Tassa Dovuta (€)'])||0), 0);
 
   document.getElementById('kpiBar').innerHTML = `
-    <div class="kpi-item"><div class="kpi-num">${co}</div><div class="kpi-lbl">check-out</div></div>
-    <div class="kpi-item"><div class="kpi-num">${ci}</div><div class="kpi-lbl">check-in</div></div>
-    <div class="kpi-item"><div class="kpi-num">${cl}</div><div class="kpi-lbl">pulizie</div></div>
+    <div class="kpi-item"><div class="kpi-num green">${ci}</div><div class="kpi-lbl">&#8592; check-in</div></div>
+    <div class="kpi-item"><div class="kpi-num red">${co}</div><div class="kpi-lbl">&#8594; check-out</div></div>
+    <div class="kpi-item"><div class="kpi-num">${cl}</div><div class="kpi-lbl">&#9775; pulizie</div></div>
     <div class="kpi-item"><div class="kpi-num ${fr>0?'warn':''}">${fr}</div><div class="kpi-lbl">liberi</div></div>
-    <div class="kpi-item"><div class="kpi-num good">€${tx.toFixed(0)}</div><div class="kpi-lbl">tasse da inc.</div></div>
+    <div class="kpi-item"><div class="kpi-num good">€${tx.toFixed(0)}</div><div class="kpi-lbl">tasse</div></div>
   `;
 }
 
@@ -1647,6 +1723,7 @@ function renderPulizie() {
         <option value="tutti" ${filterApt==='tutti'?'selected':''}>Tutti</option>
         ${aptOpts}
       </select>
+      <button class="planning-btn" onclick="openPlanningModal()">📋 Planning</button>
     </div>
     <div class="riepilogo-box">
       <div class="riepilogo-item"><div class="riepilogo-num">${filteredApt.length}</div><div class="riepilogo-lbl">interventi</div></div>
@@ -1732,6 +1809,267 @@ function renderPulizie() {
   container.innerHTML = html;
 }
 
+// ── DASHBOARD ─────────────────────────────────────────────────
+let dashOffset = 0;
+function getDashDay() { const d=new Date(TODAY); d.setDate(d.getDate()+dashOffset); return d; }
+function changeDashDay(n) { dashOffset+=n; renderDashboard(); }
+function resetDashDay()   { dashOffset=0;  renderDashboard(); }
+function pickDashDate(val) {
+  if (!val) return;
+  const [y,m,d] = val.split('-').map(Number);
+  dashOffset = Math.round((new Date(y,m-1,d) - TODAY) / 86400000);
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const c = document.getElementById('dashboardContent'); if (!c) return;
+  const day = getDashDay();
+  const y=day.getFullYear(), m=String(day.getMonth()+1).padStart(2,'0'), dd=String(day.getDate()).padStart(2,'0');
+  const ciList = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']), day) && r['Nome Ospite']);
+  const coList = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), day) && r['Nome Ospite']);
+  const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
+
+  function gCard(r, type) {
+    const nome = r['Nome Ospite']||'—', apt = r['Appartamento']||'—', osp = r['N. Ospiti Adulti']||'?';
+    const phone = (r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+    const pClean = phone.replace('+','');
+    const isCI = type==='ci';
+    const msg = isCI
+      ? (getPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} 👋 Welcome to Bari!`)
+      : (getCheckoutPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} 😊 I hope you are enjoying your stay! What time are you planning to check out?`);
+    const wa = phone
+      ? `<button class="dash-wa-btn ${type}" onclick="dashCopy('${encodeURIComponent(msg)}','${pClean}')">&#128172; ${phone}</button>`
+      : `<span style="font-size:11px;color:var(--text3)">N/D</span>`;
+    return `<div class="dash-card ${type}"><div class="dash-guest-name">${nome}</div><div class="dash-meta">${osp} ospiti · ${apt}</div>${wa}</div>`;
+  }
+
+  c.innerHTML = `
+    <div class="dash-date-hero">
+      <div class="dash-date-day">${day.getDate()}</div>
+      <div class="dash-date-weekday">${day.toLocaleDateString('it-IT',{weekday:'long'})}</div>
+      <div class="dash-date-monthyear">${day.toLocaleDateString('it-IT',{month:'long',year:'numeric'})}</div>
+      <div class="dash-date-nav">
+        <button class="dash-nav-btn" onclick="changeDashDay(-1)">&#8249;</button>
+        <input type="date" id="dashDatePicker" class="dash-date-input" value="${y}-${m}-${dd}" onchange="pickDashDate(this.value)">
+        <button class="dash-nav-btn" onclick="changeDashDay(1)">&#8250;</button>
+        <button class="dash-today-btn" onclick="resetDashDay()">oggi</button>
+      </div>
+    </div>
+    <div class="dash-sections">
+      <div>
+        <div class="dash-sec-title ci">&#8592; Check-in <span class="dash-count ci">${ciList.length}</span></div>
+        ${ciList.length ? ciList.map(r=>gCard(r,'ci')).join('') : '<div class="dash-empty">Nessun check-in</div>'}
+      </div>
+      <div>
+        <div class="dash-sec-title co">&#8594; Check-out <span class="dash-count co">${coList.length}</span></div>
+        ${coList.length ? coList.map(r=>gCard(r,'co')).join('') : '<div class="dash-empty">Nessun check-out</div>'}
+      </div>
+    </div>`;
+}
+
+function dashCopy(enc, phone) {
+  const msg = decodeURIComponent(enc);
+  navigator.clipboard.writeText(msg)
+    .then(() => setTimeout(() => window.open(`https://wa.me/${phone}`,'_blank'), 600))
+    .catch(() => window.open(`https://wa.me/${phone}`,'_blank'));
+}
+
+function getCheckoutPrompt(aptName, nomeOspite) {
+  const norm = s => s.toLowerCase().replace(/\s+/g,'').replace(/[–-]/g,'-');
+  const found = promptMessaggi.find(p => norm(p.apt) === norm(aptName));
+  if (!found || !found.msgCO) return null;
+  return found.msgCO.replace(/\[NOME OSPITE\]/gi, nomeOspite.split(' ')[0]);
+}
+
+// ── TODO aggiornato — oggi ─────────────────────────────────────
+function renderTodo() {
+  const today = getDay();
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  const ciOggi  = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']),  today) && r['Nome Ospite']);
+  const coOggi  = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), today) && r['Nome Ospite']);
+  const coDomani = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), tomorrow) && TARIFFE[r['Appartamento']]);
+  const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
+  let html = '';
+
+  // CHECK-IN oggi
+  html += `<div class="todo-section"><div class="todo-section-header">
+    <span class="todo-section-title">&#8592; Check-in</span>
+    <span class="todo-section-count count-ci">${ciOggi.length} oggi</span>
+  </div>`;
+  if (!ciOggi.length) html += `<div class="todo-empty">Nessun check-in oggi.</div>`;
+  else ciOggi.forEach((r,i) => {
+    const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+    const pClean=phone.replace('+','');
+    const msg=getPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 👋 Welcome!`;
+    const key=`ci_${i}`; const done=!!todoDone[key];
+    html += `<div class="todo-card ci ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-ci">check-in ${fmtS(parseDate(r['Check-in']))}</span></div>
+        <div class="tc-row2">${phone?`<button class="tc-wa ci" onclick="event.stopPropagation();dashCopy('${encodeURIComponent(msg)}','${pClean}')">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
+      </div></div></div>`;
+  });
+  html += `</div>`;
+
+  // CHECK-OUT oggi
+  html += `<div class="todo-section"><div class="todo-section-header">
+    <span class="todo-section-title">&#8594; Check-out</span>
+    <span class="todo-section-count count-co">${coOggi.length} oggi</span>
+  </div>`;
+  if (!coOggi.length) html += `<div class="todo-empty">Nessun check-out oggi.</div>`;
+  else coOggi.forEach((r,i) => {
+    const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+    const pClean=phone.replace('+','');
+    const msg=getCheckoutPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 😊 I hope you enjoyed your stay! What time are you checking out?`;
+    const key=`co_${i}`; const done=!!todoDone[key];
+    html += `<div class="todo-card co ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-co">check-out ${fmtS(parseDate(r['Check-out']))}</span></div>
+        <div class="tc-row2">${phone?`<button class="tc-wa co" onclick="event.stopPropagation();dashCopy('${encodeURIComponent(msg)}','${pClean}')">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
+      </div></div></div>`;
+  });
+  html += `</div>`;
+
+  // PULIZIE domani
+  html += `<div class="todo-section"><div class="todo-section-header">
+    <span class="todo-section-title">&#9775; Pulizie</span>
+    <span class="todo-section-count count-pul">${coDomani.length} check-out domani</span>
+  </div>`;
+  if (!coDomani.length) html += `<div class="todo-empty">Nessun check-out domani.</div>`;
+  else coDomani.forEach((r,i) => {
+    const apt=r['Appartamento']||'—', tar=TARIFFE[apt]; if(!tar) return;
+    const persona=tar.persona, phone=CLEANER_PHONES[persona]||'', pClean=phone.replace('+','');
+    const nome=r['Nome Ospite']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const coDate=parseDate(r['Check-out']);
+    const msg=encodeURIComponent(`Ciao ${persona}, domani (${fmtS(coDate)}) c'è check-out a ${apt} di ${nome} (${osp} ospiti). Pulizie e cambio biancheria. Grazie!`);
+    const key=`pul_${i}`; const done=!!todoDone[key];
+    html += `<div class="todo-card pul ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-row1"><span class="tc-name">${persona}</span><span class="tc-apt">${apt}</span><span class="tc-tag" style="background:var(--accent-light);color:var(--accent)">domani</span></div>
+        <div class="tc-row2">${phone?`<button class="tc-wa pul" onclick="event.stopPropagation();dashCopy('${msg}','${pClean}')">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${nome} · ${osp} ospiti</span></div>
+      </div></div></div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('todoContent').innerHTML = html;
+}
+
+function toggleTodoKey(key, el) {
+  todoDone[key] = !todoDone[key];
+  el.classList.toggle('done');
+  el.querySelector('.tc-check').innerHTML = todoDone[key] ? '&#10003;' : '';
+}
+
+// ── PLANNING PDF ──────────────────────────────────────────────
+const CLEANER_COLORS = {Elda:'#2A7A4F', Dalila:'#8B5E2E', Giulia:'#C4883C'};
+const APT_PILL_COLORS = {
+  'Domus Pulchra (grande)':             {bg:'#DBEEFF',color:'#0A3A6B'},
+  'Domus Pulchra (piccolo)':            {bg:'#E8F5EE',color:'#1A5C35'},
+  'Casa dei Visionari – Madonella':     {bg:'#F5EDE3',color:'#5C3A15'},
+  'Casa dei Visionari – Mare':          {bg:'#FDF0E0',color:'#7A4E10'},
+  'Enea Luxury – Putignani':            {bg:'#D6EAFA',color:'#1A4F7A'},
+  'Enea Luxury – Piccinni':             {bg:'#EDF6FF',color:'#2A6FA8'},
+};
+
+function openPlanningModal() {
+  const today=new Date(TODAY), end=new Date(today); end.setDate(end.getDate()+14);
+  const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
+
+  const checkouts = prenotazioni
+    .filter(r => TARIFFE[r['Appartamento']] && r['Check-out'])
+    .map(r => {
+      const coDate=parseDate(r['Check-out']), apt=r['Appartamento'];
+      const tar=TARIFFE[apt];
+      const aptObj=APTS.find(a=>matchApt(a.name,apt));
+      const maxCap=aptObj?aptObj.cap:4;
+      const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>coDate)
+        .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
+      let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
+      if(nextCI){const ciDate=parseDate(nextCI['Check-in']);if(ciDate<=new Date(coDate.getTime()+86400000*2)){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||0;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}}
+      return {apt,coDate,persona:tar.persona,pulizia:tar.pulizia,lavanderia:tar.lavanderia,arrivoOsp,arrivoBambini,maxCap2};
+    })
+    .filter(r=>r.coDate&&r.coDate>=today&&r.coDate<=end)
+    .sort((a,b)=>a.coDate-b.coDate);
+
+  const byP={};checkouts.forEach(r=>{if(!byP[r.persona])byP[r.persona]=[];byP[r.persona].push(r);});
+  document.getElementById('planningModalSub').textContent=`Genera PDF · ${fmtS(today)} – ${fmtS(end)}`;
+  document.getElementById('planningModalRows').innerHTML=Object.entries(byP).map(([persona,items])=>{
+    const dot=CLEANER_COLORS[persona]||'#0D5A8E', phone=CLEANER_PHONES[persona]||'', pClean=phone.replace('+','');
+    const apts=[...new Set(items.map(r=>r.apt))].join(' · ');
+    return `<div class="pm-row">
+      <div class="pm-persona"><span class="pm-dot" style="background:${dot}"></span>
+        <div><div class="pm-name">${persona}</div><div class="pm-info">${apts} · ${items.length} interventi</div></div>
+      </div>
+      <button class="pm-btn" onclick="generatePDF('${persona}','${pClean}')">&#128172; Invia</button>
+    </div>`;
+  }).join('');
+  document.getElementById('planningModal').style.display='flex';
+}
+
+function closePlanningModal() { document.getElementById('planningModal').style.display='none'; }
+
+function generatePDF(persona, phone) {
+  const today=new Date(TODAY), end=new Date(today); end.setDate(end.getDate()+14);
+  const fmtS = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
+
+  const items = prenotazioni
+    .filter(r => TARIFFE[r['Appartamento']]?.persona===persona && r['Check-out'])
+    .map(r => {
+      const coDate=parseDate(r['Check-out']), apt=r['Appartamento'];
+      const tar=TARIFFE[apt];
+      const aptObj=APTS.find(a=>matchApt(a.name,apt));
+      const maxCap=aptObj?aptObj.cap:4;
+      const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>coDate)
+        .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
+      let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
+      if(nextCI){const ciDate=parseDate(nextCI['Check-in']);if(ciDate<=new Date(coDate.getTime()+86400000*2)){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||0;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}}
+      return {apt,coDate,pulizia:tar.pulizia,lavanderia:tar.lavanderia,totale:tar.pulizia+tar.lavanderia,arrivoOsp,arrivoBambini,maxCap2};
+    })
+    .filter(r=>r.coDate&&r.coDate>=today&&r.coDate<=end)
+    .sort((a,b)=>a.coDate-b.coDate);
+
+  // Genera PDF semplice come HTML stampabile
+  const fmtDate = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
+  const rows = items.map(r => {
+    const pc = APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};
+    const aptShort = r.apt.replace('Casa dei Visionari','CDV').replace('Domus Pulchra','DP').replace('Enea Luxury','Enea');
+    const arrivoStr = r.maxCap2
+      ? `<strong>Massima capienza</strong><br><small>${r.arrivoOsp} ospiti</small>`
+      : `<strong>${r.arrivoOsp + r.arrivoBambini}</strong><br><small>${r.arrivoOsp} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</small>`;
+    return `<tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #e0e8f0;font-weight:500">${fmtDate(r.coDate)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e0e8f0"><span style="background:${pc.bg};color:${pc.color};padding:3px 10px;border-radius:6px;font-size:12px;font-weight:500">${aptShort}</span></td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e0e8f0;text-align:center">${arrivoStr}</td>
+    </tr>`;
+  }).join('');
+
+  const totP=items.reduce((s,r)=>s+r.pulizia,0), totL=items.reduce((s,r)=>s+r.lavanderia,0);
+  const todayStr=today.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+  const endStr=end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <style>body{font-family:Arial,sans-serif;padding:20px;color:#0D1F2D}h2{color:#0D5A8E}table{width:100%;border-collapse:collapse}th{background:#EDF4F9;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0}footer{margin-top:20px;font-size:11px;color:#7299B0;display:flex;justify-content:space-between}</style>
+  </head><body>
+  <h2>Planning Pulizie — ${persona}</h2>
+  <p style="color:#7299B0;font-size:13px;margin-bottom:16px">${todayStr} – ${endStr}</p>
+  <table><thead><tr><th>Data pulizia</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <footer><span>Visionari 3.0 · generato il ${new Date().toLocaleDateString('it-IT')}</span><strong>${items.length} interventi · €${totP+totL} totale</strong></footer>
+  </body></html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`Planning_${persona}_${today.toISOString().slice(0,10)}.html`;
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); window.open(`https://wa.me/${phone}`,'_blank'); }, 800);
+  closePlanningModal();
+}
+
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
@@ -1740,11 +2078,11 @@ function switchTab(name, btn) {
   btn.classList.add('active');
   if (name==='pulizie') renderPulizie();
   if (name==='todo') renderTodo();
+  if (name==='dashboard') renderDashboard();
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 updateDates();
-// Imposta date picker su oggi al caricamento
 window.addEventListener('DOMContentLoaded', () => {
   const picker = document.getElementById('datePicker');
   if (picker) {
