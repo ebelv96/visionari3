@@ -1040,6 +1040,7 @@ const FESTIVITA = [
 // ── STATO GLOBALE ─────────────────────────────────────────────────────────────
 let prenotazioni = [], pulizie = [], inventario = [], tasse = [], promptMessaggi = [];
 let todoDone = {}, acquistoDone = {}, approved = {};
+const waMessages = {}; // store messaggi WA — evita problemi con caratteri speciali nell'onclick
 const TODAY = new Date();
 TODAY.setHours(0,0,0,0); // normalizza a mezzanotte per confronti corretti
 let offset = 0;
@@ -1835,10 +1836,13 @@ function renderDashboard() {
     const pClean = phone.replace('+','');
     const isCI = type==='ci';
     const msg = isCI
-      ? (getPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} 👋 Welcome to Bari!`)
-      : (getCheckoutPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} 😊 I hope you are enjoying your stay! What time are you planning to check out?`);
+      ? (getPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} \uD83D\uDC4B Welcome to Bari!`)
+      : (getCheckoutPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} \uD83D\uDE0A I hope you are enjoying your stay! What time are you planning to check out?`);
+    // Usa data-idx per evitare problemi con caratteri speciali nel messaggio
+    const cardIdx = `dash_${type}_${pClean}`;
+    waMessages[cardIdx] = {msg, phone: pClean};
     const wa = phone
-      ? `<button class="dash-wa-btn ${type}" onclick="dashCopy('${encodeURIComponent(msg)}','${pClean}')">&#128172; ${phone}</button>`
+      ? `<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')">&#128172; ${phone}</button>`
       : `<span style="font-size:11px;color:var(--text3)">N/D</span>`;
     return `<div class="dash-card ${type}"><div class="dash-guest-name">${nome}</div><div class="dash-meta">${osp} ospiti · ${apt}</div>${wa}</div>`;
   }
@@ -1865,6 +1869,14 @@ function renderDashboard() {
         ${coList.length ? coList.map(r=>gCard(r,'co')).join('') : '<div class="dash-empty">Nessun check-out</div>'}
       </div>
     </div>`;
+}
+
+function sendWA(key) {
+  const item = waMessages[key];
+  if (!item) return;
+  navigator.clipboard.writeText(item.msg)
+    .then(() => setTimeout(() => window.open(`https://wa.me/${item.phone}`, '_blank'), 600))
+    .catch(() => window.open(`https://wa.me/${item.phone}`, '_blank'));
 }
 
 function dashCopy(enc, phone) {
@@ -1901,13 +1913,14 @@ function renderTodo() {
     const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
     const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
     const pClean=phone.replace('+','');
-    const msg=getPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 👋 Welcome!`;
+    const msg=getPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} \uD83D\uDC4B Welcome!`;
+    const wKey=`ci_wa_${i}`; waMessages[wKey]={msg,phone:pClean};
     const key=`ci_${i}`; const done=!!todoDone[key];
     html += `<div class="todo-card ci ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
       <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
       <div class="tc-body">
         <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-ci">check-in ${fmtS(parseDate(r['Check-in']))}</span></div>
-        <div class="tc-row2">${phone?`<button class="tc-wa ci" onclick="event.stopPropagation();dashCopy('${encodeURIComponent(msg)}','${pClean}')">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
+        <div class="tc-row2">${phone?`<button class="tc-wa ci" onclick="event.stopPropagation();sendWA('${wKey}')">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
       </div></div></div>`;
   });
   html += `</div>`;
@@ -1923,12 +1936,13 @@ function renderTodo() {
     const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
     const pClean=phone.replace('+','');
     const msg=getCheckoutPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 😊 I hope you enjoyed your stay! What time are you checking out?`;
+    const wKey=`co_wa_${i}`; waMessages[wKey]={msg,phone:pClean};
     const key=`co_${i}`; const done=!!todoDone[key];
     html += `<div class="todo-card co ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
       <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
       <div class="tc-body">
         <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-co">check-out ${fmtS(parseDate(r['Check-out']))}</span></div>
-        <div class="tc-row2">${phone?`<button class="tc-wa co" onclick="event.stopPropagation();dashCopy('${encodeURIComponent(msg)}','${pClean}')">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
+        <div class="tc-row2">${phone?`<button class="tc-wa co" onclick="event.stopPropagation();sendWA('co_wa_'+i)">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
       </div></div></div>`;
   });
   html += `</div>`;
@@ -2036,14 +2050,13 @@ function generatePDF(persona, phone) {
   const fmtDate = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
   const rows = items.map(r => {
     const pc = APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};
-    const aptShort = r.apt.replace('Casa dei Visionari','CDV').replace('Domus Pulchra','DP').replace('Enea Luxury','Enea');
     const arrivoStr = r.maxCap2
-      ? `<strong>Massima capienza</strong><br><small>${r.arrivoOsp} ospiti</small>`
-      : `<strong>${r.arrivoOsp + r.arrivoBambini}</strong><br><small>${r.arrivoOsp} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</small>`;
+      ? `<div class="max-badge">Massima capienza</div><div class="ospiti-num">${r.arrivoOsp}</div><div class="ospiti-det">${r.arrivoOsp} ospiti</div>`
+      : `<div class="ospiti-num">${r.arrivoOsp + r.arrivoBambini}</div><div class="ospiti-det">${r.arrivoOsp} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</div>`;
     return `<tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #e0e8f0;font-weight:500">${fmtDate(r.coDate)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #e0e8f0"><span style="background:${pc.bg};color:${pc.color};padding:3px 10px;border-radius:6px;font-size:12px;font-weight:500">${aptShort}</span></td>
-      <td style="padding:10px 12px;border-bottom:1px solid #e0e8f0;text-align:center">${arrivoStr}</td>
+      <td><strong>${fmtDate(r.coDate)}</strong></td>
+      <td><span class="apt-pill" style="background:${pc.bg};color:${pc.color}">${r.apt}</span></td>
+      <td>${arrivoStr}</td>
     </tr>`;
   }).join('');
 
@@ -2051,22 +2064,49 @@ function generatePDF(persona, phone) {
   const todayStr=today.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
   const endStr=end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
 
+  const dotColor = {'Elda':'#2A7A4F','Dalila':'#8B5E2E','Giulia':'#C4883C'};
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <style>body{font-family:Arial,sans-serif;padding:20px;color:#0D1F2D}h2{color:#0D5A8E}table{width:100%;border-collapse:collapse}th{background:#EDF4F9;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0}footer{margin-top:20px;font-size:11px;color:#7299B0;display:flex;justify-content:space-between}</style>
-  </head><body>
-  <h2>Planning Pulizie — ${persona}</h2>
-  <p style="color:#7299B0;font-size:13px;margin-bottom:16px">${todayStr} – ${endStr}</p>
-  <table><thead><tr><th>Data pulizia</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead>
-  <tbody>${rows}</tbody></table>
-  <footer><span>Visionari 3.0 · generato il ${new Date().toLocaleDateString('it-IT')}</span><strong>${items.length} interventi · €${totP+totL} totale</strong></footer>
+  <style>
+    @media print { body { margin: 0; } }
+    body { font-family: Arial, sans-serif; padding: 24px; color: #0D1F2D; max-width: 700px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #0D5A8E; }
+    .header h2 { color: #0D5A8E; margin: 0; font-size: 20px; }
+    .header .dot { width: 12px; height: 12px; border-radius: 50%; background: ${dotColor[persona]||'#0D5A8E'}; display: inline-block; margin-right: 8px; vertical-align: middle; }
+    .periodo { font-size: 12px; color: #7299B0; text-align: right; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th { background: #EDF4F9; padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #7299B0; border-bottom: 1px solid #D6EAFA; }
+    td { padding: 12px 14px; border-bottom: 1px solid #EDF4F9; font-size: 13px; vertical-align: middle; }
+    tr:nth-child(even) td { background: #F7FBFD; }
+    .apt-pill { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+    .ospiti-num { font-size: 22px; font-weight: 600; color: #0D1F2D; line-height: 1; }
+    .ospiti-det { font-size: 11px; color: #7299B0; margin-top: 2px; }
+    .max-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; background: #FDF3E0; color: #A06820; margin-bottom: 3px; }
+    .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #D6EAFA; display: flex; justify-content: space-between; font-size: 11px; color: #7299B0; }
+    .footer strong { color: #0D5A8E; }
+  </style></head><body>
+  <div class="header">
+    <div><span class="dot"></span><h2 style="display:inline">Planning Pulizie — ${persona}</h2></div>
+    <div class="periodo">${todayStr}<br>${endStr}</div>
+  </div>
+  <table>
+    <thead><tr><th>Data pulizia</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    <span>Visionari 3.0 · generato il ${new Date().toLocaleDateString('it-IT')}</span>
+    <strong>${items.length} interventi · €${totP+totL} totale</strong>
+  </div>
   </body></html>`;
 
-  const blob = new Blob([html], {type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url; a.download=`Planning_${persona}_${today.toISOString().slice(0,10)}.html`;
-  a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(url); window.open(`https://wa.me/${phone}`,'_blank'); }, 800);
+  // Apri in nuova finestra e stampa (funziona su iPhone e desktop)
+  const printWin = window.open('', '_blank');
+  printWin.document.write(html);
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => {
+    printWin.print();
+    window.open(`https://wa.me/${phone}`, '_blank');
+  }, 500);
   closePlanningModal();
 }
 
@@ -2098,3 +2138,4 @@ loadAllData();
 </div><!-- /app -->
 </body>
 </html>
+
