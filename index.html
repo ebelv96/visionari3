@@ -2050,9 +2050,10 @@ function generatePDF(persona, phone) {
   const fmtDate = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
   const rows = items.map(r => {
     const pc = APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};
-    const arrivoStr = r.maxCap2
-      ? `<div class="max-badge">Massima capienza</div><div class="ospiti-num">${r.arrivoOsp}</div><div class="ospiti-det">${r.arrivoOsp} ospiti</div>`
-      : `<div class="ospiti-num">${r.arrivoOsp + r.arrivoBambini}</div><div class="ospiti-det">${r.arrivoOsp} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</div>`;
+   const totOsp = (r.arrivoOsp||0) + (r.arrivoBambini||0);
+const arrivoStr = r.maxCap2
+  ? `<div class="max-badge">Massima capienza</div>`
+  : `<div class="ospiti-num">${totOsp}</div><div class="ospiti-det">${r.arrivoOsp||0} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</div>`;
     return `<tr>
       <td><strong>${fmtDate(r.coDate)}</strong></td>
       <td><span class="apt-pill" style="background:${pc.bg};color:${pc.color}">${r.apt}</span></td>
@@ -2094,7 +2095,7 @@ function generatePDF(persona, phone) {
   </table>
   <div class="footer">
     <span>Visionari 3.0 · generato il ${new Date().toLocaleDateString('it-IT')}</span>
-    <strong>${items.length} interventi · €${totP+totL} totale</strong>
+ <span>${items.length} interventi</span>
   </div>
   </body></html>`;
 
