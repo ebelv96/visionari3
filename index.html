@@ -1188,12 +1188,13 @@ function pickDate(val) {
   const picked = new Date(y, m-1, d);
   const diff = Math.round((picked - TODAY) / 86400000);
   offset = diff;
+  dashOffset = diff;
   updateDates();
   renderAll();
 }
 
 function changeDay(n) { offset+=n; updateDates(); renderAll(); }
-function resetDay()   { offset=0;  updateDates(); renderAll(); }
+function resetDay()   { offset=0; dashOffset=0; updateDates(); renderAll(); }
 
 function renderAll() {
   renderKPI();
@@ -1844,7 +1845,16 @@ function renderDashboard() {
     const wa = phone
       ? `<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')">&#128172; ${phone}</button>`
       : `<span style="font-size:11px;color:var(--text3)">N/D</span>`;
-    return `<div class="dash-card ${type}"><div class="dash-guest-name">${nome}</div><div class="dash-meta">${osp} ospiti · ${apt}</div>${wa}</div>`;
+    // Calcola notti per check-in
+    let nottiStr = '';
+    if (isCI) {
+      const ciDate = parseDate(r['Check-in']), coDate = parseDate(r['Check-out']);
+      if (ciDate && coDate) {
+        const notti = Math.round((coDate - ciDate) / 86400000);
+        nottiStr = `<span style="font-size:11px;color:var(--text3);margin-left:auto">${notti} nott${notti===1?'e':'i'}</span>`;
+      }
+    }
+    return `<div class="dash-card ${type}"><div class="dash-guest-name">${nome}</div><div class="dash-meta" style="display:flex;align-items:center">${osp} ospiti · ${apt}${nottiStr}</div>${wa}</div>`;
   }
 
   c.innerHTML = `
@@ -1852,12 +1862,6 @@ function renderDashboard() {
       <div class="dash-date-day">${day.getDate()}</div>
       <div class="dash-date-weekday">${day.toLocaleDateString('it-IT',{weekday:'long'})}</div>
       <div class="dash-date-monthyear">${day.toLocaleDateString('it-IT',{month:'long',year:'numeric'})}</div>
-      <div class="dash-date-nav">
-        <button class="dash-nav-btn" onclick="changeDashDay(-1)">&#8249;</button>
-        <input type="date" id="dashDatePicker" class="dash-date-input" value="${y}-${m}-${dd}" onchange="pickDashDate(this.value)">
-        <button class="dash-nav-btn" onclick="changeDashDay(1)">&#8250;</button>
-        <button class="dash-today-btn" onclick="resetDashDay()">oggi</button>
-      </div>
     </div>
     <div class="dash-sections">
       <div>
@@ -2010,7 +2014,15 @@ function openPlanningModal() {
     .sort((a,b)=>a.coDate-b.coDate);
 
   const byP={};checkouts.forEach(r=>{if(!byP[r.persona])byP[r.persona]=[];byP[r.persona].push(r);});
-  document.getElementById('planningModalSub').textContent=`Genera PDF · ${fmtS(today)} – ${fmtS(end)}`;
+  const todayStr2 = today.toISOString().slice(0,10);
+  const endStr2 = end.toISOString().slice(0,10);
+  document.getElementById('planningModalSub').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <label style="font-size:12px;color:var(--text3)">Dal</label>
+      <input type="date" id="planDal" value="${todayStr2}" style="font-size:12px;padding:4px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
+      <label style="font-size:12px;color:var(--text3)">al</label>
+      <input type="date" id="planAl" value="${endStr2}" style="font-size:12px;padding:4px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
+    </div>`;
   document.getElementById('planningModalRows').innerHTML=Object.entries(byP).map(([persona,items])=>{
     const dot=CLEANER_COLORS[persona]||'#0D5A8E', phone=CLEANER_PHONES[persona]||'', pClean=phone.replace('+','');
     const apts=[...new Set(items.map(r=>r.apt))].join(' · ');
@@ -2027,7 +2039,10 @@ function openPlanningModal() {
 function closePlanningModal() { document.getElementById('planningModal').style.display='none'; }
 
 function generatePDF(persona, phone) {
-  const today=new Date(TODAY), end=new Date(today); end.setDate(end.getDate()+14);
+  const dalInput = document.getElementById('planDal');
+  const alInput  = document.getElementById('planAl');
+  const today = dalInput ? new Date(dalInput.value+'T00:00:00') : new Date(TODAY);
+  const end   = alInput  ? new Date(alInput.value+'T23:59:59') : new Date(new Date(TODAY).setDate(new Date(TODAY).getDate()+14));
   const fmtS = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
 
   const items = prenotazioni
@@ -2050,10 +2065,10 @@ function generatePDF(persona, phone) {
   const fmtDate = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
   const rows = items.map(r => {
     const pc = APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};
-   const totOsp = (r.arrivoOsp||0) + (r.arrivoBambini||0);
-const arrivoStr = r.maxCap2
-  ? `<div class="max-badge">Massima capienza</div>`
-  : `<div class="ospiti-num">${totOsp}</div><div class="ospiti-det">${r.arrivoOsp||0} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</div>`;
+    const totOsp = (r.arrivoOsp||0) + (r.arrivoBambini||0);
+    const arrivoStr = r.maxCap2
+      ? `<div class="max-badge">Massima capienza</div>`
+      : `<div class="ospiti-num">${totOsp}</div><div class="ospiti-det">${r.arrivoOsp||0} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</div>`;
     return `<tr>
       <td><strong>${fmtDate(r.coDate)}</strong></td>
       <td><span class="apt-pill" style="background:${pc.bg};color:${pc.color}">${r.apt}</span></td>
@@ -2095,7 +2110,7 @@ const arrivoStr = r.maxCap2
   </table>
   <div class="footer">
     <span>Visionari 3.0 · generato il ${new Date().toLocaleDateString('it-IT')}</span>
- <span>${items.length} interventi</span>
+    <span>${items.length} interventi</span>
   </div>
   </body></html>`;
 
@@ -2105,7 +2120,6 @@ const arrivoStr = r.maxCap2
   printWin.document.close();
   printWin.focus();
   setTimeout(() => {
-    printWin.document.title = `Planning_${persona}_${today.toLocaleDateString('it-IT').replace(/\//g,'-')}`;
     printWin.print();
     window.open(`https://wa.me/${phone}`, '_blank');
   }, 500);
@@ -2140,4 +2154,3 @@ loadAllData();
 </div><!-- /app -->
 </body>
 </html>
-
