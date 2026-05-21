@@ -2105,6 +2105,7 @@ const arrivoStr = r.maxCap2
   printWin.document.close();
   printWin.focus();
   setTimeout(() => {
+    printWin.document.title = `Planning_${persona}_${today.toLocaleDateString('it-IT').replace(/\//g,'-')}`;
     printWin.print();
     window.open(`https://wa.me/${phone}`, '_blank');
   }, 500);
