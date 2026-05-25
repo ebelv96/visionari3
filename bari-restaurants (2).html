@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bari — Our Favourite Spots · Casa dei Visionari</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cream:#FAF7F2;
+  --warm:#F0E8D8;
+  --terracotta:#C4622D;
+  --terracotta-light:#F5E8DF;
+  --sea:#2B5F7E;
+  --sea-light:#E8F0F5;
+  --olive:#5C6B3A;
+  --text:#1A1410;
+  --text2:#5C4A36;
+  --text3:#9C8672;
+  --border:#E8DDD0;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
+
+/* HERO */
+.hero{background:var(--sea);padding:40px 24px 36px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+
+/* LOGO */
+.logo-wrap{position:relative;z-index:1;margin-bottom:16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.logo-svg{width:90px;height:auto;opacity:.95}
+.logo-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;color:rgba(255,255,255,0.9);letter-spacing:.12em;text-transform:uppercase}
+
+.hero-eyebrow{position:relative;z-index:1;font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:14px}
+.hero h1{position:relative;z-index:1;font-family:'Cormorant Garamond',serif;font-size:clamp(32px,8vw,54px);font-weight:300;color:#fff;line-height:1.1;margin-bottom:6px}
+.hero h1 em{font-style:italic;color:rgba(255,255,255,0.7)}
+.hero-sub{position:relative;z-index:1;font-size:13px;color:rgba(255,255,255,0.5);font-weight:300;margin-top:4px}
+.hero-wave{position:absolute;bottom:-1px;left:0;right:0;height:40px;background:var(--cream);clip-path:ellipse(55% 100% at 50% 100%)}
+
+/* INTRO */
+.intro{max-width:600px;margin:0 auto;padding:28px 24px 4px;text-align:center}
+.intro p{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;color:var(--text2);line-height:1.7;font-style:italic}
+
+/* CONTENT */
+.content{max-width:680px;margin:0 auto;padding:16px 16px 48px}
+.category{margin-bottom:32px}
+.cat-header{display:flex;align-items:center;gap:12px;padding:10px 0 8px;border-bottom:1.5px solid var(--border);margin-bottom:14px}
+.cat-icon{font-size:20px;line-height:1}
+.cat-title{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;color:var(--text)}
+.cat-count{margin-left:auto;font-size:11px;font-weight:500;color:var(--text3);letter-spacing:.05em}
+
+/* CARDS */
+.spot-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;transition:transform .15s,box-shadow .15s}
+.spot-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.06)}
+.spot-emoji{font-size:26px;line-height:1;flex-shrink:0;margin-top:2px}
+.spot-body{flex:1}
+.spot-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--text);margin-bottom:3px}
+.spot-desc{font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:8px;font-weight:300}
+.spot-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.spot-phone{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)}
+.spot-badge{display:inline-block;font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;letter-spacing:.03em}
+.badge-terracotta{background:var(--terracotta-light);color:var(--terracotta)}
+.badge-sea{background:var(--sea-light);color:var(--sea)}
+.badge-olive{background:#EEF2E6;color:var(--olive)}
+.maps-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--sea);text-decoration:none;padding:3px 8px;border-radius:20px;background:var(--sea-light);transition:background .15s}
+.maps-link:hover{background:#d0e4ef}
+
+/* FOOTER */
+.page-footer{background:var(--sea);padding:24px;text-align:center}
+.page-footer p{font-size:13px;color:rgba(255,255,255,0.6);font-weight:300}
+.page-footer strong{color:#fff;font-weight:500;font-family:'Cormorant Garamond',serif;font-size:16px}
+
+@media(max-width:480px){
+  .spot-card{flex-direction:column;gap:6px}
+  .spot-emoji{font-size:22px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="logo-wrap">
+    <!-- Eye logo SVG matching the brand -->
+    <svg class="logo-svg" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <!-- Rays -->
+      <line x1="100" y1="10" x2="100" y2="30" stroke="white" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      <line x1="130" y1="16" x2="122" y2="34" stroke="white" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      <line x1="155" y1="34" x2="141" y2="46" stroke="white" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      <line x1="70" y1="16" x2="78" y2="34" stroke="white" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      <line x1="45" y1="34" x2="59" y2="46" stroke="white" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      <line x1="167" y1="60" x2="148" y2="60" stroke="white" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      <line x1="33" y1="60" x2="52" y2="60" stroke="white" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      <!-- Eye outline -->
+      <path d="M20 70 Q60 30 100 28 Q140 30 180 70" stroke="white" stroke-width="5" stroke-linecap="round" fill="none" opacity=".95"/>
+      <!-- Pupil / iris -->
+      <ellipse cx="100" cy="70" rx="22" ry="22" fill="white" opacity=".95"/>
+      <ellipse cx="100" cy="70" rx="13" ry="13" fill="#2B5F7E"/>
+      <circle cx="100" cy="70" r="5" fill="white" opacity=".3"/>
+      <!-- Bottom lid line -->
+      <path d="M20 70 Q60 92 100 94 Q140 92 180 70" stroke="white" stroke-width="5" stroke-linecap="round" fill="none" opacity=".95"/>
+    </svg>
+    <div class="logo-name">Casa dei Visionari</div>
+  </div>
+  <div class="hero-eyebrow">Bari · A curated guide</div>
+  <h1>Our Favourite<br><em>Spots in Bari</em></h1>
+  <div class="hero-sub">Handpicked by your hosts</div>
+  <div class="hero-wave"></div>
+</div>
+
+<div class="intro">
+  <p>"Bari is best discovered through its food, its sea, and its streets. Here are our personal recommendations — places we love and return to."</p>
+</div>
+
+<div class="content">
+
+  <!-- LOCAL & BREAKFAST -->
+  <div class="category">
+    <div class="cat-header">
+      <span class="cat-icon">🧀</span>
+      <span class="cat-title">Local & Breakfast</span>
+      <span class="cat-count">2 spots</span>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🧀</div>
+      <div class="spot-body">
+        <div class="spot-name">Lattenatura Apulian Food</div>
+        <div class="spot-desc">Apulian deli specialising in local products — fresh mozzarella, burrata, ricotta, focaccia. Perfect for breakfast, lunch or a snack.</div>
+        <div class="spot-meta">
+          <span class="spot-phone">📞 080 521 6782</span>
+          <span class="spot-badge badge-terracotta">Open until 21:00</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Lattenatura+Apulian+Food+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🥯</div>
+      <div class="spot-body">
+        <div class="spot-name">El Focacciaro</div>
+        <div class="spot-desc">A Bari classic for freshly baked focaccia, panzerotti, and quick street food lunches.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-terracotta">Street food</span>
+          <a class="maps-link" href="https://maps.google.com/?q=El+Focacciaro+Via+Salvatore+Cognetti+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEAFOOD -->
+  <div class="category">
+    <div class="cat-header">
+      <span class="cat-icon">🐟</span>
+      <span class="cat-title">Seafood</span>
+      <span class="cat-count">2 spots</span>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🐟</div>
+      <div class="spot-body">
+        <div class="spot-name">Pescobar</div>
+        <div class="spot-desc">Street-style seafood with a casual, seaside feel.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-sea">Casual</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Pescobar+Piazza+Diaz+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🐟</div>
+      <div class="spot-body">
+        <div class="spot-name">La Battigia</div>
+        <div class="spot-desc">Elegant seafood restaurant with fresh catch of the day and seaside ambiance.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-sea">Elegant</span>
+          <a class="maps-link" href="https://maps.google.com/?q=La+Battigia+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIZZA -->
+  <div class="category">
+    <div class="cat-header">
+      <span class="cat-icon">🍕</span>
+      <span class="cat-title">Pizza</span>
+      <span class="cat-count">4 spots</span>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🍕</div>
+      <div class="spot-body">
+        <div class="spot-name">Dreher</div>
+        <div class="spot-desc">Retro pizzeria loved for its traditional thin-crust pizza.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-terracotta">Retro</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Dreher+pizzeria+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🍕</div>
+      <div class="spot-body">
+        <div class="spot-name">La Tana</div>
+        <div class="spot-desc">Gourmet pizza in a cozy, rustic atmosphere.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-olive">Gourmet</span>
+          <a class="maps-link" href="https://maps.google.com/?q=La+Tana+pizzeria+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🍕</div>
+      <div class="spot-body">
+        <div class="spot-name">Da Donato</div>
+        <div class="spot-desc">Traditional wood-fired pizza, a Bari favourite since 1973.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-terracotta">Since 1973</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Da+Donato+pizzeria+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🍕</div>
+      <div class="spot-body">
+        <div class="spot-name">Taverna Verde</div>
+        <div class="spot-desc">Pizza & grill with lots of greenery and an informal vibe.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-olive">Informal</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Taverna+Verde+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRATTORIA & APULIAN -->
+  <div class="category">
+    <div class="cat-header">
+      <span class="cat-icon">🍝</span>
+      <span class="cat-title">Trattoria & Apulian</span>
+      <span class="cat-count">3 spots</span>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🍝</div>
+      <div class="spot-body">
+        <div class="spot-name">La Uascezze</div>
+        <div class="spot-desc">Authentic Apulian food in the heart of Bari Vecchia.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-terracotta">Bari Vecchia</span>
+          <a class="maps-link" href="https://maps.google.com/?q=La+Uascezze+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🍝</div>
+      <div class="spot-body">
+        <div class="spot-name">Tiella</div>
+        <div class="spot-desc">Home-style trattoria offering local classics like "riso, patate e cozze".</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-terracotta">Homestyle</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Tiella+trattoria+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🥘</div>
+      <div class="spot-body">
+        <div class="spot-name">Organic – Nice Food & Bio Wine</div>
+        <div class="spot-desc">Healthy cuisine with seasonal ingredients and organic wines.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-olive">Organic</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Organic+Nice+Food+Bio+Wine+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FUSION & SUSHI -->
+  <div class="category">
+    <div class="cat-header">
+      <span class="cat-icon">🍣</span>
+      <span class="cat-title">Fusion & International</span>
+      <span class="cat-count">1 spot</span>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🍣</div>
+      <div class="spot-body">
+        <div class="spot-name">Hagakure Noh Samba</div>
+        <div class="spot-desc">Elegant sushi bar with Japanese-Brazilian fusion cuisine and refined cocktails.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-sea">Fusion</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Hagakure+Noh+Samba+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEAT -->
+  <div class="category">
+    <div class="cat-header">
+      <span class="cat-icon">🥩</span>
+      <span class="cat-title">Meat & Grill</span>
+      <span class="cat-count">1 spot</span>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🥩</div>
+      <div class="spot-body">
+        <div class="spot-name">Premiata Norcineria</div>
+        <div class="spot-desc">A must for meat lovers: selected cuts, gourmet burgers and rustic charm.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-terracotta">Must try</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Premiata+Norcineria+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COCKTAILS & WINE -->
+  <div class="category">
+    <div class="cat-header">
+      <span class="cat-icon">🥂</span>
+      <span class="cat-title">Cocktails & Wine</span>
+      <span class="cat-count">2 spots</span>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🥂</div>
+      <div class="spot-body">
+        <div class="spot-name">Speakeasy Bari</div>
+        <div class="spot-desc">Hidden cocktail bar with 1920s atmosphere and expertly crafted drinks.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-sea">Hidden gem</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Speakeasy+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="spot-card">
+      <div class="spot-emoji">🥂</div>
+      <div class="spot-body">
+        <div class="spot-name">Arcimboldo</div>
+        <div class="spot-desc">Stylish wine & cocktail bar with refined bites and curated labels.</div>
+        <div class="spot-meta">
+          <span class="spot-badge badge-sea">Wine bar</span>
+          <a class="maps-link" href="https://maps.google.com/?q=Arcimboldo+wine+bar+Bari" target="_blank">📍 Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="page-footer">
+  <p><strong>Casa dei Visionari</strong></p>
+  <p style="margin-top:6px">Enjoy Bari · Welcome home 👁️</p>
+</div>
+
+</body>
+</html>
