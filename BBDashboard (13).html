@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Visionari 3.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  #login-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #0D5A8E;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .login-box {
+    background: #F7FBFD;
+    border-radius: 16px;
+    padding: 40px 36px 36px;
+    width: 100%; max-width: 360px;
+    text-align: center;
+  }
+  .login-box h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px; color: #0D1F2D;
+    margin-bottom: 4px;
+  }
+  .login-box p {
+    font-size: 13px; color: #7299B0;
+    margin-bottom: 28px; font-weight: 300;
+  }
+  .login-box input {
+    width: 100%; padding: 12px 16px;
+    border: 1px solid rgba(10,60,100,0.18);
+    border-radius: 10px; font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    background: #EDF4F9; color: #0D1F2D;
+    outline: none; margin-bottom: 14px;
+    letter-spacing: 0.04em;
+    transition: border-color 0.15s;
+  }
+  .login-box input:focus { border-color: #0D5A8E; }
+  .login-box button {
+    width: 100%; padding: 13px;
+    background: #0D5A8E; color: #fff;
+    border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .login-box button:hover { background: #0a4870; }
+  .login-error {
+    font-size: 12px; color: #8B2E2E;
+    margin-top: 12px; display: none;
+  }
+</style>
+<script>
+  const HASH = '5ac75c5f60bc57d633fc08fba7faa37d0a071b8c9ddb5d2213f7316636cf37e8';
+  const SESSION_KEY = 'v3_auth';
+
+  async function sha256(msg) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function tryLogin() {
+    const pwd = document.getElementById('pwd').value;
+    const hash = await sha256(pwd);
+    if (hash === HASH) {
+      sessionStorage.setItem(SESSION_KEY, '1');
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      if (typeof loadAllData === 'function') loadAllData();
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+      document.getElementById('pwd').value = '';
+      document.getElementById('pwd').focus();
+    }
+  }
+
+  function checkSession() {
+    if (sessionStorage.getItem(SESSION_KEY) === '1') {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', checkSession);
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #EDF4F9;
+    --surface: #F7FBFD;
+    --surface2: #DAEAF4;
+    --border: rgba(10,60,100,0.10);
+    --border-strong: rgba(10,60,100,0.22);
+    --text: #0D1F2D;
+    --text2: #3A5F7A;
+    --text3: #7299B0;
+    --accent: #0D5A8E;
+    --accent-light: #DDF0FB;
+    --amber: #A06820;
+    --amber-light: #FDF3E0;
+    --red: #8B2E2E;
+    --red-light: #FAE8E8;
+    --blue: #1A4F7A;
+    --blue-light: #D6EAFA;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--accent);
+    padding: 20px 28px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: #fff;
+    letter-spacing: 0.01em;
+  }
+  .header-left .subtitle {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 2px;
+    font-weight: 300;
+  }
+  .date-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .date-nav button {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .date-nav button:hover { background: rgba(255,255,255,0.22); }
+  .date-nav .today-btn {
+    width: auto; padding: 0 12px; border-radius: 20px; font-size: 11px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+  }
+  #dayLabel {
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    min-width: 52px;
+    text-align: center;
+  }
+  #fullDate {
+    font-size: 12px;
+    color: rgba(255,255,255,0.65);
+    font-weight: 300;
+  }
+
+  /* ── KPI BAR ── */
+  .kpi-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .kpi-item {
+    flex: 1;
+    min-width: 90px;
+    text-align: center;
+    padding: 0 12px;
+    border-right: 1px solid var(--border);
+  }
+  .kpi-item:last-child { border-right: none; }
+  .kpi-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--text);
+  }
+  .kpi-num.warn { color: var(--amber); }
+  .kpi-num.danger { color: var(--red); }
+  .kpi-num.good { color: var(--accent); }
+  .kpi-lbl {
+    font-size: 10px;
+    color: var(--text3);
+    font-weight: 400;
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── TABS ── */
+  .tabs-wrap {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 13px 16px;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text3);
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ── CONTENT ── */
+  .content { padding: 24px 28px; max-width: 1100px; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── APT GRID ── */
+  .apt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+  }
+  .apt-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+  }
+  .apt-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+  .apt-card-top {
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .apt-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .apt-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .status-badge {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .s-checkin  { background: var(--accent-light); color: var(--accent); }
+  .s-checkout { background: var(--amber-light); color: var(--amber); }
+  .s-turnover { background: var(--blue-light); color: var(--blue); }
+  .s-occupied { background: var(--surface2); color: var(--text2); }
+  .s-free     { background: var(--red-light); color: var(--red); }
+
+  .apt-body { padding: 10px 16px; display: flex; flex-direction: column; gap: 7px; }
+  .apt-row { display: flex; gap: 8px; font-size: 12px; align-items: flex-start; }
+  .apt-row-icon { width: 14px; flex-shrink: 0; margin-top: 1px; opacity: 0.5; }
+  .apt-row-lbl { color: var(--text3); min-width: 68px; flex-shrink: 0; }
+  .apt-row-val { color: var(--text); flex: 1; }
+  .apt-row-val.muted { color: var(--text3); font-style: italic; }
+
+  .alert-box {
+    margin: 0 16px 10px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+  }
+  .alert-warn   { background: var(--amber-light); color: var(--amber); }
+  .alert-danger { background: var(--red-light);   color: var(--red); }
+  .alert-info   { background: var(--blue-light);  color: var(--blue); }
+
+  .apt-footer {
+    padding: 8px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text3);
+    background: var(--bg);
+  }
+
+  /* ── TODO ── */
+  .todo-list { display: flex; flex-direction: column; gap: 8px; max-width: 680px; }
+  .todo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .todo-item:hover { background: var(--surface2); }
+  .todo-item.done { opacity: 0.45; }
+  .todo-item.done .todo-text { text-decoration: line-through; }
+  .todo-check {
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 5px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .todo-item.done .todo-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .todo-text { font-size: 13px; color: var(--text); flex: 1; line-height: 1.4; }
+  .todo-apt {
+    font-size: 10px;
+    padding: 2px 8px;
+    background: var(--surface2);
+    border-radius: 20px;
+    color: var(--text3);
+    white-space: nowrap;
+    align-self: center;
+  }
+  .todo-urgent { color: var(--red); font-size: 12px; margin-right: 4px; }
+
+  .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .wa-btn {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; padding: 9px 16px;
+    border-radius: 20px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid rgba(43,77,58,0.2);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+  .wa-btn:hover { background: #d4e6da; }
+
+  /* ── ACQUISTI ── */
+  .acquisti-list { display: flex; flex-direction: column; gap: 6px; max-width: 680px; }
+  .acq-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .acq-item:hover { background: var(--surface2); }
+  .acq-item.bought { opacity: 0.4; }
+  .acq-item.bought .acq-name { text-decoration: line-through; }
+  .acq-check {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  .acq-item.bought .acq-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .acq-name { font-size: 13px; color: var(--text); flex: 1; }
+  .acq-apt { font-size: 10px; color: var(--text3); padding: 2px 8px; background: var(--surface2); border-radius: 20px; }
+
+  /* ── TASSE ── */
+  .tasse-wrap { max-width: 760px; }
+  .params-bar {
+    background: var(--blue-light);
+    border: 1px solid rgba(42,75,124,0.15);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    display: flex; gap: 24px; flex-wrap: wrap;
+    font-size: 12px; color: var(--blue);
+    margin-bottom: 16px;
+  }
+  .params-bar span { font-weight: 500; }
+  table.tasse-tbl {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  table.tasse-tbl th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  table.tasse-tbl td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  table.tasse-tbl tr:last-child td { border-bottom: none; }
+  table.tasse-tbl tr:nth-child(even) td { background: rgba(0,0,0,0.015); }
+  .tasse-total-row td {
+    font-weight: 500;
+    background: var(--accent) !important;
+    color: #fff !important;
+    border-top: 2px solid var(--accent);
+  }
+  .incassata-yes { color: var(--accent); font-weight: 500; }
+  .incassata-no  { color: var(--red); }
+
+  /* ── PRICING ── */
+  .pricing-wrap { max-width: 860px; }
+  table.pricing-tbl {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  table.pricing-tbl th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  table.pricing-tbl td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  table.pricing-tbl tr:last-child td { border-bottom: none; }
+  table.pricing-tbl tr:nth-child(even) td { background: rgba(0,0,0,0.015); }
+  .price-up   { color: var(--accent); font-weight: 500; }
+  .price-down { color: var(--amber); font-weight: 500; }
+  .price-ok   { color: var(--text3); }
+  .approv-btn {
+    font-size: 10px; padding: 4px 10px; border-radius: 20px;
+    background: var(--accent-light); color: var(--accent);
+    border: 1px solid rgba(43,77,58,0.2);
+    cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500;
+  }
+  .approv-btn.approved {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+
+  .fest-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+  }
+  .fest-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+  }
+  .fest-date { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+  .fest-name { font-size: 13px; color: var(--text); font-weight: 500; }
+  .fest-mult { font-size: 12px; color: var(--accent); font-weight: 500; margin-top: 3px; }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    margin-bottom: 12px;
+    margin-top: 24px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  /* ── PULIZIE ── */
+  .pulizie-month-label {
+    font-size: 10px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text3);
+    margin: 20px 0 10px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pulizie-month-label:first-child { margin-top: 0; }
+  .cleaner-section {
+    margin-bottom: 28px;
+  }
+  .cleaner-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+  }
+  .cleaner-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px; color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .cleaner-totals {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .cleaner-badge-pill {
+    font-size: 12px; font-weight: 500;
+    padding: 4px 12px; border-radius: 20px;
+    background: var(--blue-light); color: var(--blue);
+    border: 1px solid rgba(26,79,122,0.15);
+  }
+  .cleaner-badge-pill.tot {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+  .pulizie-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px; background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .pulizie-table th {
+    text-align: left; padding: 9px 14px;
+    font-size: 10px; font-weight: 500;
+    color: var(--text3); text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .pulizie-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); vertical-align: top;
+  }
+  .pulizie-table tr:last-child td { border-bottom: none; }
+  .pulizie-table tr:nth-child(even) td { background: rgba(0,0,0,0.013); }
+  .letti-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .letto-pill {
+    font-size: 10px; padding: 2px 7px; border-radius: 20px;
+    background: var(--accent-light); color: var(--accent);
+  }
+  .letto-pill.extra { background: var(--amber-light); color: var(--amber); }
+  .periodo-range {
+    font-size: 11px; color: var(--text3); margin-top: 2px;
+  }
+  .comp-row { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+  .comp-pulizia { color: var(--accent); font-weight: 500; }
+  .comp-lav { color: var(--text3); }
+  .comp-tot { font-weight: 600; color: var(--text); }
+  .filter-bar {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;
+  }
+  .filter-bar label { font-size: 12px; color: var(--text3); }
+  .filter-bar select {
+    font-size: 12px; padding: 6px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 20px; background: var(--surface);
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    cursor: pointer; outline: none;
+  }
+  .riepilogo-box {
+    background: var(--accent);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex; gap: 20px; flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .riepilogo-item { text-align: center; }
+  .riepilogo-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px; color: #fff; line-height: 1;
+  }
+  .riepilogo-lbl { font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* ── NEW TODO ── */
+  .todo-section { margin-bottom: 2rem; }
+  .todo-section-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .todo-section-title {
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text3);
+  }
+  .todo-section-count {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500;
+  }
+  .count-ospiti { background: var(--blue-light); color: var(--blue); }
+  .count-pulizie { background: var(--accent-light); color: var(--accent); }
+  .todo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: opacity 0.2s, background 0.15s;
+    user-select: none;
+  }
+  .todo-card:hover { background: var(--surface2); }
+  .todo-card.done { opacity: 0.38; }
+  .todo-card.done .tc-name { text-decoration: line-through; }
+  .tc-top { display: flex; align-items: flex-start; gap: 12px; }
+  .tc-check {
+    width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #fff;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .todo-card.done .tc-check { background: var(--accent); border-color: var(--accent); }
+  .tc-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .tc-row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tc-name { font-size: 15px; font-weight: 500; color: var(--text); }
+  .tc-apt {
+    font-size: 11px; padding: 2px 9px; border-radius: 20px;
+    background: var(--surface2); color: var(--text3);
+  }
+  .tc-tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500;
+  }
+  .tc-tag-ci { background: var(--blue-light); color: var(--blue); }
+  .tc-tag-co { background: var(--amber-light); color: var(--amber); }
+  .tc-row2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tc-wa {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border-radius: 20px;
+    background: var(--accent-light); color: var(--accent);
+    border: 1px solid rgba(13,90,142,0.2);
+    text-decoration: none;
+    min-height: 36px; /* facile da toccare su mobile */
+  }
+  .tc-wa:active { opacity: 0.7; }
+  .tc-meta { font-size: 11px; color: var(--text3); }
+  .todo-empty {
+    padding: 24px 16px; text-align: center;
+    font-size: 13px; color: var(--text3); font-style: italic;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  /* ── NEW TODO ── */
+  .date-picker-wrap {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .date-picker-wrap input[type="date"] {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .date-picker-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.7;
+    cursor: pointer;
+  }
+
+  /* ── COLORI APPARTAMENTI ── */
+  .apt-card { border-top: 3px solid transparent; }
+  .apt-enea-put  { border-top-color: #1A6FA8; }
+  .apt-enea-pic  { border-top-color: #2899D4; }
+  .apt-domus-g   { border-top-color: #2A7A4F; }
+  .apt-domus-p   { border-top-color: #5AAF7A; }
+  .apt-vis       { border-top-color: #8B5E2E; }
+  .apt-mare      { border-top-color: #C4883C; }
+
+  .apt-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .dot-enea-put  { background: #1A6FA8; }
+  .dot-enea-pic  { background: #2899D4; }
+  .dot-domus-g   { background: #2A7A4F; }
+  .dot-domus-p   { background: #5AAF7A; }
+  .dot-vis       { background: #8B5E2E; }
+  .dot-mare      { background: #C4883C; }
+  @media (max-width: 600px) {
+    .header { padding: 14px 16px; }
+    .header-left h1 { font-size: 18px; }
+    .kpi-bar { padding: 10px 12px; }
+    .kpi-num { font-size: 22px; }
+    .kpi-item { min-width: 70px; padding: 0 8px; }
+    .tabs-wrap { padding: 0 12px; position: sticky; top: 72px; z-index: 90; }
+    .tab-btn { padding: 11px 12px; font-size: 12px; }
+    .content { padding: 14px 12px; }
+    .apt-grid { grid-template-columns: 1fr; }
+    /* Pulizie — tabella scrollabile su mobile */
+    .cleaner-section { overflow: hidden; }
+    .pulizie-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+    }
+    .pulizie-table {
+      border: none;
+      border-radius: 0;
+      min-width: 580px;
+      margin-bottom: 0;
+    }
+    .cleaner-header { flex-direction: column; align-items: flex-start; }
+    .cleaner-totals { flex-wrap: wrap; }
+    .riepilogo-box { gap: 12px; }
+    .riepilogo-num { font-size: 22px; }
+    /* Tasse e pricing scrollabili */
+    .tasse-wrap, .pricing-wrap { overflow-x: auto; }
+    table.tasse-tbl, table.pricing-tbl { min-width: 500px; font-size: 11px; }
+    table.tasse-tbl th, table.tasse-tbl td,
+    table.pricing-tbl th, table.pricing-tbl td { padding: 8px 10px; }
+    /* Filter bar wrap */
+    .filter-bar { gap: 6px; }
+    .filter-bar select { font-size: 11px; padding: 5px 8px; }
+  }
+
+  /* ── ANIMATION ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .apt-card, .todo-item, .acq-item {
+    animation: fadeUp 0.3s ease both;
+  }
+
+  /* ── GREEN / RED ── */
+  :root {
+    --green: #1A7A3A; --green-light: #E6F5EC;
+    --red: #8B2020; --red-light: #FAE8E8;
+  }
+  .kpi-num.green { color: var(--green); }
+  .kpi-num.red   { color: var(--red); }
+
+  /* ── DASHBOARD ── */
+  .dash-date-hero { text-align:center; padding:20px 0 16px; margin-bottom:20px; border-bottom:1px solid var(--border); }
+  .dash-date-day  { font-family:'DM Serif Display',serif; font-size:56px; line-height:1; color:var(--text); }
+  .dash-date-weekday   { font-size:16px; color:var(--text2); margin-top:4px; text-transform:capitalize; }
+  .dash-date-monthyear { font-size:13px; color:var(--text3); font-weight:300; text-transform:capitalize; }
+  .dash-date-nav  { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .dash-nav-btn   { background:var(--surface2); border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px; color:var(--text2); display:flex; align-items:center; justify-content:center; }
+  .dash-date-input { font-size:13px; padding:5px 12px; border:1px solid var(--border-strong); border-radius:20px; background:var(--surface); color:var(--text); font-family:'DM Sans',sans-serif; outline:none; }
+  .dash-today-btn { font-size:12px; padding:5px 14px; border-radius:20px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .dash-sections  { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:650px){ .dash-sections { grid-template-columns:1fr; } }
+  .dash-sec-title { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.08em; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px; }
+  .dash-sec-title.ci { color:var(--green); }
+  .dash-sec-title.co { color:var(--red); }
+  .dash-count     { font-size:11px; padding:2px 8px; border-radius:20px; font-weight:500; }
+  .dash-count.ci  { background:var(--green-light); color:var(--green); }
+  .dash-count.co  { background:var(--red-light); color:var(--red); }
+  .dash-card      { background:var(--surface); border:1px solid var(--border); border-left:3px solid transparent; border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:8px; }
+  .dash-card.ci   { border-left-color:var(--green); }
+  .dash-card.co   { border-left-color:var(--red); }
+  .dash-guest-name { font-size:15px; font-weight:500; color:var(--text); margin-bottom:4px; }
+  .dash-meta      { font-size:11px; color:var(--text3); margin-bottom:6px; }
+  .dash-wa-btn    { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; padding:5px 12px; border-radius:20px; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; min-height:30px; }
+  .dash-wa-btn.ci { background:var(--green-light); color:var(--green); }
+  .dash-wa-btn.co { background:var(--red-light); color:var(--red); }
+  .dash-empty     { padding:16px; text-align:center; font-size:13px; color:var(--text3); font-style:italic; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); }
+
+  /* ── TODO COLORS ── */
+  .todo-card.ci   { border-left:3px solid var(--green); }
+  .todo-card.co   { border-left:3px solid var(--red); }
+  .tc-wa.ci       { background:var(--green-light); color:var(--green); }
+  .tc-wa.co       { background:var(--red-light); color:var(--red); }
+  .tc-wa.pul      { background:var(--accent-light); color:var(--accent); }
+  .wa-btn-share   { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:500; padding:6px 14px; border-radius:20px; border:1px dashed var(--accent); background:transparent; color:var(--accent); cursor:pointer; font-family:'DM Sans',sans-serif; min-height:36px; }
+  .count-ci       { background:var(--green-light); color:var(--green); }
+  .count-co       { background:var(--red-light); color:var(--red); }
+  .count-pul      { background:var(--accent-light); color:var(--accent); }
+
+  /* ── PLANNING MODAL ── */
+  .planning-btn   { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:20px; font-size:12px; font-weight:500; background:var(--accent-light); color:var(--accent); border:1px solid rgba(13,90,142,0.2); cursor:pointer; font-family:'DM Sans',sans-serif; margin-left:auto; }
+  .pulizie-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:500; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .pulizie-modal  { background:var(--surface); border-radius:var(--radius); padding:24px; width:100%; max-width:400px; border:1px solid var(--border); }
+  .pulizie-modal-title { font-size:16px; font-weight:500; color:var(--text); margin-bottom:4px; }
+  .pulizie-modal-sub   { font-size:12px; color:var(--text3); margin-bottom:18px; }
+  .pm-row  { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:8px; gap:12px; background:var(--bg); }
+  .pm-persona { display:flex; align-items:center; gap:10px; }
+  .pm-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .pm-name { font-size:14px; font-weight:500; color:var(--text); }
+  .pm-info { font-size:11px; color:var(--text3); margin-top:1px; }
+  .pm-btn  { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:20px; font-size:12px; font-weight:500; background:var(--green-light); color:var(--green); border:none; cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .pm-close { margin-top:14px; width:100%; padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-strong); background:transparent; color:var(--text2); font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>Visionari 3.0</h1>
+    <p>Inserisci la password per accedere</p>
+    <input type="password" id="pwd" placeholder="Password"
+      onkeydown="if(event.key==='Enter') tryLogin()" autofocus>
+    <button onclick="tryLogin()">Accedi</button>
+    <div class="login-error" id="login-error">Password errata. Riprova.</div>
+  </div>
+</div>
+
+<!-- APP (nascosta fino al login) -->
+<div id="app" style="display:none">
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>Visionari 3.0</h1>
+    <div class="subtitle" id="fullDate"></div>
+  </div>
+  <div class="date-nav">
+    <button onclick="changeDay(-1)">&#8249;</button>
+    <span id="dayLabel"></span>
+    <button onclick="changeDay(1)">&#8250;</button>
+    <div class="date-picker-wrap">
+      <input type="date" id="datePicker" onchange="pickDate(this.value)">
+    </div>
+    <button class="today-btn" onclick="resetDay()">oggi</button>
+  </div>
+</div>
+
+<!-- KPI BAR -->
+<div class="kpi-bar" id="kpiBar"></div>
+
+<!-- TABS -->
+<div class="tabs-wrap">
+  <button class="tab-btn active" onclick="switchTab('dashboard',this)">📋 Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('appartamenti',this)">🏠 Appartamenti</button>
+  <button class="tab-btn" onclick="switchTab('todo',this)">✅ To-do</button>
+  <button class="tab-btn" onclick="switchTab('pulizie',this)">🧹 Pulizie</button>
+  <button class="tab-btn" onclick="switchTab('acquisti',this)">🛒 Acquisti</button>
+  <button class="tab-btn" onclick="switchTab('tasse',this)">💶 Tasse</button>
+  <button class="tab-btn" onclick="switchTab('pricing',this)">📈 Pricing</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- TAB: DASHBOARD -->
+  <div id="tab-dashboard" class="tab-pane active">
+    <div id="dashboardContent"></div>
+  </div>
+
+  <!-- TAB: APPARTAMENTI -->
+  <div id="tab-appartamenti" class="tab-pane">
+    <div class="apt-grid" id="aptGrid"></div>
+  </div>
+
+  <!-- TAB: TODO -->
+  <div id="tab-todo" class="tab-pane">
+    <div id="todoContent"></div>
+  </div>
+
+  <!-- TAB: PULIZIE -->
+  <div id="tab-pulizie" class="tab-pane">
+    <div id="pulizieContent"></div>
+  </div>
+
+  <!-- TAB: ACQUISTI -->
+  <div id="tab-acquisti" class="tab-pane">
+    <div class="acquisti-list" id="acquistiList"></div>
+    <div class="action-row">
+      <button class="wa-btn">&#128203; Lista spesa completa</button>
+    </div>
+  </div>
+
+  <!-- TAB: TASSE -->
+  <div id="tab-tasse" class="tab-pane">
+    <div class="tasse-wrap">
+      <div class="params-bar">
+        <div>Tariffa: <span>€2 / persona / notte</span></div>
+        <div>Max notti tassabili: <span>4</span></div>
+        <div>Esenzione: <span>under 14 anni</span></div>
+        <div>Versamento: <span>trimestrale · PayTourist</span></div>
+      </div>
+      <table class="tasse-tbl">
+        <thead>
+          <tr>
+            <th>Appartamento</th>
+            <th>Ospite</th>
+            <th>Adulti</th>
+            <th>Notti tax.</th>
+            <th>Tassa (€)</th>
+            <th>Incassata</th>
+          </tr>
+        </thead>
+        <tbody id="tasseBody"></tbody>
+        <tfoot>
+          <tr class="tasse-total-row">
+            <td colspan="4"><strong>Totale periodo</strong></td>
+            <td id="tasseTotal"></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: PRICING -->
+  <div id="tab-pricing" class="tab-pane">
+    <div class="pricing-wrap">
+      <div class="section-label">Suggerimenti prezzi — prossimi 14 giorni</div>
+      <table class="pricing-tbl">
+        <thead>
+          <tr>
+            <th>Appartamento</th>
+            <th>Notti libere</th>
+            <th>Prezzo attuale</th>
+            <th>Suggerimento</th>
+            <th>Motivo</th>
+            <th>Approva</th>
+          </tr>
+        </thead>
+        <tbody id="pricingBody"></tbody>
+      </table>
+
+      <div class="section-label">Festività e eventi — Bari 2025</div>
+      <div class="fest-grid" id="festGrid"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PLANNING MODAL -->
+<div id="planningModal" class="pulizie-modal-overlay" style="display:none" onclick="if(event.target===this)closePlanningModal()">
+  <div class="pulizie-modal">
+    <div class="pulizie-modal-title">📋 Manda planning pulizie</div>
+    <div class="pulizie-modal-sub" id="planningModalSub"></div>
+    <div id="planningModalRows"></div>
+    <button class="pm-close" onclick="closePlanningModal()">Chiudi</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG GOOGLE SHEETS ──────────────────────────────────────────────────────
+const SHEET_ID = '1njE_JQ-m_rzdAOR-OWDeI7NfCq2sn0LZe2Ia_A-xjRc';
+const GIDS = {
+  prenotazioni: '1940746485',
+  pulizie:      '1820111522',
+  inventario:   '658069847',
+  tasse:        '1162299491',
+  prompt:       '955795025',
+};
+
+function sheetURL(gid) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+}
+
+// Fetch con skip della prima riga (titolo) — legge dalla riga 2 come intestazione
+async function fetchSheetSkipTitle(gid) {
+  const res = await fetch(sheetURL(gid));
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  const lines = text.trim().split('\n');
+  // Salta la prima riga (titolo decorativo), usa la seconda come intestazione
+  if (lines.length < 3) return [];
+  const withoutTitle = lines.slice(1).join('\n');
+  return parseCSV(withoutTitle);
+}
+
+// ── APPARTAMENTI (config statica — nomi e cleaner non cambiano) ───────────────
+const APTS = [
+  { name:'Enea Luxury – Putignani',      sub:'fino a 9 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-put', dot:'dot-enea-put' },
+  { name:'Enea Luxury – Piccinni',       sub:'fino a 7 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-pic', dot:'dot-enea-pic' },
+  { name:'Domus Pulchra (grande)',        sub:'fino a 6 persone', cleaner:'Elda',             cls:'apt-domus-g',  dot:'dot-domus-g'  },
+  { name:'Domus Pulchra (piccolo)',       sub:'fino a 4 persone', cleaner:'Elda',             cls:'apt-domus-p',  dot:'dot-domus-p'  },
+  { name:'Casa dei Visionari – Madonella', sub:'fino a 4 persone', cleaner:'Dalila',          cls:'apt-vis',      dot:'dot-vis'      },
+  { name:'Casa dei Visionari – Mare',    sub:'fino a 4 persone', cleaner:'Giulia',            cls:'apt-mare',     dot:'dot-mare'     },
+];
+
+const FESTIVITA = [
+  { data:'25 apr', nome:'Liberazione', mult:'+20–25%' },
+  { data:'1 mag', nome:'Festa dei Lavoratori', mult:'+15%' },
+  { data:'2 giu', nome:'Festa della Repubblica', mult:'+25–35%' },
+  { data:'7–9 mag', nome:'San Nicola (patrono Bari)', mult:'+20%' },
+  { data:'15 ago', nome:'Ferragosto', mult:'+35–40%' },
+  { data:'7–8 dic', nome:'Immacolata + ponte', mult:'+20–30%' },
+  { data:'24–26 dic', nome:'Natale', mult:'+30–40%' },
+  { data:'31 dic – 1 gen', nome:'Capodanno', mult:'+40–50%' },
+];
+
+// ── STATO GLOBALE ─────────────────────────────────────────────────────────────
+let prenotazioni = [], pulizie = [], inventario = [], tasse = [], promptMessaggi = [];
+let todoDone = JSON.parse(localStorage.getItem('v3_todo')||'{}');
+let acquistoDone = JSON.parse(localStorage.getItem('v3_acquisti')||'{}');
+let approved = {};
+const waMessages = {}; // store messaggi WA — evita problemi con caratteri speciali nell'onclick
+const TODAY = new Date();
+TODAY.setHours(0,0,0,0); // normalizza a mezzanotte per confronti corretti
+let offset = 0;
+
+// ── CSV PARSER ────────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = splitCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = splitCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== ''));
+}
+
+function splitCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  str = str.trim();
+
+  // DD/MM/YYYY o DD/MM/YYYY HH:MM:SS
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
+    const parts = str.split(' ')[0].split('/');
+    return new Date(+parts[2], +parts[1] - 1, +parts[0]);
+  }
+  // YYYY-MM-DD o YYYY-MM-DD HH:MM:SS
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const parts = str.split(' ')[0].split('-');
+    return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+  }
+  // Serial number Excel/Sheets
+  const n = Number(str);
+  if (!isNaN(n) && n > 10000) {
+    return new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+  }
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+
+function sameDay(a, b) {
+  return a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+}
+
+function getDay() {
+  const d = new Date(TODAY);
+  d.setDate(d.getDate() + offset);
+  return d;
+}
+
+// ── FETCH ALL SHEETS ──────────────────────────────────────────────────────────
+function showLoading(msg) {
+  document.getElementById('aptGrid').innerHTML =
+    `<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);font-size:14px;">${msg}</div>`;
+}
+
+async function fetchSheet(gid) {
+  const res = await fetch(sheetURL(gid));
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseCSV(await res.text());
+}
+
+async function loadAllData() {
+  showLoading('Caricamento dati dal Google Sheet…');
+  try {
+    [prenotazioni, pulizie, inventario, tasse] = await Promise.all([
+      fetchSheetSkipTitle(GIDS.prenotazioni),
+      fetchSheetSkipTitle(GIDS.pulizie),
+      fetchSheetSkipTitle(GIDS.inventario),
+      fetchSheetSkipTitle(GIDS.tasse),
+    ]);
+    // Prompt messaggi — usa Google Visualization API per gestire celle multi-riga
+    try {
+      const vizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GIDS.prompt}`;
+      const res = await fetch(vizUrl);
+      const text = await res.text();
+      // Rimuove il wrapper google.visualization.Query.setResponse( ... );
+      const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, ''));
+      const rows = json.table.rows || [];
+      promptMessaggi = rows
+        .map(row => ({
+          apt: (row.c[0] && row.c[0].v) ? row.c[0].v.toString().trim() : '',
+          msg: (row.c[1] && row.c[1].v) ? row.c[1].v.toString().trim() : '',
+        }))
+        .filter(r => r.apt && r.msg);
+    } catch(e) {
+      console.warn('Prompt messaggi non caricati:', e.message);
+      promptMessaggi = [];
+    }
+    renderAll();
+  } catch(e) {
+    document.getElementById('aptGrid').innerHTML =
+      `<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--red);font-size:13px;">
+        <strong>Errore caricamento dati.</strong><br><br>
+        Assicurati che il Google Sheet sia condiviso come "Chiunque abbia il link → Visualizzatore".<br><br>
+        <small style="color:var(--text3)">${e.message}</small><br><br>
+        <button onclick="loadAllData()" style="margin-top:12px;padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:inherit;font-size:13px;">Riprova</button>
+      </div>`;
+  }
+}
+
+// ── RECUPERA MESSAGGIO PER APPARTAMENTO ───────────────────────
+function getPrompt(aptName, nomeOspite) {
+  const norm = s => s.toLowerCase().replace(/\s+/g,'').replace(/[–-]/g,'-');
+  const found = promptMessaggi.find(p => norm(p.apt) === norm(aptName));
+  if (!found) return null;
+  // Sostituisce [NOME OSPITE] con il nome reale
+  return found.msg.replace(/\[NOME OSPITE\]/gi, nomeOspite.split(' ')[0]);
+}
+
+// ── DATE ──────────────────────────────────────────────────────────────────────
+function updateDates() {
+  const d = getDay();
+  document.getElementById('fullDate').textContent =
+    d.toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('dayLabel').textContent =
+    offset===0?'oggi':offset===1?'domani':offset===-1?'ieri':
+    d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+  // Sincronizza date picker
+  const picker = document.getElementById('datePicker');
+  if (picker) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    picker.value = `${y}-${m}-${day}`;
+  }
+}
+
+function pickDate(val) {
+  if (!val) return;
+  const [y, m, d] = val.split('-').map(Number);
+  const picked = new Date(y, m-1, d);
+  const diff = Math.round((picked - TODAY) / 86400000);
+  offset = diff;
+  dashOffset = diff;
+  updateDates();
+  renderAll();
+}
+
+function changeDay(n) { offset+=n; updateDates(); renderAll(); }
+function resetDay()   { offset=0; dashOffset=0; updateDates(); renderAll(); }
+
+function renderAll() {
+  renderKPI();
+  renderDashboard();
+  renderApts();
+  renderTodo();
+  renderAcquisti();
+  renderTasse();
+  renderPricing();
+}
+
+// ── KPI ───────────────────────────────────────────────────────────────────────
+function renderKPI() {
+  const day = getDay();
+  const co = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), day)).length;
+  const ci = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']),  day)).length;
+  const cl = pulizie.filter(r => sameDay(parseDate(r['Data']), day)).length;
+  const fr = APTS.filter(apt => {
+    return !prenotazioni.some(r => {
+      const ci = parseDate(r['Check-in']), co = parseDate(r['Check-out']);
+      return matchApt(r['Appartamento'], apt.name) && ci && co && day >= ci && day < co;
+    });
+  }).length;
+  const tx = tasse.filter(r => r['Incassata?']==='No' || r['Incassata?']==='no')
+    .reduce((s,r) => s + (parseFloat(r['Tassa Dovuta (€)'])||0), 0);
+
+  document.getElementById('kpiBar').innerHTML = `
+    <div class="kpi-item"><div class="kpi-num green">${ci}</div><div class="kpi-lbl">&#8592; check-in</div></div>
+    <div class="kpi-item"><div class="kpi-num red">${co}</div><div class="kpi-lbl">&#8594; check-out</div></div>
+    <div class="kpi-item"><div class="kpi-num">${cl}</div><div class="kpi-lbl">&#9775; pulizie</div></div>
+    <div class="kpi-item"><div class="kpi-num ${fr>0?'warn':''}">${fr}</div><div class="kpi-lbl">liberi</div></div>
+    <div class="kpi-item"><div class="kpi-num good">€${tx.toFixed(0)}</div><div class="kpi-lbl">tasse</div></div>
+  `;
+}
+
+// ── APPARTAMENTI ──────────────────────────────────────────────────────────────
+// Matching esatto appartamento — normalizza entrambi i lati per confronto sicuro
+function matchApt(recordApt, aptName) {
+  if (!recordApt) return false;
+  const normalize = s => s.trim().toLowerCase()
+    .replace(/\u2013|\u2014|-/g, '-')
+    .replace(/\s+/g, ' ');
+  return normalize(recordApt) === normalize(aptName);
+}
+
+const STATUS_LABEL = { turnover:'Turnover', checkin:'Check-in', checkout:'Check-out', occupied:'Occupato', free:'Libero' };
+const STATUS_CLASS = { turnover:'s-turnover', checkin:'s-checkin', checkout:'s-checkout', occupied:'s-occupied', free:'s-free' };
+
+function aptStatus(aptName, day) {
+  const hasCI = prenotazioni.some(r => matchApt(r['Appartamento'], aptName) && sameDay(parseDate(r['Check-in']), day));
+  const hasCO = prenotazioni.some(r => matchApt(r['Appartamento'], aptName) && sameDay(parseDate(r['Check-out']), day));
+  if (hasCI && hasCO) return 'turnover';
+  if (hasCI)  return 'checkin';
+  if (hasCO)  return 'checkout';
+  const occupied = prenotazioni.some(r => {
+    const ci = parseDate(r['Check-in']), co = parseDate(r['Check-out']);
+    return matchApt(r['Appartamento'], aptName) && ci && co && day >= ci && day < co;
+  });
+  return occupied ? 'occupied' : 'free';
+}
+
+function renderApts() {
+  const day = getDay();
+  const STATUS_ORDER = { turnover:0, checkin:1, checkout:2, occupied:3, free:4 };
+
+  // Calcola stato inline per ogni appartamento — fresco ad ogni render
+  const aptWithStatus = APTS.map(apt => {
+    const hasCI = prenotazioni.some(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Check-in']), day));
+    const hasCO = prenotazioni.some(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Check-out']), day));
+    let status;
+    if (hasCI && hasCO) status = 'turnover';
+    else if (hasCI) status = 'checkin';
+    else if (hasCO) status = 'checkout';
+    else {
+      const occ = prenotazioni.some(r => {
+        const ci = parseDate(r['Check-in']), co = parseDate(r['Check-out']);
+        return matchApt(r['Appartamento'], apt.name) && ci && co && day >= ci && day < co;
+      });
+      status = occ ? 'occupied' : 'free';
+    }
+    return { apt, status, order: STATUS_ORDER[status] ?? 9 };
+  });
+
+  // Ordina — turnover sempre primo
+  aptWithStatus.sort((a, b) => a.order - b.order);
+
+  document.getElementById('aptGrid').innerHTML = aptWithStatus.map(({ apt, status }, idx) => {
+    const coRec  = prenotazioni.find(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Check-out']), day));
+    const ciRec  = prenotazioni.find(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Check-in']),  day));
+    const pulRec = pulizie.find(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Data']), day));
+
+    let rows = '';
+    // Check-in PRIMA di check-out
+    if (ciRec) rows += aptRow('&#8592;', 'Check-in',  `${ciRec['Nome Ospite']||'—'} &mdash; ${ciRec['N. Ospiti Adulti']||'?'} adulti`);
+    if (coRec) rows += aptRow('&#8594;', 'Check-out', `${coRec['Nome Ospite']||'—'} &mdash; ${coRec['N. Ospiti Adulti']||'?'} adulti`);
+    if (pulRec) rows += aptRow('&#9775;', 'Pulizie', `${pulRec['Addetta Pulizie']||apt.cleaner} &mdash; ${pulRec['Ora Inizio']||''} ${pulRec['Ora Fine']?'→ '+pulRec['Ora Fine']:''}`);
+    if (status==='occupied' && !coRec && !ciRec) {
+      const activeRec = prenotazioni.find(r => {
+        const ci = parseDate(r['Check-in']), co = parseDate(r['Check-out']);
+        return matchApt(r['Appartamento'], apt.name) && ci && co && day >= ci && day < co;
+      });
+      if (activeRec) {
+        const ciDate = parseDate(activeRec['Check-in']);
+        const coDate = parseDate(activeRec['Check-out']);
+        const fmtD = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '?';
+        rows += aptRow('&#9679;', 'Ospiti', `${activeRec['Nome Ospite']||'—'} &mdash; ${activeRec['N. Ospiti Adulti']||'?'} adulti`);
+        rows += aptRow('&#8596;', 'Periodo', `${fmtD(ciDate)} → ${fmtD(coDate)}`);
+      } else {
+        rows += aptRow('&#9679;', 'Stato', '<span class="muted">Ospiti presenti</span>');
+      }
+    }
+    if (status==='free') rows += aptRow('&#9675;', 'Stato', '<span class="muted">Nessuna prenotazione</span>');
+
+    // alert pulizie
+    let alerts = '';
+    if (pulRec && (pulRec['Confermata?']||'').toLowerCase()==='no')
+      alerts += `<div class="alert-box alert-warn">&#9651; Pulizie non ancora confermate da ${pulRec['Addetta Pulizie']||apt.cleaner}</div>`;
+    if (pulRec && (pulRec['Completata?']||'').toLowerCase()==='no' && status==='checkout')
+      alerts += `<div class="alert-box alert-info">&#9432; Pulizie in attesa di completamento</div>`;
+    if (pulRec && pulRec['Note/Segnalazioni'] && pulRec['Note/Segnalazioni'].trim())
+      alerts += `<div class="alert-box alert-danger">&#9888; ${pulRec['Note/Segnalazioni']}</div>`;
+
+    // tassa
+    const tassaRec = tasse.find(r => matchApt(r['Appartamento'], apt.name) &&
+      (sameDay(parseDate(r['Check-in']), day) || sameDay(parseDate(r['Check-out']), day)));
+    const tassaVal = tassaRec ? `€${tassaRec['Tassa Dovuta (€)']||'—'}` : '—';
+
+    // Badge turnover evidenziato con stile speciale
+    const badgeHtml = status === 'turnover'
+      ? `<span class="status-badge s-turnover" style="font-size:11px;padding:4px 12px;font-weight:700;letter-spacing:0.08em;box-shadow:0 0 0 2px rgba(42,75,122,0.3)">&#9650; TURNOVER</span>`
+      : `<span class="status-badge ${STATUS_CLASS[status]}">${STATUS_LABEL[status]}</span>`;
+
+    return `<div class="apt-card ${apt.cls}" style="animation-delay:${idx*0.05}s${status==='turnover'?';box-shadow:0 4px 20px rgba(42,75,122,0.15);border-color:rgba(42,75,122,0.3)':''}">
+      <div class="apt-card-top">
+        <div>
+          <div class="apt-name"><span class="apt-dot ${apt.dot}"></span>${apt.name}</div>
+          <div class="apt-sub">${apt.sub}</div>
+        </div>
+        ${badgeHtml}
+      </div>
+      <div class="apt-body">${rows||'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun evento oggi</span>'}</div>
+      ${alerts}
+      <div class="apt-footer">
+        <span>&#9775; ${apt.cleaner}</span>
+        <span>tassa: ${tassaVal}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function aptRow(icon, lbl, val) {
+  return `<div class="apt-row">
+    <span class="apt-row-icon">${icon}</span>
+    <span class="apt-row-lbl">${lbl}</span>
+    <span class="apt-row-val">${val}</span>
+  </div>`;
+}
+
+// ── NUMERI ADDETTE PULIZIE ────────────────────────────────────
+const CLEANER_PHONES = {
+  'Elda':   '+393792546937',
+  'Giulia': '+393200661575',
+  'Dalila': '+393478783103',
+};
+
+// ── TODO — due sezioni: Ospiti e Pulizie ─────────────────────
+function renderTodo() {
+  const today = getDay();
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // SEZIONE OSPITI — check-in di domani
+  const checkInDomani = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']), tomorrow) && r['Nome Ospite']);
+
+  // SEZIONE PULIZIE — check-out di domani
+  const checkOutDomani = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), tomorrow) && r['Appartamento']);
+
+  let html = '';
+
+  // ── OSPITI ──
+  html += `<div class="todo-section">
+    <div class="todo-section-header">
+      <span style="font-size:16px">&#128338;</span>
+      <span class="todo-section-title">Ospiti</span>
+      <span class="todo-section-count count-ospiti">${checkInDomani.length} check-in domani</span>
+    </div>`;
+
+  if (!checkInDomani.length) {
+    html += `<div class="todo-empty">Nessun check-in domani.</div>`;
+  } else {
+    checkInDomani.forEach((r, i) => {
+      const phone = (r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+      const nome  = r['Nome Ospite'] || '—';
+      const apt   = r['Appartamento'] || '—';
+      const ospiti = r['N. Ospiti Adulti'] || '?';
+      const ciDate = parseDate(r['Check-in']);
+      const fmtD   = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '?';
+      const promptMsg = getPrompt(apt, nome) ||
+        `Ciao ${nome.split(' ')[0]}, ti ricordiamo che domani è previsto il tuo check-in presso ${apt}. A presto!`;
+      const phoneClean = phone.replace('+','');
+      const waLink = phone ? `https://wa.me/${phoneClean}` : null;
+      const key = `ospite_${i}`;
+      const done = !!todoDone[key];
+
+      html += `<div class="todo-card ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+        <div class="tc-top">
+          <div class="tc-check">${done?'&#10003;':''}</div>
+          <div class="tc-body">
+            <div class="tc-row1">
+              <span class="tc-name">${nome}</span>
+              <span class="tc-apt">${apt}</span>
+              <span class="tc-tag tc-tag-ci">check-in ${fmtD(ciDate)}</span>
+            </div>
+            <div class="tc-row2">
+              ${waLink
+                ? `<button class="tc-wa" onclick="event.stopPropagation();copyMsg(${i})" data-phone="${phoneClean}" data-msg="${encodeURIComponent(promptMsg)}">
+                    &#128172; ${phone}
+                  </button>`
+                : `<span class="tc-meta">Numero non disponibile</span>`}
+              <span class="tc-meta">${ospiti} ospiti</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
+  // ── PULIZIE ──
+  html += `<div class="todo-section">
+    <div class="todo-section-header">
+      <span style="font-size:16px">&#9775;</span>
+      <span class="todo-section-title">Pulizie</span>
+      <span class="todo-section-count count-pulizie">${checkOutDomani.length} check-out domani</span>
+    </div>`;
+
+  if (!checkOutDomani.length) {
+    html += `<div class="todo-empty">Nessun check-out domani.</div>`;
+  } else {
+    checkOutDomani.forEach((r, i) => {
+      const apt     = r['Appartamento'] || '—';
+      const tariffa = TARIFFE[apt];
+      if (!tariffa) return; // salta Enea per ora
+      const persona  = tariffa.persona;
+      const phone    = CLEANER_PHONES[persona] || '';
+      const nomeOsp  = r['Nome Ospite'] || '—';
+      const ospiti   = r['N. Ospiti Adulti'] || '?';
+      const coDate   = parseDate(r['Check-out']);
+      const fmtD     = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '?';
+      const msg = encodeURIComponent(`Ciao ${persona}, ti ricordiamo che domani (${fmtD(coDate)}) è previsto il check-out presso ${apt} di ${nomeOsp} (${ospiti} ospiti). Ti chiediamo di provvedere alle pulizie e al cambio biancheria. Grazie!`);
+      const waLink = phone ? `https://wa.me/${phone.replace('+','')}?text=${msg}` : null;
+      const key = `pulizia_${i}`;
+      const done = !!todoDone[key];
+
+      html += `<div class="todo-card ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+        <div class="tc-top">
+          <div class="tc-check">${done?'&#10003;':''}</div>
+          <div class="tc-body">
+            <div class="tc-row1">
+              <span class="tc-name">${persona}</span>
+              <span class="tc-apt">${apt}</span>
+              <span class="tc-tag tc-tag-co">check-out ${fmtD(coDate)}</span>
+            </div>
+            <div class="tc-row2">
+              ${waLink
+                ? `<a class="tc-wa" href="${waLink}" target="_blank" onclick="event.stopPropagation()">
+                    &#128172; ${phone}
+                  </a>`
+                : `<span class="tc-meta">Numero non disponibile</span>`}
+              <span class="tc-meta">${nomeOsp} · ${ospiti} ospiti</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
+  document.getElementById('todoContent').innerHTML = html;
+}
+
+function toggleTodoKey(key, el) {
+  todoDone[key] = !todoDone[key];
+  localStorage.setItem('v3_todo', JSON.stringify(todoDone));
+  el.classList.toggle('done');
+  el.querySelector('.tc-check').innerHTML = todoDone[key] ? '&#10003;' : '';
+}
+
+// Copia messaggio negli appunti e apre WhatsApp
+function copyMsg(idx) {
+  const btn = document.querySelectorAll('[data-msg]')[idx];
+  if (!btn) return;
+  const msg = decodeURIComponent(btn.getAttribute('data-msg'));
+  const phone = btn.getAttribute('data-phone');
+  // Copia negli appunti
+  navigator.clipboard.writeText(msg).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '&#10003; Copiato! Apro WA…';
+    setTimeout(() => {
+      btn.innerHTML = orig;
+      window.open(`https://wa.me/${phone}`, '_blank');
+    }, 800);
+  }).catch(() => {
+    // Fallback se clipboard non disponibile
+    window.open(`https://wa.me/${phone}`, '_blank');
+  });
+}
+
+function toggleTodo(id, el) {
+  todoDone[id] = !todoDone[id];
+  el.classList.toggle('done');
+  const chk = el.querySelector('.todo-check') || el.querySelector('.tc-check');
+  if (chk) chk.innerHTML = todoDone[id] ? '&#10003;' : '';
+}
+
+// ── ACQUISTI (da inventario sheet) ────────────────────────────────────────────
+function renderAcquisti() {
+  const items = inventario.filter(r => (r['Da Acquistare?']||'').includes('ACQUISTARE'));
+  if (!items.length) {
+    document.getElementById('acquistiList').innerHTML =
+      '<div style="padding:20px;color:var(--text3);font-size:13px;font-style:italic;">Nessun articolo da acquistare al momento.</div>';
+    return;
+  }
+  document.getElementById('acquistiList').innerHTML = items.map((a, i) => {
+    const done = !!acquistoDone[i];
+    return `<div class="acq-item ${done?'bought':''}" onclick="toggleAcq(${i},this)">
+      <div class="acq-check">${done?'&#10003;':''}</div>
+      <span class="acq-name">${a['Articolo']||'—'}</span>
+      <span class="acq-apt">${a['Appartamento']||''}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleAcq(id, el) {
+  acquistoDone[id] = !acquistoDone[id];
+  localStorage.setItem('v3_acquisti', JSON.stringify(acquistoDone));
+  el.classList.toggle('bought');
+  el.querySelector('.acq-check').innerHTML = acquistoDone[id] ? '&#10003;' : '';
+}
+
+// ── TASSE ─────────────────────────────────────────────────────────────────────
+function renderTasse() {
+  let total = 0;
+  const rows = tasse.filter(r => r['Nome Ospite'] && r['Nome Ospite'].trim()).map(r => {
+    const val = parseFloat(r['Tassa Dovuta (€)'])||0;
+    total += val;
+    const paid = (r['Incassata?']||'').toLowerCase()==='sì' || (r['Incassata?']||'').toLowerCase()==='si';
+    return `<tr>
+      <td>${r['Appartamento']||'—'}</td>
+      <td>${r['Nome Ospite']||'—'}</td>
+      <td>${r['Adulti']||r['N. Ospiti Adulti']||'—'}</td>
+      <td>${r['Notti tassabili']||'—'}</td>
+      <td><strong>€${val.toFixed(2)}</strong></td>
+      <td class="${paid?'incassata-yes':'incassata-no'}">${paid?'&#10003; sì':'&#9675; no'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tasseBody').innerHTML = rows || '<tr><td colspan="6" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato presente nel foglio.</td></tr>';
+  document.getElementById('tasseTotal').innerHTML = `<strong>€${total.toFixed(2)}</strong>`;
+}
+
+// ── PRICING ───────────────────────────────────────────────────────────────────
+function renderPricing() {
+  document.getElementById('pricingBody').innerHTML = APTS.map(apt => {
+    const isApproved = !!approved[apt.name];
+    return `<tr>
+      <td>${apt.name}</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="price-ok">aggiorna nel Sheet</td>
+      <td style="font-size:11px;color:var(--text3)">vedi tab Pricing</td>
+      <td><button class="approv-btn ${isApproved?'approved':''}" onclick="toggleApprove('${apt.name}',this)">${isApproved?'&#10003; ok':'Approva'}</button></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('festGrid').innerHTML = FESTIVITA.map(f => `
+    <div class="fest-card">
+      <div class="fest-date">${f.data}</div>
+      <div class="fest-name">${f.nome}</div>
+      <div class="fest-mult">${f.mult}</div>
+    </div>`).join('');
+}
+
+function toggleApprove(name, btn) {
+  approved[name] = !approved[name];
+  btn.className = 'approv-btn ' + (approved[name]?'approved':'');
+  btn.innerHTML = approved[name] ? '&#10003; ok' : 'Approva';
+}
+
+// ── TARIFFE PULIZIE ───────────────────────────────────────────
+const TARIFFE = {
+  'Domus Pulchra (grande)':          { persona:'Elda',   pulizia:25, lavanderia:5 },
+  'Domus Pulchra (piccolo)':         { persona:'Elda',   pulizia:10, lavanderia:5 },
+  'Casa dei Visionari – Madonella':  { persona:'Dalila', pulizia:10, lavanderia:6 },
+  'Casa dei Visionari – Mare':       { persona:'Giulia', pulizia:15, lavanderia:5 },
+  'Enea Luxury – Piccinni':          { persona:'Teresa', pulizia:0,  lavanderia:0, shareLink:true },
+};
+
+const LETTI_APT = {
+  'Domus Pulchra (grande)':          ['Matrimoniale grande','Matrimoniale','Singolo'],
+  'Domus Pulchra (piccolo)':         ['Matrimoniale','Singolo x2'],
+  'Casa dei Visionari – Madonella':  ['Matrimoniale','Singolo x2'],
+  'Casa dei Visionari – Mare':       ['Matrimoniale','Doppio'],
+};
+
+function lettiDaPreparare(aptName, numOspiti) {
+  const letti = LETTI_APT[aptName] || [];
+  const n = parseInt(numOspiti) || 2;
+  if (n <= 2) return letti.slice(0,1);
+  if (n <= 4) return letti.slice(0,2);
+  return letti;
+}
+
+function renderPulizie() {
+  const container = document.getElementById('pulizieContent');
+  if (!container) return;
+
+  const filterMese  = document.getElementById('filterMese')  ? document.getElementById('filterMese').value  : 'tutti';
+  const filterMode  = document.getElementById('filterMode')  ? document.getElementById('filterMode').value  : 'tutti';
+  const filterDal   = document.getElementById('filterDal')   ? document.getElementById('filterDal').value   : '';
+  const filterAl    = document.getElementById('filterAl')    ? document.getElementById('filterAl').value    : '';
+  const filterApt   = document.getElementById('filterApt')   ? document.getElementById('filterApt').value   : 'tutti';
+
+  // Raccoglie check-out dagli appartamenti con tariffe definite
+  const checkouts = prenotazioni
+    .filter(r => TARIFFE[r['Appartamento']] && r['Check-out'] && r['Nome Ospite'])
+    .map(r => {
+      const apt = r['Appartamento'];
+      const tariffa = TARIFFE[apt];
+      const coDate = parseDate(r['Check-out']);
+      const ciDate = parseDate(r['Check-in']);
+      const ospiti = parseInt(r['N. Ospiti Adulti']) || 2;
+      return {
+        apt, coDate, ciDate, ospiti,
+        persona: tariffa.persona,
+        pulizia: tariffa.pulizia,
+        lavanderia: tariffa.lavanderia,
+        totale: tariffa.pulizia + tariffa.lavanderia,
+        nomeOspite: r['Nome Ospite'] || '—',
+        letti: lettiDaPreparare(apt, ospiti),
+        nextGuest: null, nextGuestOspiti: 0, nextCiDate: null, lettiNext: [],
+      };
+    })
+    .filter(r => r.coDate)
+    .sort((a,b) => a.coDate - b.coDate);
+
+  // Trova il prossimo check-in per ogni check-out
+  checkouts.forEach(co => {
+    const next = prenotazioni
+      .filter(r => r['Appartamento']===co.apt && parseDate(r['Check-in']) > co.coDate && r['Nome Ospite'])
+      .sort((a,b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
+    if (next) {
+      co.nextGuest = next['Nome Ospite'] || '—';
+      co.nextGuestOspiti = parseInt(next['N. Ospiti Adulti']) || 2;
+      co.nextCiDate = parseDate(next['Check-in']);
+      co.lettiNext = lettiDaPreparare(co.apt, next['N. Ospiti Adulti']);
+    }
+  });
+
+  // Mesi disponibili per filtro
+  const mesi = [...new Set(checkouts.map(r =>
+    `${r.coDate.getFullYear()}-${String(r.coDate.getMonth()+1).padStart(2,'0')}`
+  ))].sort();
+
+  const mesiOpts = mesi.map(m => {
+    const [y,mo] = m.split('-');
+    const lbl = new Date(+y,+mo-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+    return `<option value="${m}" ${filterMese===m?'selected':''}>${lbl}</option>`;
+  }).join('');
+
+  // Filtra in base alla modalità selezionata
+  let filtered;
+  if (filterMode === 'mese') {
+    filtered = filterMese === 'tutti' ? checkouts : checkouts.filter(r => {
+      const [y,m] = filterMese.split('-');
+      return r.coDate.getFullYear()===+y && r.coDate.getMonth()===+m-1;
+    });
+  } else if (filterMode === 'range' && filterDal) {
+    const dal = new Date(filterDal);
+    const al  = filterAl ? new Date(filterAl) : new Date('2099-12-31');
+    al.setHours(23,59,59);
+    filtered = checkouts.filter(r => r.coDate >= dal && r.coDate <= al);
+  } else {
+    filtered = checkouts;
+  }
+
+  const totPulizia = filtered.reduce((s,r)=>s+r.pulizia,0);
+  const totLav     = filtered.reduce((s,r)=>s+r.lavanderia,0);
+
+  // Applica filtro appartamento
+  const filteredApt = filterApt === 'tutti' ? filtered : filtered.filter(r => r.apt === filterApt);
+
+  const totPuliziaF = filteredApt.reduce((s,r)=>s+r.pulizia,0);
+  const totLavF     = filteredApt.reduce((s,r)=>s+r.lavanderia,0);
+
+  // Appartamenti disponibili per filtro
+  const aptsDisp = [...new Set(checkouts.map(r => r.apt))].sort();
+  const aptOpts = aptsDisp.map(a =>
+    `<option value="${a}" ${filterApt===a?'selected':''}>${a}</option>`
+  ).join('');
+
+  let html = `
+    <div class="filter-bar">
+      <label>Periodo:</label>
+      <select id="filterMode" onchange="renderPulizie()">
+        <option value="tutti" ${filterMode==='tutti'?'selected':''}>Tutti</option>
+        <option value="mese"  ${filterMode==='mese' ?'selected':''}>Per mese</option>
+        <option value="range" ${filterMode==='range'?'selected':''}>Intervallo date</option>
+      </select>
+
+      ${filterMode==='mese' ? `
+        <select id="filterMese" onchange="renderPulizie()">
+          <option value="tutti" ${filterMese==='tutti'?'selected':''}>Tutti i mesi</option>
+          ${mesiOpts}
+        </select>` : ''}
+
+      ${filterMode==='range' ? `
+        <label style="margin-left:8px">Dal</label>
+        <input type="date" id="filterDal" value="${filterDal}"
+          onchange="renderPulizie()"
+          style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;">
+        <label>al</label>
+        <input type="date" id="filterAl" value="${filterAl}"
+          onchange="renderPulizie()"
+          style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;">
+        ${filterDal ? `<button onclick="document.getElementById('filterDal').value='';document.getElementById('filterAl').value='';renderPulizie()"
+          style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit;">
+          &#10005; Reset
+        </button>` : ''}` : ''}
+
+      <label style="margin-left:12px">Appartamento:</label>
+      <select id="filterApt" onchange="renderPulizie()">
+        <option value="tutti" ${filterApt==='tutti'?'selected':''}>Tutti</option>
+        ${aptOpts}
+      </select>
+      <button class="planning-btn" onclick="openPlanningModal()">📋 Planning</button>
+    </div>
+    <div class="riepilogo-box">
+      <div class="riepilogo-item"><div class="riepilogo-num">${filteredApt.length}</div><div class="riepilogo-lbl">interventi</div></div>
+      <div class="riepilogo-item"><div class="riepilogo-num">€${totPuliziaF}</div><div class="riepilogo-lbl">pulizie</div></div>
+      <div class="riepilogo-item"><div class="riepilogo-num">€${totLavF}</div><div class="riepilogo-lbl">lavanderia</div></div>
+      <div class="riepilogo-item"><div class="riepilogo-num">€${totPuliziaF+totLavF}</div><div class="riepilogo-lbl">totale</div></div>
+    </div>`;
+
+  const DOT_COLOR = { 'Elda':'#2A7A4F', 'Dalila':'#8B5E2E', 'Giulia':'#C4883C' };
+
+  // Raggruppa per persona
+  const byPersona = {};
+  filteredApt.forEach(r => { if(!byPersona[r.persona]) byPersona[r.persona]=[]; byPersona[r.persona].push(r); });
+
+  for (const [persona, interventi] of Object.entries(byPersona)) {
+    const totP = interventi.reduce((s,r)=>s+r.pulizia,0);
+    const totL = interventi.reduce((s,r)=>s+r.lavanderia,0);
+    const dot  = DOT_COLOR[persona]||'#0D5A8E';
+    const fmtD = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
+
+    html += `
+      <div class="cleaner-section">
+        <div class="cleaner-header">
+          <div class="cleaner-name">
+            <span style="width:12px;height:12px;border-radius:50%;background:${dot};display:inline-block"></span>
+            ${persona}
+          </div>
+          <div class="cleaner-totals">
+            <span class="cleaner-badge-pill">${interventi.length} interventi</span>
+            <span class="cleaner-badge-pill">pulizie €${totP}</span>
+            <span class="cleaner-badge-pill">lav. €${totL}</span>
+            <span class="cleaner-badge-pill tot">totale €${totP+totL}</span>
+          </div>
+        </div>
+        <div class="pulizie-table-wrap">
+        <table class="pulizie-table">
+          <thead>
+            <tr>
+              <th>Check-out</th>
+              <th>Appartamento / Ospiti uscenti</th>
+              <th>Letti da cambiare</th>
+              <th>Prossimo arrivo</th>
+              <th>Compenso</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${interventi.map(r => `
+              <tr>
+                <td><strong>${fmtD(r.coDate)}</strong></td>
+                <td>
+                  <div style="font-weight:500">${r.apt}</div>
+                  <div class="periodo-range">${r.nomeOspite} — ${r.ospiti} ospiti</div>
+                </td>
+                <td><div class="letti-pills">${r.letti.map(l=>`<span class="letto-pill">${l}</span>`).join('')}</div></td>
+                <td>${r.nextGuest
+                  ? `<div style="font-size:13px">${r.nextGuest} — ${r.nextGuestOspiti} ospiti</div>
+                     <div class="periodo-range">&#8594; ${fmtD(r.nextCiDate)}</div>
+                     <div class="letti-pills">${r.lettiNext.map(l=>`<span class="letto-pill extra">${l}</span>`).join('')}</div>`
+                  : `<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun arrivo previsto</span>`}
+                </td>
+                <td>
+                  <div class="comp-row"><span class="comp-pulizia">€${r.pulizia}</span><span class="comp-lav">+ €${r.lavanderia} lav.</span></div>
+                  <div class="comp-tot">= €${r.totale}</div>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="text-align:right;font-weight:500;font-size:12px;color:var(--text3)">Totale ${persona}</td>
+              <td><strong style="color:var(--accent)">€${totP+totL}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+        </div>
+      </div>`;
+  }
+
+  if (!filteredApt.length) {
+    html += `<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;font-style:italic">
+      Nessun check-out trovato per il periodo selezionato.</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+let dashOffset = 0;
+function getDashDay() { const d=new Date(TODAY); d.setDate(d.getDate()+dashOffset); return d; }
+function changeDashDay(n) { dashOffset+=n; renderDashboard(); }
+function resetDashDay()   { dashOffset=0;  renderDashboard(); }
+function pickDashDate(val) {
+  if (!val) return;
+  const [y,m,d] = val.split('-').map(Number);
+  dashOffset = Math.round((new Date(y,m-1,d) - TODAY) / 86400000);
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const c = document.getElementById('dashboardContent'); if (!c) return;
+  const day = getDashDay();
+  const y=day.getFullYear(), m=String(day.getMonth()+1).padStart(2,'0'), dd=String(day.getDate()).padStart(2,'0');
+  const ciList = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']), day) && r['Nome Ospite']);
+  const coList = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), day) && r['Nome Ospite']);
+  const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
+
+  function gCard(r, type) {
+    const nome = r['Nome Ospite']||'—', apt = r['Appartamento']||'—', osp = r['N. Ospiti Adulti']||'?';
+    const phone = (r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+    const pClean = phone.replace('+','');
+    const isCI = type==='ci';
+    const msg = isCI
+      ? (getPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} \uD83D\uDC4B Welcome to Bari!`)
+      : (getCheckoutPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} \uD83D\uDE0A I hope you are enjoying your stay! What time are you planning to check out?`);
+    // Usa data-idx per evitare problemi con caratteri speciali nel messaggio
+    const cardIdx = `dash_${type}_${pClean}`;
+    waMessages[cardIdx] = {msg, phone: pClean};
+    const wa = phone
+      ? `<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')">&#128172; ${phone}</button>`
+      : `<span style="font-size:11px;color:var(--text3)">N/D</span>`;
+    // Calcola notti per check-in
+    let nottiStr = '';
+    if (isCI) {
+      const ciDate = parseDate(r['Check-in']), coDate = parseDate(r['Check-out']);
+      if (ciDate && coDate) {
+        const notti = Math.round((coDate - ciDate) / 86400000);
+        nottiStr = `<span style="font-size:11px;color:var(--text3);margin-left:auto">${notti} nott${notti===1?'e':'i'}</span>`;
+      }
+    }
+    return `<div class="dash-card ${type}"><div class="dash-guest-name">${nome}</div><div class="dash-meta" style="display:flex;align-items:center">${osp} ospiti · ${apt}${nottiStr}</div>${wa}</div>`;
+  }
+
+  c.innerHTML = `
+    <div class="dash-date-hero">
+      <div class="dash-date-day">${day.getDate()}</div>
+      <div class="dash-date-weekday">${day.toLocaleDateString('it-IT',{weekday:'long'})}</div>
+      <div class="dash-date-monthyear">${day.toLocaleDateString('it-IT',{month:'long',year:'numeric'})}</div>
+    </div>
+    <div class="dash-sections">
+      <div>
+        <div class="dash-sec-title ci">&#8592; Check-in <span class="dash-count ci">${ciList.length}</span></div>
+        ${ciList.length ? ciList.map(r=>gCard(r,'ci')).join('') : '<div class="dash-empty">Nessun check-in</div>'}
+      </div>
+      <div>
+        <div class="dash-sec-title co">&#8594; Check-out <span class="dash-count co">${coList.length}</span></div>
+        ${coList.length ? coList.map(r=>gCard(r,'co')).join('') : '<div class="dash-empty">Nessun check-out</div>'}
+      </div>
+    </div>`;
+}
+
+function sendWADirect(enc, phone) {
+  const msg = decodeURIComponent(enc);
+  navigator.clipboard.writeText(msg)
+    .then(() => setTimeout(() => window.open(`https://wa.me/${phone}`, '_blank'), 600))
+    .catch(() => window.open(`https://wa.me/${phone}`, '_blank'));
+}
+
+function sendWA(key) {
+  const item = waMessages[key];
+  if (!item) return;
+  navigator.clipboard.writeText(item.msg)
+    .then(() => setTimeout(() => window.open(`https://wa.me/${item.phone}`, '_blank'), 600))
+    .catch(() => window.open(`https://wa.me/${item.phone}`, '_blank'));
+}
+
+// Per Enea: copia messaggio e apre WA senza numero fisso
+function shareWAMsg(key) {
+  const item = waMessages[key];
+  if (!item) return;
+  navigator.clipboard.writeText(item.msg)
+    .then(() => setTimeout(() => window.open('https://wa.me/', '_blank'), 600))
+    .catch(() => window.open('https://wa.me/', '_blank'));
+}
+
+function dashCopy(enc, phone) {
+  const msg = decodeURIComponent(enc);
+  navigator.clipboard.writeText(msg)
+    .then(() => setTimeout(() => window.open(`https://wa.me/${phone}`,'_blank'), 600))
+    .catch(() => window.open(`https://wa.me/${phone}`,'_blank'));
+}
+
+function getCheckoutPrompt(aptName, nomeOspite) {
+  const norm = s => s.toLowerCase().replace(/\s+/g,'').replace(/[–—\-]/g,'-').replace(/[()]/g,'');
+  const found = promptMessaggi.find(p => norm(p.apt) === norm(aptName));
+  if (!found || !found.msgCO) {
+    // Fallback: cerca per corrispondenza parziale
+    const found2 = promptMessaggi.find(p => norm(aptName).includes(norm(p.apt).slice(0,8)) || norm(p.apt).includes(norm(aptName).slice(0,8)));
+    if (!found2 || !found2.msgCO) return null;
+    return found2.msgCO.replace(/\[NOME OSPITE\]/gi, (nomeOspite||'').split(' ')[0]);
+  }
+  return found.msgCO.replace(/\[NOME OSPITE\]/gi, (nomeOspite||'').split(' ')[0]);
+}
+
+// ── TODO aggiornato — oggi ─────────────────────────────────────
+function renderTodo() {
+  const today = getDay();
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  const ciOggi  = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']),  today) && r['Nome Ospite']);
+  const coOggi  = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), today) && r['Nome Ospite']);
+  const coDomani = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), tomorrow) && TARIFFE[r['Appartamento']]);
+  const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
+  let html = '';
+
+  // CHECK-IN oggi
+  html += `<div class="todo-section"><div class="todo-section-header">
+    <span class="todo-section-title">&#8592; Check-in</span>
+    <span class="todo-section-count count-ci">${ciOggi.length} oggi</span>
+  </div>`;
+  if (!ciOggi.length) html += `<div class="todo-empty">Nessun check-in oggi.</div>`;
+  else ciOggi.forEach((r,i) => {
+    const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+    const pClean=phone.replace('+','');
+    const msg=getPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} \uD83D\uDC4B Welcome!`;
+    const wKey=`ci_wa_${i}`; waMessages[wKey]={msg,phone:pClean};
+    const key=`ci_${i}`; const done=!!todoDone[key];
+    html += `<div class="todo-card ci ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-ci">check-in ${fmtS(parseDate(r['Check-in']))}</span></div>
+        <div class="tc-row2">${phone?`<button class="tc-wa ci wa-btn" data-key="${wKey}">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
+      </div></div></div>`;
+  });
+  html += `</div>`;
+
+  // CHECK-OUT oggi
+  html += `<div class="todo-section"><div class="todo-section-header">
+    <span class="todo-section-title">&#8594; Check-out</span>
+    <span class="todo-section-count count-co">${coOggi.length} oggi</span>
+  </div>`;
+  if (!coOggi.length) html += `<div class="todo-empty">Nessun check-out oggi.</div>`;
+  else coOggi.forEach((r,i) => {
+    const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+    const pClean=phone.replace('+','');
+    const msg=getCheckoutPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 😊 I hope you enjoyed your stay! What time are you checking out?`;
+    const wKey=`co_wa_${i}`; waMessages[wKey]={msg,phone:pClean};
+    const key=`co_${i}`; const done=!!todoDone[key];
+    html += `<div class="todo-card co ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-co">check-out ${fmtS(parseDate(r['Check-out']))}</span></div>
+        <div class="tc-row2">${phone?`<button class="tc-wa co wa-btn" data-key="${wKey}">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
+      </div></div></div>`;
+  });
+  html += `</div>`;
+
+  // PULIZIE domani
+  html += `<div class="todo-section"><div class="todo-section-header">
+    <span class="todo-section-title">&#9775; Pulizie</span>
+    <span class="todo-section-count count-pul">${coDomani.length} check-out domani</span>
+  </div>`;
+  if (!coDomani.length) html += `<div class="todo-empty">Nessun check-out domani.</div>`;
+  else coDomani.forEach((r,i) => {
+    const apt=r['Appartamento']||'—', tar=TARIFFE[apt]; if(!tar) return;
+    const persona=tar.persona, phone=tar.shareLink?'':CLEANER_PHONES[persona]||'', pClean=phone.replace('+','');
+    const nome=r['Nome Ospite']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const coDate=parseDate(r['Check-out']);
+    const msgPul = `Ciao ${persona}, domani (${fmtS(coDate)}) c'è check-out a ${apt} di ${nome} (${osp} ospiti). Pulizie e cambio biancheria. Grazie!`;
+    const wKeyPul = `pul_wa_${i}`; waMessages[wKeyPul] = {msg: msgPul, phone: pClean};
+    const key=`pul_${i}`; const done=!!todoDone[key];
+    // Per shareLink: apre WA senza numero fisso per scegliere il destinatario
+    const waBtn = tar.shareLink
+      ? `<button class="tc-wa pul wa-btn-share" onclick="event.stopPropagation();shareWAMsg('${wKeyPul}')">&#128172; Invia a...</button>`
+      : (phone ? `<button class="tc-wa pul wa-btn" data-key="${wKeyPul}">&#128172; ${phone}</button>` : `<span class="tc-meta">N/D</span>`);
+    html += `<div class="todo-card pul ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-row1"><span class="tc-name">${persona}</span><span class="tc-apt">${apt}</span><span class="tc-tag" style="background:var(--accent-light);color:var(--accent)">domani</span></div>
+        <div class="tc-row2">${waBtn}<span class="tc-meta">${nome} · ${osp} ospiti</span></div>
+      </div></div></div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('todoContent').innerHTML = html;
+}
+
+function toggleTodoKey(key, el) {
+  todoDone[key] = !todoDone[key];
+  localStorage.setItem('v3_todo', JSON.stringify(todoDone));
+  el.classList.toggle('done');
+  el.querySelector('.tc-check').innerHTML = todoDone[key] ? '&#10003;' : '';
+}
+
+// ── PLANNING PDF ──────────────────────────────────────────────
+const CLEANER_COLORS = {Elda:'#2A7A4F', Dalila:'#8B5E2E', Giulia:'#C4883C'};
+const APT_PILL_COLORS = {
+  'Domus Pulchra (grande)':             {bg:'#DBEEFF',color:'#0A3A6B'},
+  'Domus Pulchra (piccolo)':            {bg:'#E8F5EE',color:'#1A5C35'},
+  'Casa dei Visionari – Madonella':     {bg:'#F5EDE3',color:'#5C3A15'},
+  'Casa dei Visionari – Mare':          {bg:'#FDF0E0',color:'#7A4E10'},
+  'Enea Luxury – Putignani':            {bg:'#D6EAFA',color:'#1A4F7A'},
+  'Enea Luxury – Piccinni':             {bg:'#EDF6FF',color:'#2A6FA8'},
+};
+
+function openPlanningModal() {
+  const today=new Date(TODAY), end=new Date(today); end.setDate(end.getDate()+14);
+  const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
+
+  const checkouts = prenotazioni
+    .filter(r => TARIFFE[r['Appartamento']] && r['Check-out'])
+    .map(r => {
+      const coDate=parseDate(r['Check-out']), apt=r['Appartamento'];
+      const tar=TARIFFE[apt];
+      const aptObj=APTS.find(a=>matchApt(a.name,apt));
+      const maxCap=aptObj?aptObj.cap:4;
+      const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>coDate)
+        .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
+      let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
+      if(nextCI){const ciDate=parseDate(nextCI['Check-in']);if(ciDate<=new Date(coDate.getTime()+86400000*2)){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||0;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}}
+      return {apt,coDate,persona:tar.persona,pulizia:tar.pulizia,lavanderia:tar.lavanderia,arrivoOsp,arrivoBambini,maxCap2};
+    })
+    .filter(r=>r.coDate&&r.coDate>=today&&r.coDate<=end)
+    .sort((a,b)=>a.coDate-b.coDate);
+
+  const byP={};checkouts.forEach(r=>{if(!byP[r.persona])byP[r.persona]=[];byP[r.persona].push(r);});
+  const todayStr2 = today.toISOString().slice(0,10);
+  const endStr2 = end.toISOString().slice(0,10);
+  document.getElementById('planningModalSub').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <label style="font-size:12px;color:var(--text3)">Dal</label>
+      <input type="date" id="planDal" value="${todayStr2}" style="font-size:12px;padding:4px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
+      <label style="font-size:12px;color:var(--text3)">al</label>
+      <input type="date" id="planAl" value="${endStr2}" style="font-size:12px;padding:4px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
+    </div>`;
+  document.getElementById('planningModalRows').innerHTML=Object.entries(byP).map(([persona,items])=>{
+    const dot=CLEANER_COLORS[persona]||'#0D5A8E', phone=CLEANER_PHONES[persona]||'', pClean=phone.replace('+','');
+    const apts=[...new Set(items.map(r=>r.apt))].join(' · ');
+    // Se non c'è numero fisso (es. Teresa/Enea) mostra "Invia a..."
+    const btn = pClean
+      ? `<button class="pm-btn" onclick="generatePDF('${persona}','${pClean}')">&#128172; Invia</button>`
+      : `<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF('${persona}','')">&#128172; Invia a...</button>`;
+    return `<div class="pm-row">
+      <div class="pm-persona"><span class="pm-dot" style="background:${dot}"></span>
+        <div><div class="pm-name">${persona}</div><div class="pm-info">${apts} · ${items.length} interventi</div></div>
+      </div>
+      ${btn}
+    </div>`;
+  }).join('');
+  document.getElementById('planningModal').style.display='flex';
+}
+
+function closePlanningModal() { document.getElementById('planningModal').style.display='none'; }
+
+function generatePDF(persona, phone) {
+  const dalInput = document.getElementById('planDal');
+  const alInput  = document.getElementById('planAl');
+  const today = dalInput ? new Date(dalInput.value+'T00:00:00') : new Date(TODAY);
+  const end   = alInput  ? new Date(alInput.value+'T23:59:59') : new Date(new Date(TODAY).setDate(new Date(TODAY).getDate()+14));
+  const fmtS = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
+
+  const items = prenotazioni
+    .filter(r => TARIFFE[r['Appartamento']]?.persona===persona && r['Check-out'])
+    .map(r => {
+      const coDate=parseDate(r['Check-out']), apt=r['Appartamento'];
+      const tar=TARIFFE[apt];
+      const aptObj=APTS.find(a=>matchApt(a.name,apt));
+      const maxCap=aptObj?aptObj.cap:4;
+      const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>coDate)
+        .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
+      let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
+      if(nextCI){const ciDate=parseDate(nextCI['Check-in']);if(ciDate<=new Date(coDate.getTime()+86400000*2)){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||0;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}}
+      return {apt,coDate,pulizia:tar.pulizia,lavanderia:tar.lavanderia,totale:tar.pulizia+tar.lavanderia,arrivoOsp,arrivoBambini,maxCap2};
+    })
+    .filter(r=>r.coDate&&r.coDate>=today&&r.coDate<=end)
+    .sort((a,b)=>a.coDate-b.coDate);
+
+  // Genera PDF semplice come HTML stampabile
+  const fmtDate = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
+  const rows = items.map(r => {
+    const pc = APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};
+    const totOsp = (r.arrivoOsp||0) + (r.arrivoBambini||0);
+    const arrivoStr = r.maxCap2
+      ? `<div class="max-badge">Massima capienza</div>`
+      : `<div class="ospiti-num">${totOsp}</div><div class="ospiti-det">${r.arrivoOsp||0} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</div>`;
+    return `<tr>
+      <td><strong>${fmtDate(r.coDate)}</strong></td>
+      <td><span class="apt-pill" style="background:${pc.bg};color:${pc.color}">${r.apt}</span></td>
+      <td>${arrivoStr}</td>
+    </tr>`;
+  }).join('');
+
+  const totP=items.reduce((s,r)=>s+r.pulizia,0), totL=items.reduce((s,r)=>s+r.lavanderia,0);
+  const todayStr=today.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+  const endStr=end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+
+  const dotColor = {'Elda':'#2A7A4F','Dalila':'#8B5E2E','Giulia':'#C4883C'};
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <style>
+    @media print { body { margin: 0; } }
+    body { font-family: Arial, sans-serif; padding: 24px; color: #0D1F2D; max-width: 700px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #0D5A8E; }
+    .header h2 { color: #0D5A8E; margin: 0; font-size: 20px; }
+    .header .dot { width: 12px; height: 12px; border-radius: 50%; background: ${dotColor[persona]||'#0D5A8E'}; display: inline-block; margin-right: 8px; vertical-align: middle; }
+    .periodo { font-size: 12px; color: #7299B0; text-align: right; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th { background: #EDF4F9; padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #7299B0; border-bottom: 1px solid #D6EAFA; }
+    td { padding: 12px 14px; border-bottom: 1px solid #EDF4F9; font-size: 13px; vertical-align: middle; }
+    tr:nth-child(even) td { background: #F7FBFD; }
+    .apt-pill { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+    .ospiti-num { font-size: 22px; font-weight: 600; color: #0D1F2D; line-height: 1; }
+    .ospiti-det { font-size: 11px; color: #7299B0; margin-top: 2px; }
+    .max-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; background: #FDF3E0; color: #A06820; margin-bottom: 3px; }
+    .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #D6EAFA; display: flex; justify-content: space-between; font-size: 11px; color: #7299B0; }
+    .footer strong { color: #0D5A8E; }
+  </style></head><body>
+  <div class="header">
+    <div><span class="dot"></span><h2 style="display:inline">Planning Pulizie — ${persona}</h2></div>
+    <div class="periodo">${todayStr}<br>${endStr}</div>
+  </div>
+  <table>
+    <thead><tr><th>Data pulizia</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    <span>Visionari 3.0 · generato il ${new Date().toLocaleDateString('it-IT')}</span>
+    <span>${items.length} interventi</span>
+  </div>
+  </body></html>`;
+
+  // Apri in nuova finestra e stampa (funziona su iPhone e desktop)
+  const printWin = window.open('', '_blank');
+  printWin.document.write(html);
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => {
+    printWin.print();
+    // Se c'è numero fisso apri direttamente, altrimenti apri WA senza numero
+    if (phone) {
+      window.open(`https://wa.me/${phone}`, '_blank');
+    } else {
+      window.open('https://wa.me/', '_blank');
+    }
+  }, 500);
+  closePlanningModal();
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='pulizie') renderPulizie();
+  if (name==='todo') renderTodo();
+  if (name==='dashboard') renderDashboard();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+updateDates();
+window.addEventListener('DOMContentLoaded', () => {
+  const picker = document.getElementById('datePicker');
+  if (picker) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth()+1).padStart(2,'0');
+    const d = String(now.getDate()).padStart(2,'0');
+    picker.value = `${y}-${m}-${d}`;
+  }
+});
+
+// ── GLOBAL WA BUTTON HANDLER ──────────────────────────────────
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.wa-btn');
+  if (!btn) return;
+  e.stopPropagation();
+  e.preventDefault();
+  const key = btn.getAttribute('data-key');
+  if (!key) return;
+  const item = waMessages[key];
+  if (!item || !item.phone) return;
+  navigator.clipboard.writeText(item.msg)
+    .then(() => setTimeout(() => window.open('https://wa.me/' + item.phone, '_blank'), 600))
+    .catch(() => window.open('https://wa.me/' + item.phone, '_blank'));
+});
+
+</script>
+</div><!-- /app -->
+</body>
+</html>
