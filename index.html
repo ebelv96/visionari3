@@ -1196,7 +1196,7 @@ function pickDate(val) {
   renderAll();
 }
 
-function changeDay(n) { offset+=n; updateDates(); renderAll(); }
+function changeDay(n) { offset+=n; dashOffset=offset; updateDates(); renderAll(); }
 function resetDay()   { offset=0; dashOffset=0; updateDates(); renderAll(); }
 
 function renderAll() {
@@ -1361,6 +1361,8 @@ const CLEANER_PHONES = {
   'Elda':   '+393792546937',
   'Giulia': '+393200661575',
   'Dalila': '+393478783103',
+  'Enza':   '+393473632307',
+  'Teresa': '+393473632307',
 };
 
 // ── TODO — due sezioni: Ospiti e Pulizie ─────────────────────
@@ -1591,7 +1593,7 @@ const TARIFFE = {
   'Domus Pulchra (piccolo)':         { persona:'Elda',   pulizia:10, lavanderia:5 },
   'Casa dei Visionari – Madonella':  { persona:'Dalila', pulizia:10, lavanderia:6 },
   'Casa dei Visionari – Mare':       { persona:'Giulia', pulizia:15, lavanderia:5 },
-  'Enea Luxury – Piccinni':          { persona:'Teresa', pulizia:0,  lavanderia:0, shareLink:true },
+  'Enea Luxury – Piccinni':          { persona:'Enza', pulizia:0,  lavanderia:0 },
 };
 
 const LETTI_APT = {
@@ -1850,7 +1852,7 @@ function renderDashboard() {
     waMessages[cardIdx] = {msg, phone: pClean};
     const wa = phone
       ? `<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')">&#128172; ${phone}</button>`
-      : `<span style="font-size:11px;color:var(--text3)">N/D</span>`;
+      : `<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')" style="opacity:0.7;border:1px dashed currentColor;background:transparent">&#128172; Invia a...</button>`;
     // Calcola notti per check-in
     let nottiStr = '';
     if (isCI) {
@@ -2040,7 +2042,7 @@ function openPlanningModal() {
       const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>coDate)
         .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
       let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
-      if(nextCI){const ciDate=parseDate(nextCI['Check-in']);if(ciDate<=new Date(coDate.getTime()+86400000*2)){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||0;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}}
+      if(nextCI){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||maxCap;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}
       return {apt,coDate,persona:tar.persona,pulizia:tar.pulizia,lavanderia:tar.lavanderia,arrivoOsp,arrivoBambini,maxCap2};
     })
     .filter(r=>r.coDate&&r.coDate>=today&&r.coDate<=end)
@@ -2092,7 +2094,7 @@ function generatePDF(persona, phone) {
       const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>coDate)
         .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
       let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
-      if(nextCI){const ciDate=parseDate(nextCI['Check-in']);if(ciDate<=new Date(coDate.getTime()+86400000*2)){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||0;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}}
+      if(nextCI){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||maxCap;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}
       return {apt,coDate,pulizia:tar.pulizia,lavanderia:tar.lavanderia,totale:tar.pulizia+tar.lavanderia,arrivoOsp,arrivoBambini,maxCap2};
     })
     .filter(r=>r.coDate&&r.coDate>=today&&r.coDate<=end)
