@@ -1650,13 +1650,14 @@ function renderPulizie() {
   // Trova il prossimo check-in per ogni check-out
   checkouts.forEach(co => {
     const next = prenotazioni
-      .filter(r => r['Appartamento']===co.apt && parseDate(r['Check-in']) > co.coDate && r['Nome Ospite'])
+      .filter(r => matchApt(r['Appartamento'], co.apt) && parseDate(r['Check-in']) >= co.coDate && r['Nome Ospite'])
       .sort((a,b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
     if (next) {
       co.nextGuest = next['Nome Ospite'] || '—';
       co.nextGuestOspiti = parseInt(next['N. Ospiti Adulti']) || 2;
       co.nextCiDate = parseDate(next['Check-in']);
       co.lettiNext = lettiDaPreparare(co.apt, next['N. Ospiti Adulti']);
+      co.letti = co.lettiNext; // letti basati sugli ospiti IN ARRIVO
     }
   });
 
@@ -2042,7 +2043,7 @@ function openPlanningModal() {
       const tar=TARIFFE[apt];
       const aptObj=APTS.find(a=>matchApt(a.name,apt));
       const maxCap=aptObj?aptObj.cap:4;
-      const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>coDate)
+      const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate)
         .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
       let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
       if(nextCI){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||maxCap;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}
@@ -2094,7 +2095,7 @@ function generatePDF(persona, phone) {
       const tar=TARIFFE[apt];
       const aptObj=APTS.find(a=>matchApt(a.name,apt));
       const maxCap=aptObj?aptObj.cap:4;
-      const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>coDate)
+      const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate)
         .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
       let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
       if(nextCI){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||maxCap;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}
