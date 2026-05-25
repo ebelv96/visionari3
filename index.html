@@ -1136,14 +1136,15 @@ async function loadAllData() {
       // Rimuove il wrapper google.visualization.Query.setResponse( ... );
       const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, ''));
       const rows = json.table.rows || [];
-      promptMessaggi = rows
+      // Salta le prime 2 righe (titolo + intestazioni)
+      promptMessaggi = rows.slice(2)
         .map(row => ({
           apt:   (row.c[0] && row.c[0].v) ? row.c[0].v.toString().trim() : '',
           msg:   (row.c[1] && row.c[1].v) ? row.c[1].v.toString().trim() : '',
           msgCO: (row.c[2] && row.c[2].v) ? row.c[2].v.toString().trim() : '',
         }))
-        .filter(r => r.apt); // basta che ci sia l'appartamento
-      console.log('Prompt messaggi caricati:', promptMessaggi.length, promptMessaggi.map(p => p.apt));
+        .filter(r => r.apt && r.apt !== 'Appartamento');
+      console.log('Prompt caricati:', promptMessaggi.length, promptMessaggi.map(p => p.apt));
     } catch(e) {
       console.warn('Prompt messaggi non caricati:', e.message);
       promptMessaggi = [];
