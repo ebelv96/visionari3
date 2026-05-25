@@ -70,7 +70,7 @@
     const pwd = document.getElementById('pwd').value;
     const hash = await sha256(pwd);
     if (hash === HASH) {
-      sessionStorage.setItem(SESSION_KEY, '1');
+      localStorage.setItem(SESSION_KEY, '1');;
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
       if (typeof loadAllData === 'function') loadAllData();
@@ -82,7 +82,7 @@
   }
 
   function checkSession() {
-    if (sessionStorage.getItem(SESSION_KEY) === '1') {
+    if (localStorage.getItem(SESSION_KEY)==='1') {
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
     }
