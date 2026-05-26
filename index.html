@@ -1122,7 +1122,7 @@ async function fetchSheet(gid) {
 async function loadAllData() {
   showLoading('Caricamento dati dal Google Sheet…');
   try {
-    [prenotazioni, pulizie, inventario, tasse] = await Promise.all([
+    [prenotazioni, inventario, tasse] = await Promise.all([
       fetchSheetSkipTitle(GIDS.prenotazioni),
       fetchSheetSkipTitle(GIDS.inventario),
       fetchSheetSkipTitle(GIDS.tasse),
