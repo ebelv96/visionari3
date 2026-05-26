@@ -1019,12 +1019,12 @@ async function fetchSheetSkipTitle(gid) {
 
 // ── APPARTAMENTI (config statica — nomi e cleaner non cambiano) ───────────────
 const APTS = [
-  { name:'Enea Luxury – Putignani',      sub:'fino a 9 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-put', dot:'dot-enea-put' },
-  { name:'Enea Luxury – Piccinni',       sub:'fino a 7 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-pic', dot:'dot-enea-pic' },
-  { name:'Domus Pulchra (grande)',        sub:'fino a 6 persone', cleaner:'Elda',             cls:'apt-domus-g',  dot:'dot-domus-g'  },
-  { name:'Domus Pulchra (piccolo)',       sub:'fino a 4 persone', cleaner:'Elda',             cls:'apt-domus-p',  dot:'dot-domus-p'  },
-  { name:'Casa dei Visionari – Madonella', sub:'fino a 4 persone', cleaner:'Dalila',          cls:'apt-vis',      dot:'dot-vis'      },
-  { name:'Casa dei Visionari – Mare',    sub:'fino a 4 persone', cleaner:'Giulia',            cls:'apt-mare',     dot:'dot-mare'     },
+  { name:'Enea Luxury – Putignani',       sub:'fino a 9 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-put', dot:'dot-enea-put', cap:9 },
+  { name:'Enea Luxury – Piccinni',        sub:'fino a 7 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-pic', dot:'dot-enea-pic', cap:7 },
+  { name:'Domus Pulchra (grande)',         sub:'fino a 6 persone', cleaner:'Elda',             cls:'apt-domus-g',  dot:'dot-domus-g',  cap:6 },
+  { name:'Domus Pulchra (piccolo)',        sub:'fino a 4 persone', cleaner:'Elda',             cls:'apt-domus-p',  dot:'dot-domus-p',  cap:4 },
+  { name:'Casa dei Visionari – Madonella', sub:'fino a 4 persone', cleaner:'Dalila',           cls:'apt-vis',      dot:'dot-vis',      cap:4 },
+  { name:'Casa dei Visionari – Mare',     sub:'fino a 4 persone', cleaner:'Giulia',            cls:'apt-mare',     dot:'dot-mare',     cap:4 },
 ];
 
 const FESTIVITA = [
@@ -1381,119 +1381,6 @@ const CLEANER_PHONES = {
 };
 
 // ── TODO — due sezioni: Ospiti e Pulizie ─────────────────────
-function renderTodo() {
-  const today = getDay();
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-
-  // SEZIONE OSPITI — check-in di domani
-  const checkInDomani = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']), tomorrow) && r['Nome Ospite']);
-
-  // SEZIONE PULIZIE — check-out di domani
-  const checkOutDomani = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), tomorrow) && r['Appartamento']);
-
-  let html = '';
-
-  // ── OSPITI ──
-  html += `<div class="todo-section">
-    <div class="todo-section-header">
-      <span style="font-size:16px">&#128338;</span>
-      <span class="todo-section-title">Ospiti</span>
-      <span class="todo-section-count count-ospiti">${checkInDomani.length} check-in domani</span>
-    </div>`;
-
-  if (!checkInDomani.length) {
-    html += `<div class="todo-empty">Nessun check-in domani.</div>`;
-  } else {
-    checkInDomani.forEach((r, i) => {
-      const phone = (r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
-      const nome  = r['Nome Ospite'] || '—';
-      const apt   = r['Appartamento'] || '—';
-      const ospiti = r['N. Ospiti Adulti'] || '?';
-      const ciDate = parseDate(r['Check-in']);
-      const fmtD   = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '?';
-      const promptMsg = getPrompt(apt, nome) ||
-        `Ciao ${nome.split(' ')[0]}, ti ricordiamo che domani è previsto il tuo check-in presso ${apt}. A presto!`;
-      const phoneClean = phone.replace('+','');
-      const waLink = phone ? `https://wa.me/${phoneClean}` : null;
-      const key = `ospite_${i}`;
-      const done = !!todoDone[key];
-
-      html += `<div class="todo-card ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
-        <div class="tc-top">
-          <div class="tc-check">${done?'&#10003;':''}</div>
-          <div class="tc-body">
-            <div class="tc-row1">
-              <span class="tc-name">${nome}</span>
-              <span class="tc-apt">${apt}</span>
-              <span class="tc-tag tc-tag-ci">check-in ${fmtD(ciDate)}</span>
-            </div>
-            <div class="tc-row2">
-              ${waLink
-                ? `<button class="tc-wa" onclick="event.stopPropagation();copyMsg(${i})" data-phone="${phoneClean}" data-msg="${encodeURIComponent(promptMsg)}">
-                    &#128172; ${phone}
-                  </button>`
-                : `<span class="tc-meta">Numero non disponibile</span>`}
-              <span class="tc-meta">${ospiti} ospiti</span>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    });
-  }
-  html += `</div>`;
-
-  // ── PULIZIE ──
-  html += `<div class="todo-section">
-    <div class="todo-section-header">
-      <span style="font-size:16px">&#9775;</span>
-      <span class="todo-section-title">Pulizie</span>
-      <span class="todo-section-count count-pulizie">${checkOutDomani.length} check-out domani</span>
-    </div>`;
-
-  if (!checkOutDomani.length) {
-    html += `<div class="todo-empty">Nessun check-out domani.</div>`;
-  } else {
-    checkOutDomani.forEach((r, i) => {
-      const apt     = r['Appartamento'] || '—';
-      const tariffa = TARIFFE[apt];
-      if (!tariffa) return; // salta Enea per ora
-      const persona  = tariffa.persona;
-      const phone    = CLEANER_PHONES[persona] || '';
-      const nomeOsp  = r['Nome Ospite'] || '—';
-      const ospiti   = r['N. Ospiti Adulti'] || '?';
-      const coDate   = parseDate(r['Check-out']);
-      const fmtD     = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '?';
-      const msg = encodeURIComponent(`Ciao ${persona}, ti ricordiamo che domani (${fmtD(coDate)}) è previsto il check-out presso ${apt} di ${nomeOsp} (${ospiti} ospiti). Ti chiediamo di provvedere alle pulizie e al cambio biancheria. Grazie!`);
-      const waLink = phone ? `https://wa.me/${phone.replace('+','')}?text=${msg}` : null;
-      const key = `pulizia_${i}`;
-      const done = !!todoDone[key];
-
-      html += `<div class="todo-card ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
-        <div class="tc-top">
-          <div class="tc-check">${done?'&#10003;':''}</div>
-          <div class="tc-body">
-            <div class="tc-row1">
-              <span class="tc-name">${persona}</span>
-              <span class="tc-apt">${apt}</span>
-              <span class="tc-tag tc-tag-co">check-out ${fmtD(coDate)}</span>
-            </div>
-            <div class="tc-row2">
-              ${waLink
-                ? `<a class="tc-wa" href="${waLink}" target="_blank" onclick="event.stopPropagation()">
-                    &#128172; ${phone}
-                  </a>`
-                : `<span class="tc-meta">Numero non disponibile</span>`}
-              <span class="tc-meta">${nomeOsp} · ${ospiti} ospiti</span>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    });
-  }
-  html += `</div>`;
-
-  document.getElementById('todoContent').innerHTML = html;
-}
 
 function toggleTodoKey(key, el) {
   todoDone[key] = !todoDone[key];
