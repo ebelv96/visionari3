@@ -995,7 +995,7 @@
 const SHEET_ID = '1njE_JQ-m_rzdAOR-OWDeI7NfCq2sn0LZe2Ia_A-xjRc';
 const GIDS = {
   prenotazioni: '1940746485',
-  pulizie:      '1820111522',
+  addette:      '1820111522',
   inventario:   '658069847',
   tasse:        '1162299491',
   prompt:       '955795025',
@@ -1039,7 +1039,7 @@ const FESTIVITA = [
 ];
 
 // ── STATO GLOBALE ─────────────────────────────────────────────────────────────
-let prenotazioni = [], pulizie = [], inventario = [], tasse = [], promptMessaggi = [];
+let prenotazioni = [], pulizie = [], inventario = [], tasse = [], promptMessaggi = [], addette = [];
 let todoDone = JSON.parse(localStorage.getItem('v3_todo')||'{}');
 let acquistoDone = JSON.parse(localStorage.getItem('v3_acquisti')||'{}');
 let approved = {};
@@ -1124,10 +1124,22 @@ async function loadAllData() {
   try {
     [prenotazioni, pulizie, inventario, tasse] = await Promise.all([
       fetchSheetSkipTitle(GIDS.prenotazioni),
-      fetchSheetSkipTitle(GIDS.pulizie),
       fetchSheetSkipTitle(GIDS.inventario),
       fetchSheetSkipTitle(GIDS.tasse),
     ]);
+    // Fetch addette dal foglio pulizie (col A=apt, B=nome, C=telefono)
+    try {
+      const vizUrl2=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GIDS.addette}`;
+      const res2=await fetch(vizUrl2);
+      const text2=await res2.text();
+      const json2=JSON.parse(text2.replace(/^[^(]+\(/,'').replace(/\);?\s*$/,''));
+      addette=(json2.table.rows||[]).slice(2).map(row=>({
+        apt:  (row.c[0]&&row.c[0].v)?row.c[0].v.toString().trim():'',
+        nome: (row.c[1]&&row.c[1].v)?row.c[1].v.toString().trim():'',
+        tel:  (row.c[2]&&row.c[2].v)?row.c[2].v.toString().trim():'',
+      })).filter(r=>r.apt&&r.nome);
+      console.log('Addette:', addette.map(a=>a.apt+'='+a.nome+'='+a.tel));
+    } catch(e) { addette=[]; console.warn('Addette non caricate:', e.message); }
     // Prompt messaggi — usa Google Visualization API per gestire celle multi-riga
     try {
       const vizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GIDS.prompt}`;
@@ -1604,6 +1616,8 @@ const LETTI_APT = {
   'Domus Pulchra (piccolo)':         ['Matrimoniale','Singolo x2'],
   'Casa dei Visionari – Madonella':  ['Matrimoniale','Singolo x2'],
   'Casa dei Visionari – Mare':       ['Matrimoniale','Doppio'],
+  'Enea Luxury – Piccinni':         ['Matrimoniale x2','Singolo','Divano letto'],
+  'Enea Luxury – Putignani':        ['Matrimoniale x4','Singolo'],
 };
 
 function lettiDaPreparare(aptName, numOspiti) {
@@ -1626,16 +1640,18 @@ function renderPulizie() {
 
   // Raccoglie check-out dagli appartamenti con tariffe definite
   const checkouts = prenotazioni
-    .filter(r => TARIFFE[r['Appartamento']] && r['Check-out'] && r['Nome Ospite'])
+    .filter(r => r['Appartamento'] && r['Check-out'] && r['Nome Ospite'])
     .map(r => {
       const apt = r['Appartamento'];
-      const tariffa = TARIFFE[apt];
+      const addetta = getAddetta(apt);
+      const tariffa = TARIFFE[apt] || {pulizia:0, lavanderia:0};
       const coDate = parseDate(r['Check-out']);
       const ciDate = parseDate(r['Check-in']);
       const ospiti = parseInt(r['N. Ospiti Adulti']) || 2;
       return {
         apt, coDate, ciDate, ospiti,
-        persona: tariffa.persona,
+        persona: addetta.persona,
+        phone: addetta.phone,
         pulizia: tariffa.pulizia,
         lavanderia: tariffa.lavanderia,
         totale: tariffa.pulizia + tariffa.lavanderia,
@@ -1991,8 +2007,9 @@ function renderTodo() {
   </div>`;
   if (!coDomani.length) html += `<div class="todo-empty">Nessun check-out domani.</div>`;
   else coDomani.forEach((r,i) => {
-    const apt=r['Appartamento']||'—', tar=TARIFFE[apt]; if(!tar) return;
-    const persona=tar.persona, phone=tar.shareLink?'':CLEANER_PHONES[persona]||'', pClean=phone.replace('+','');
+    const apt=r['Appartamento']||'—';
+    const addettaT=getAddetta(apt); if(!addettaT||addettaT.persona==='—') return;
+    const persona=addettaT.persona, phone=addettaT.phone||'', pClean=phone.replace('+','');
     const nome=r['Nome Ospite']||'—', osp=r['N. Ospiti Adulti']||'?';
     const coDate=parseDate(r['Check-out']);
     const msgPul = `Ciao ${persona}, domani (${fmtS(coDate)}) c'è check-out a ${apt} di ${nome} (${osp} ospiti). Pulizie e cambio biancheria. Grazie!`;
@@ -2022,7 +2039,18 @@ function toggleTodoKey(key, el) {
 }
 
 // ── PLANNING PDF ──────────────────────────────────────────────
-const CLEANER_COLORS = {Elda:'#2A7A4F', Dalila:'#8B5E2E', Giulia:'#C4883C'};
+const CLEANER_COLORS = {Elda:'#2A7A4F', Dalila:'#8B5E2E', Giulia:'#C4883C', Teresa:'#1A6FA8', Annamaria:'#1A6FA8', Enza:'#1A6FA8'};
+
+// Recupera addetta e telefono dal foglio Sheet (con fallback su TARIFFE)
+function getAddetta(aptName) {
+  const norm = s => s.toLowerCase().replace(/\s+/g,'').replace(/[\u2013-]/g,'-');
+  const found = addette.find(a => norm(a.apt) === norm(aptName));
+  if (found) return {persona: found.nome, phone: found.tel};
+  // Fallback su TARIFFE se Sheet non disponibile
+  const tar = TARIFFE[aptName];
+  if (tar) return {persona: tar.persona, phone: CLEANER_PHONES[tar.persona]||''};
+  return {persona:'—', phone:''};
+}
 const APT_PILL_COLORS = {
   'Domus Pulchra (grande)':             {bg:'#DBEEFF',color:'#0A3A6B'},
   'Domus Pulchra (piccolo)':            {bg:'#E8F5EE',color:'#1A5C35'},
@@ -2037,17 +2065,18 @@ function openPlanningModal() {
   const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
 
   const checkouts = prenotazioni
-    .filter(r => TARIFFE[r['Appartamento']] && r['Check-out'])
+    .filter(r => r['Appartamento'] && r['Check-out'])
     .map(r => {
       const coDate=parseDate(r['Check-out']), apt=r['Appartamento'];
-      const tar=TARIFFE[apt];
+      const tar=TARIFFE[apt]||{pulizia:0,lavanderia:0};
+      const addettaInfo=getAddetta(apt);
       const aptObj=APTS.find(a=>matchApt(a.name,apt));
       const maxCap=aptObj?aptObj.cap:4;
       const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate)
         .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
       let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
       if(nextCI){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||maxCap;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}
-      return {apt,coDate,persona:tar.persona,pulizia:tar.pulizia,lavanderia:tar.lavanderia,arrivoOsp,arrivoBambini,maxCap2};
+      return {apt,coDate,persona:addettaInfo.persona,phone:addettaInfo.phone,pulizia:tar.pulizia,lavanderia:tar.lavanderia,arrivoOsp,arrivoBambini,maxCap2};
     })
     .filter(r=>r.coDate&&r.coDate>=today&&r.coDate<=end)
     .sort((a,b)=>a.coDate-b.coDate);
@@ -2063,7 +2092,9 @@ function openPlanningModal() {
       <input type="date" id="planAl" value="${endStr2}" style="font-size:12px;padding:4px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
     </div>`;
   document.getElementById('planningModalRows').innerHTML=Object.entries(byP).map(([persona,items])=>{
-    const dot=CLEANER_COLORS[persona]||'#0D5A8E', phone=CLEANER_PHONES[persona]||'', pClean=phone.replace('+','');
+    const dot=CLEANER_COLORS[persona]||'#0D5A8E';
+    const adInfo=addette.find(a=>a.nome===persona)||{};
+    const phone=adInfo.tel||CLEANER_PHONES[persona]||'', pClean=phone.replace('+','');
     const apts=[...new Set(items.map(r=>r.apt))].join(' · ');
     // Se non c'è numero fisso (es. Teresa/Enea) mostra "Invia a..."
     const btn = pClean
@@ -2089,10 +2120,10 @@ function generatePDF(persona, phone) {
   const fmtS = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
 
   const items = prenotazioni
-    .filter(r => TARIFFE[r['Appartamento']]?.persona===persona && r['Check-out'])
+    .filter(r => {const a=getAddetta(r['Appartamento']);return a.persona===persona && r['Check-out'];})
     .map(r => {
       const coDate=parseDate(r['Check-out']), apt=r['Appartamento'];
-      const tar=TARIFFE[apt];
+      const tar=TARIFFE[apt]||{pulizia:0,lavanderia:0};
       const aptObj=APTS.find(a=>matchApt(a.name,apt));
       const maxCap=aptObj?aptObj.cap:4;
       const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate)
