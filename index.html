@@ -2016,9 +2016,10 @@ function renderTodo() {
     const wKeyPul = `pul_wa_${i}`; waMessages[wKeyPul] = {msg: msgPul, phone: pClean};
     const key=`pul_${i}`; const done=!!todoDone[key];
     // Per shareLink: apre WA senza numero fisso per scegliere il destinatario
-    const waBtn = tar.shareLink
+    const waBtn = !phone
       ? `<button class="tc-wa pul wa-btn-share" onclick="event.stopPropagation();shareWAMsg('${wKeyPul}')">&#128172; Invia a...</button>`
-      : (phone ? `<button class="tc-wa pul wa-btn" data-key="${wKeyPul}">&#128172; ${phone}</button>` : `<span class="tc-meta">N/D</span>`);
+      : `<button class="tc-wa pul wa-btn" data-key="${wKeyPul}">&#128172; ${phone}</button>`;
+  
     html += `<div class="todo-card pul ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
       <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
       <div class="tc-body">
