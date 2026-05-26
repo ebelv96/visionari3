@@ -1039,7 +1039,7 @@ const FESTIVITA = [
 ];
 
 // ── STATO GLOBALE ─────────────────────────────────────────────────────────────
-let prenotazioni = [], pulizie = [], inventario = [], tasse = [], promptMessaggi = [], addette = [];
+let prenotazioni = [], pulizie = [], inventario = [], tasse = [], promptMessaggi = [], addette = []; // tasse inizializzato vuoto come fallback
 let todoDone = JSON.parse(localStorage.getItem('v3_todo')||'{}');
 let acquistoDone = JSON.parse(localStorage.getItem('v3_acquisti')||'{}');
 let approved = {};
@@ -1122,11 +1122,12 @@ async function fetchSheet(gid) {
 async function loadAllData() {
   showLoading('Caricamento dati dal Google Sheet…');
   try {
-    [prenotazioni, pulizie, inventario, tasse] = await Promise.all([
+    [    [prenotazioni, inventario] = await Promise.all([
       fetchSheetSkipTitle(GIDS.prenotazioni),
       fetchSheetSkipTitle(GIDS.inventario),
-      fetchSheetSkipTitle(GIDS.tasse),
     ]);
+    // tasse opzionale
+    try { tasse = await fetchSheetSkipTitle(GIDS.tasse); } catch(e) { tasse = []; }
     // Fetch addette dal foglio pulizie (col A=apt, B=nome, C=telefono)
     try {
       const vizUrl2=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GIDS.addette}`;
@@ -2015,10 +2016,10 @@ function renderTodo() {
     const msgPul = `Ciao ${persona}, domani (${fmtS(coDate)}) c'è check-out a ${apt} di ${nome} (${osp} ospiti). Pulizie e cambio biancheria. Grazie!`;
     const wKeyPul = `pul_wa_${i}`; waMessages[wKeyPul] = {msg: msgPul, phone: pClean};
     const key=`pul_${i}`; const done=!!todoDone[key];
-    // Per shareLink: apre WA senza numero fisso per scegliere il destinatario
-    const waBtn = tar.shareLink
+    // Bottone WA: se c'è numero apre chat, altrimenti "Invia a..."
+    const waBtn = !phone
       ? `<button class="tc-wa pul wa-btn-share" onclick="event.stopPropagation();shareWAMsg('${wKeyPul}')">&#128172; Invia a...</button>`
-      : (phone ? `<button class="tc-wa pul wa-btn" data-key="${wKeyPul}">&#128172; ${phone}</button>` : `<span class="tc-meta">N/D</span>`);
+      : `<button class="tc-wa pul wa-btn" data-key="${wKeyPul}">&#128172; ${phone}</button>`;
     html += `<div class="todo-card pul ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
       <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
       <div class="tc-body">
