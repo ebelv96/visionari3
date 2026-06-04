@@ -1949,138 +1949,182 @@ const APT_PILL_COLORS = {
 };
 
 function openPlanningModal() {
-  const today = new Date(TODAY), end = new Date(today);
+  const today = new Date(TODAY);
+  const end   = new Date(today);
   end.setDate(end.getDate() + 14);
-  const todayStr2 = today.toISOString().slice(0, 10);
-  const endStr2   = end.toISOString().slice(0, 10);
+  const todayStr = today.toISOString().slice(0, 10);
+  const endStr   = end.toISOString().slice(0, 10);
 
-  // Appartamenti disponibili per filtro
+  // Persone disponibili
+  const persone = [...new Set(
+    prenotazioni
+      .filter(r => r['Appartamento'])
+      .map(r => getAddetta(r['Appartamento']).persona)
+      .filter(p => p && p !== '—')
+  )].sort();
+
+  // Appartamenti disponibili
   const aptsDisp = [...new Set(
     prenotazioni.filter(r => r['Appartamento']).map(r => r['Appartamento'])
   )].sort();
-  const aptOpts = aptsDisp.map(a =>
-    `<option value="${a}">${a}</option>`
-  ).join('');
 
   document.getElementById('planningModalSub').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <label style="font-size:12px;color:var(--text3);min-width:24px">Dal</label>
-        <input type="date" id="planDal" value="${todayStr2}"
-          onchange="refreshPlanningModal()"
-          style="font-size:12px;padding:4px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
-        <label style="font-size:12px;color:var(--text3)">al</label>
-        <input type="date" id="planAl" value="${endStr2}"
-          onchange="refreshPlanningModal()"
-          style="font-size:12px;padding:4px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
+        <span style="font-size:12px;color:var(--text3);width:70px">📅 Periodo</span>
+        <input type="date" id="planDal" value="${todayStr}" onchange="refreshPlanningRows()"
+          style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
+        <span style="font-size:12px;color:var(--text3)">→</span>
+        <input type="date" id="planAl" value="${endStr}" onchange="refreshPlanningRows()"
+          style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
       </div>
+
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <label style="font-size:12px;color:var(--text3);min-width:24px">🏠</label>
-        <select id="planApt" onchange="refreshPlanningModal()"
-          style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer">
-          <option value="tutti">Tutti gli appartamenti</option>
-          ${aptOpts}
+        <span style="font-size:12px;color:var(--text3);width:70px">🏠 Casa</span>
+        <select id="planApt" onchange="refreshPlanningRows()"
+          style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px">
+          <option value="tutti">Tutte le case</option>
+          ${aptsDisp.map(a => `<option value="${a}">${a}</option>`).join('')}
         </select>
       </div>
-    </div>`;
 
-  refreshPlanningModal();
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--text3);width:70px">👤 Persona</span>
+        <select id="planPersona" onchange="refreshPlanningRows()"
+          style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px">
+          <option value="tutti">Tutte le persone</option>
+          ${persone.map(p => `<option value="${p}">${p}</option>`).join('')}
+        </select>
+      </div>
+
+    </div>
+    <div style="height:1px;background:var(--border);margin:14px 0"></div>`;
+
+  refreshPlanningRows();
   document.getElementById('planningModal').style.display = 'flex';
 }
 
-function refreshPlanningModal() {
-  const dalInput = document.getElementById('planDal');
-  const alInput  = document.getElementById('planAl');
-  const aptSel   = document.getElementById('planApt');
-  if (!dalInput) return;
+function refreshPlanningRows() {
+  const dalVal    = document.getElementById('planDal')     ? document.getElementById('planDal').value     : '';
+  const alVal     = document.getElementById('planAl')      ? document.getElementById('planAl').value      : '';
+  const filterApt = document.getElementById('planApt')     ? document.getElementById('planApt').value     : 'tutti';
+  const filterPer = document.getElementById('planPersona') ? document.getElementById('planPersona').value : 'tutti';
 
-  const start   = new Date(dalInput.value + 'T00:00:00');
-  const end     = new Date(alInput.value   + 'T23:59:59');
-  const filterApt = aptSel ? aptSel.value : 'tutti';
+  if (!dalVal) return;
+  const start = new Date(dalVal + 'T00:00:00');
+  const end   = new Date(alVal  + 'T23:59:59');
 
-  const checkouts = prenotazioni
+  // Calcola interventi filtrati
+  const interventi = prenotazioni
     .filter(r => r['Appartamento'] && r['Check-out'])
     .map(r => {
-      const coDate = parseDate(r['Check-out']), apt = r['Appartamento'];
+      const coDate      = parseDate(r['Check-out']);
+      const apt         = r['Appartamento'];
       const addettaInfo = getAddetta(apt);
       return { apt, coDate, persona: addettaInfo.persona, phone: addettaInfo.phone };
     })
     .filter(r => {
       if (!r.coDate || r.coDate < start || r.coDate > end) return false;
-      if (filterApt !== 'tutti' && r.apt !== filterApt) return false;
+      if (filterApt !== 'tutti' && r.apt !== filterApt)    return false;
+      if (filterPer !== 'tutti' && r.persona !== filterPer) return false;
       return true;
     });
 
+  // Raggruppa per persona
   const byP = {};
-  checkouts.forEach(r => {
+  interventi.forEach(r => {
     if (!byP[r.persona]) byP[r.persona] = [];
     byP[r.persona].push(r);
   });
 
-  document.getElementById('planningModalRows').innerHTML = Object.entries(byP).map(([persona, items]) => {
+  const rows = Object.entries(byP).map(([persona, items]) => {
     const dot    = CLEANER_COLORS[persona] || '#0D5A8E';
     const adInfo = addette.find(a => a.nome === persona) || {};
     const phone  = adInfo.tel || CLEANER_PHONES[persona] || '';
     const pClean = phone.replace('+', '');
     const apts   = [...new Set(items.map(r => r.apt))].join(' · ');
     const btn = pClean
-      ? `<button class="pm-btn" onclick="generatePDF('${persona}','${pClean}')">&#128172; PDF + WA</button>`
-      : `<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF('${persona}','')">&#128172; PDF</button>`;
+      ? `<button class="pm-btn" onclick="generatePDF('${persona}','${pClean}')">📄 PDF + WA</button>`
+      : `<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF('${persona}','')">📄 PDF</button>`;
     return `<div class="pm-row">
       <div class="pm-persona">
         <span class="pm-dot" style="background:${dot}"></span>
-        <div><div class="pm-name">${persona}</div><div class="pm-info">${apts} · ${items.length} interventi</div></div>
+        <div>
+          <div class="pm-name">${persona}</div>
+          <div class="pm-info">${apts} · ${items.length} interventi</div>
+        </div>
       </div>
       ${btn}
     </div>`;
-  }).join('') || `<div style="padding:16px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun intervento nel periodo selezionato.</div>`;
+  }).join('');
+
+  document.getElementById('planningModalRows').innerHTML = rows ||
+    `<div style="padding:20px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">
+      Nessun intervento nel periodo selezionato.
+    </div>`;
 }
 
-function closePlanningModal() { document.getElementById('planningModal').style.display='none'; }
-
 function generatePDF(persona, phone) {
-  const dalInput = document.getElementById('planDal');
-  const alInput  = document.getElementById('planAl');
-  const aptSel   = document.getElementById('planApt');
+  const dalVal    = document.getElementById('planDal')     ? document.getElementById('planDal').value     : '';
+  const alVal     = document.getElementById('planAl')      ? document.getElementById('planAl').value      : '';
+  const filterApt = document.getElementById('planApt')     ? document.getElementById('planApt').value     : 'tutti';
 
-  const today     = dalInput ? new Date(dalInput.value + 'T00:00:00') : new Date(TODAY);
-  const end       = alInput  ? new Date(alInput.value  + 'T23:59:59') : new Date(new Date(TODAY).setDate(new Date(TODAY).getDate() + 14));
-  const filterApt = aptSel   ? aptSel.value : 'tutti';
+  if (!dalVal) return;
+  const start = new Date(dalVal + 'T00:00:00');
+  const end   = new Date(alVal  + 'T23:59:59');
 
-  const fmtDate = d => d ? d.toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'short' }) : '—';
+  const fmtDate = d => d
+    ? d.toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'short' })
+    : '—';
 
   const items = prenotazioni
-   .filter(r => {
-  if (!r.coDate || r.coDate < today || r.coDate > end) return false;
-  if (filterApt !== 'tutti' && r.apt !== filterApt) return false;
-  return true;
-})
+    .filter(r => r['Appartamento'] && r['Check-out'])
     .map(r => {
-      const coDate = parseDate(r['Check-out']), apt = r['Appartamento'];
-      const tar = TARIFFE[apt] || { pulizia:0, lavanderia:0 };
-      const aptObj = APTS.find(a => matchApt(a.name, apt));
-      const maxCap = aptObj ? aptObj.cap : 4;
-      const nextCI = prenotazioni
+      const coDate      = parseDate(r['Check-out']);
+      const apt         = r['Appartamento'];
+      const addettaInfo = getAddetta(apt);
+      const tar         = TARIFFE[apt] || { pulizia:0, lavanderia:0 };
+      const aptObj      = APTS.find(a => matchApt(a.name, apt));
+      const maxCap      = aptObj ? aptObj.cap : 4;
+      const nextCI      = prenotazioni
         .filter(nr => matchApt(nr['Appartamento'], apt) && parseDate(nr['Check-in']) >= coDate)
         .sort((a, b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
       let arrivoOsp = maxCap, maxCap2 = true, arrivoBambini = 0;
       if (nextCI) {
-        arrivoOsp    = parseInt(nextCI['N. Ospiti Adulti']) || maxCap;
+        arrivoOsp     = parseInt(nextCI['N. Ospiti Adulti']) || maxCap;
         arrivoBambini = parseInt(nextCI['N. Ospiti Minori']) || 0;
-        maxCap2 = false;
+        maxCap2       = false;
       }
-      return { apt, coDate, pulizia: tar.pulizia, lavanderia: tar.lavanderia,
-               totale: tar.pulizia + tar.lavanderia, arrivoOsp, arrivoBambini, maxCap2 };
+      return {
+        apt, coDate,
+        persona:      addettaInfo.persona,
+        pulizia:      tar.pulizia,
+        lavanderia:   tar.lavanderia,
+        totale:       tar.pulizia + tar.lavanderia,
+        arrivoOsp, arrivoBambini, maxCap2,
+      };
     })
-    .filter(r => r.coDate && r.coDate >= today && r.coDate <= end)
+    .filter(r => {
+      if (!r.coDate || r.coDate < start || r.coDate > end) return false;
+      if (r.persona !== persona)                            return false;
+      if (filterApt !== 'tutti' && r.apt !== filterApt)    return false;
+      return true;
+    })
     .sort((a, b) => a.coDate - b.coDate);
 
-  const rows = items.map(r => {
-    const pc = APT_PILL_COLORS[r.apt] || { bg:'#EDF4F9', color:'#0D5A8E' };
-    const totOsp = (r.arrivoOsp || 0) + (r.arrivoBambini || 0);
+  if (!items.length) {
+    alert('Nessun intervento trovato per i filtri selezionati.');
+    return;
+  }
+
+  const tableRows = items.map(r => {
+    const pc      = APT_PILL_COLORS[r.apt] || { bg:'#EDF4F9', color:'#0D5A8E' };
+    const totOsp  = (r.arrivoOsp || 0) + (r.arrivoBambini || 0);
     const arrivoStr = r.maxCap2
-      ? `<div class="max-badge">Massima capienza</div>`
-      : `<div class="ospiti-num">${totOsp}</div><div class="ospiti-det">${r.arrivoOsp || 0} adulti${r.arrivoBambini > 0 ? ' + ' + r.arrivoBambini + ' bimbi' : ''}</div>`;
+      ? `<span class="max-badge">Massima capienza</span>`
+      : `<div class="ospiti-num">${totOsp}</div>
+         <div class="ospiti-det">${r.arrivoOsp || 0} adulti${r.arrivoBambini > 0 ? ' + ' + r.arrivoBambini + ' bimbi' : ''}</div>`;
     return `<tr>
       <td><strong>${fmtDate(r.coDate)}</strong></td>
       <td><span class="apt-pill" style="background:${pc.bg};color:${pc.color}">${r.apt}</span></td>
@@ -2088,63 +2132,69 @@ function generatePDF(persona, phone) {
     </tr>`;
   }).join('');
 
-  const todayStr = today.getFullYear() > 2001
-    ? today.toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })
-    : 'Tutte le date';
-  const endStr = end.getFullYear() < 2099
-    ? end.toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })
-    : '';
-
-  const dotColor = { 'Elda':'#2A7A4F', 'Dalila':'#8B5E2E', 'Giulia':'#C4883C' };
-  const titoloPersona = persona || 'Tutte le addette';
-  const filtroAptStr = filterApt !== 'tutti' ? ` · ${filterApt}` : '';
+  const dotColor  = { 'Elda':'#2A7A4F', 'Dalila':'#8B5E2E', 'Giulia':'#C4883C' };
+  const startStr  = start.toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' });
+  const endStr2   = end.toLocaleDateString('it-IT',   { day:'numeric', month:'long', year:'numeric' });
+  const aptLabel  = filterApt !== 'tutti' ? `<div class="filtro-apt">🏠 ${filterApt}</div>` : '';
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <style>
-    @media print { body { margin: 0; } }
-    body { font-family: Arial, sans-serif; padding: 24px; color: #0D1F2D; max-width: 700px; margin: 0 auto; }
-    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:14px; border-bottom:2px solid #0D5A8E; }
-    .header h2 { color:#0D5A8E; margin:0; font-size:20px; }
+    @media print { body { margin:0; } .no-print { display:none; } }
+    body { font-family:Arial,sans-serif; padding:28px; color:#0D1F2D; max-width:680px; margin:0 auto; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; padding-bottom:14px; border-bottom:2px solid #0D5A8E; }
+    .header-left h2 { color:#0D5A8E; margin:0 0 4px; font-size:20px; }
     .dot { width:12px; height:12px; border-radius:50%; background:${dotColor[persona]||'#0D5A8E'}; display:inline-block; margin-right:8px; vertical-align:middle; }
-    .periodo { font-size:12px; color:#7299B0; text-align:right; }
-    .filtro-apt { font-size:11px; color:#A06820; background:#FDF3E0; padding:2px 8px; border-radius:4px; margin-top:4px; display:inline-block; }
-    table { width:100%; border-collapse:collapse; margin-top:16px; }
+    .filtro-apt { font-size:11px; color:#A06820; background:#FDF3E0; padding:2px 8px; border-radius:4px; margin-top:6px; display:inline-block; }
+    .periodo { font-size:12px; color:#7299B0; text-align:right; line-height:1.6; }
+    table { width:100%; border-collapse:collapse; margin-top:4px; }
     th { background:#EDF4F9; padding:10px 14px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#7299B0; border-bottom:1px solid #D6EAFA; }
     td { padding:12px 14px; border-bottom:1px solid #EDF4F9; font-size:13px; vertical-align:middle; }
     tr:nth-child(even) td { background:#F7FBFD; }
-    .apt-pill { display:inline-block; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:500; }
+    .apt-pill { display:inline-block; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; }
     .ospiti-num { font-size:22px; font-weight:600; color:#0D1F2D; line-height:1; }
     .ospiti-det { font-size:11px; color:#7299B0; margin-top:2px; }
     .max-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:500; background:#FDF3E0; color:#A06820; }
     .footer { margin-top:20px; padding-top:12px; border-top:1px solid #D6EAFA; display:flex; justify-content:space-between; font-size:11px; color:#7299B0; }
-    .footer strong { color:#0D5A8E; }
-  </style></head><body>
+    .print-btn { display:block; margin:20px auto 0; padding:10px 28px; background:#0D5A8E; color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer; font-family:Arial,sans-serif; }
+  </style>
+  </head><body>
   <div class="header">
-    <div>
-      <span class="dot"></span><h2 style="display:inline">Planning Pulizie — ${titoloPersona}</h2>
-      ${filtroAptStr ? `<div class="filtro-apt">📍 ${filterApt}</div>` : ''}
+    <div class="header-left">
+      <h2><span class="dot"></span>${persona}</h2>
+      ${aptLabel}
     </div>
-    <div class="periodo">${todayStr}${endStr && endStr !== todayStr ? '<br>' + endStr : ''}</div>
+    <div class="periodo">
+      <strong>Planning Pulizie</strong><br>
+      ${startStr}<br>${endStr2}
+    </div>
   </div>
   <table>
-    <thead><tr><th>Data pulizia</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="3" style="color:#7299B0;font-style:italic;padding:20px">Nessun intervento nel periodo selezionato.</td></tr>'}</tbody>
+    <thead>
+      <tr><th>Data pulizia</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr>
+    </thead>
+    <tbody>${tableRows}</tbody>
   </table>
   <div class="footer">
     <span>Visionari 3.0 · generato il ${new Date().toLocaleDateString('it-IT')}</span>
     <span>${items.length} interventi</span>
   </div>
+  <button class="print-btn no-print" onclick="window.print()">🖨️ Stampa / Salva PDF</button>
   </body></html>`;
 
   const printWin = window.open('', '_blank');
+  if (!printWin) {
+    alert('Il browser ha bloccato il popup. Consenti i popup per questo sito e riprova.');
+    return;
+  }
   printWin.document.write(html);
   printWin.document.close();
   printWin.focus();
+
   setTimeout(() => {
-    printWin.print();
-    if (phone) window.open(`https://wa.me/${phone}`, '_blank');
-    else window.open('https://wa.me/', '_blank');
-  }, 500);
+    if (phone) window.open('https://wa.me/' + phone, '_blank');
+    else       window.open('https://wa.me/', '_blank');
+  }, 600);
+
   closePlanningModal();
 }
 // ── TABS ──────────────────────────────────────────────────────────────────────
