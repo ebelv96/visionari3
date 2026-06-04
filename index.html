@@ -2050,14 +2050,11 @@ function generatePDF(persona, phone) {
   const fmtDate = d => d ? d.toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'short' }) : '—';
 
   const items = prenotazioni
-    .filter(r => {
-      const a = getAddetta(r['Appartamento']);
-      // Se persona è vuota, includi tutti (utile in futuro); altrimenti filtra per persona
-      if (persona && a.persona !== persona) return false;
-      if (!r['Check-out']) return false;
-      if (filterApt !== 'tutti' && r['Appartamento'] !== filterApt) return false;
-      return true;
-    })
+   .filter(r => {
+  if (!r.coDate || r.coDate < today || r.coDate > end) return false;
+  if (filterApt !== 'tutti' && r.apt !== filterApt) return false;
+  return true;
+})
     .map(r => {
       const coDate = parseDate(r['Check-out']), apt = r['Appartamento'];
       const tar = TARIFFE[apt] || { pulizia:0, lavanderia:0 };
