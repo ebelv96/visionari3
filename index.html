@@ -2064,7 +2064,9 @@ function refreshPlanningRows() {
       Nessun intervento nel periodo selezionato.
     </div>`;
 }
-
+function closePlanningModal() {
+  document.getElementById('planningModal').style.display = 'none';
+}
 function generatePDF(persona, phone) {
   const dalVal    = document.getElementById('planDal')     ? document.getElementById('planDal').value     : '';
   const alVal     = document.getElementById('planAl')      ? document.getElementById('planAl').value      : '';
