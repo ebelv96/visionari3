@@ -1986,8 +1986,8 @@ function openPlanningModal() {
     const apts=[...new Set(items.map(r=>r.apt))].join(' · ');
     // Se non c'è numero fisso (es. Teresa/Enea) mostra "Invia a..."
     const btn = pClean
-      ? `<button class="pm-btn" onclick="generatePDF('${persona}','${pClean}')">&#128172; Invia</button>`
-      : `<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF('${persona}','')">&#128172; Invia a...</button>`;
+  ? `<button class="pm-btn" onclick="generatePDF('${persona}','${pClean}',true)">&#128172; Invia</button>`
+  : `<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF('${persona}','',true)">&#128172; Invia a...</button>`;
     return `<div class="pm-row">
       <div class="pm-persona"><span class="pm-dot" style="background:${dot}"></span>
         <div><div class="pm-name">${persona}</div><div class="pm-info">${apts} · ${items.length} interventi</div></div>
@@ -2000,37 +2000,78 @@ function openPlanningModal() {
 
 function closePlanningModal() { document.getElementById('planningModal').style.display='none'; }
 
-function generatePDF(persona, phone) {
-  const dalInput = document.getElementById('planDal');
-  const alInput  = document.getElementById('planAl');
-  const today = dalInput ? new Date(dalInput.value+'T00:00:00') : new Date(TODAY);
-  const end   = alInput  ? new Date(alInput.value+'T23:59:59') : new Date(new Date(TODAY).setDate(new Date(TODAY).getDate()+14));
-  const fmtS = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
+function generatePDF(persona, phone, usePageFilters) {
+  // Se usePageFilters=true, usa i filtri attivi nella pagina Pulizie
+  // altrimenti usa le date del modal Planning
+  let today, end;
+
+  if (usePageFilters) {
+    const filterMode = document.getElementById('filterMode') ? document.getElementById('filterMode').value : 'tutti';
+    const filterDal  = document.getElementById('filterDal')  ? document.getElementById('filterDal').value  : '';
+    const filterAl   = document.getElementById('filterAl')   ? document.getElementById('filterAl').value   : '';
+    const filterMese = document.getElementById('filterMese') ? document.getElementById('filterMese').value : 'tutti';
+
+    if (filterMode === 'range' && filterDal) {
+      today = new Date(filterDal + 'T00:00:00');
+      end   = filterAl ? new Date(filterAl + 'T23:59:59') : new Date('2099-12-31');
+    } else if (filterMode === 'mese' && filterMese !== 'tutti') {
+      const [y, m] = filterMese.split('-');
+      today = new Date(+y, +m - 1, 1);
+      end   = new Date(+y, +m, 0, 23, 59, 59);
+    } else {
+      // "Tutti" — nessun limite di date
+      today = new Date('2000-01-01');
+      end   = new Date('2099-12-31');
+    }
+  } else {
+    const dalInput = document.getElementById('planDal');
+    const alInput  = document.getElementById('planAl');
+    today = dalInput ? new Date(dalInput.value + 'T00:00:00') : new Date(TODAY);
+    end   = alInput  ? new Date(alInput.value  + 'T23:59:59') : new Date(new Date(TODAY).setDate(new Date(TODAY).getDate() + 14));
+  }
+
+  // Filtro appartamento attivo nella pagina
+  const filterApt = (usePageFilters && document.getElementById('filterApt'))
+    ? document.getElementById('filterApt').value
+    : 'tutti';
+
+  const fmtDate = d => d ? d.toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'short' }) : '—';
 
   const items = prenotazioni
-    .filter(r => {const a=getAddetta(r['Appartamento']);return a.persona===persona && r['Check-out'];})
-    .map(r => {
-      const coDate=parseDate(r['Check-out']), apt=r['Appartamento'];
-      const tar=TARIFFE[apt]||{pulizia:0,lavanderia:0};
-      const aptObj=APTS.find(a=>matchApt(a.name,apt));
-      const maxCap=aptObj?aptObj.cap:4;
-      const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate)
-        .sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
-      let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
-      if(nextCI){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||maxCap;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}
-      return {apt,coDate,pulizia:tar.pulizia,lavanderia:tar.lavanderia,totale:tar.pulizia+tar.lavanderia,arrivoOsp,arrivoBambini,maxCap2};
+    .filter(r => {
+      const a = getAddetta(r['Appartamento']);
+      // Se persona è vuota, includi tutti (utile in futuro); altrimenti filtra per persona
+      if (persona && a.persona !== persona) return false;
+      if (!r['Check-out']) return false;
+      if (filterApt !== 'tutti' && r['Appartamento'] !== filterApt) return false;
+      return true;
     })
-    .filter(r=>r.coDate&&r.coDate>=today&&r.coDate<=end)
-    .sort((a,b)=>a.coDate-b.coDate);
+    .map(r => {
+      const coDate = parseDate(r['Check-out']), apt = r['Appartamento'];
+      const tar = TARIFFE[apt] || { pulizia:0, lavanderia:0 };
+      const aptObj = APTS.find(a => matchApt(a.name, apt));
+      const maxCap = aptObj ? aptObj.cap : 4;
+      const nextCI = prenotazioni
+        .filter(nr => matchApt(nr['Appartamento'], apt) && parseDate(nr['Check-in']) >= coDate)
+        .sort((a, b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
+      let arrivoOsp = maxCap, maxCap2 = true, arrivoBambini = 0;
+      if (nextCI) {
+        arrivoOsp    = parseInt(nextCI['N. Ospiti Adulti']) || maxCap;
+        arrivoBambini = parseInt(nextCI['N. Ospiti Minori']) || 0;
+        maxCap2 = false;
+      }
+      return { apt, coDate, pulizia: tar.pulizia, lavanderia: tar.lavanderia,
+               totale: tar.pulizia + tar.lavanderia, arrivoOsp, arrivoBambini, maxCap2 };
+    })
+    .filter(r => r.coDate && r.coDate >= today && r.coDate <= end)
+    .sort((a, b) => a.coDate - b.coDate);
 
-  // Genera PDF semplice come HTML stampabile
-  const fmtDate = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
   const rows = items.map(r => {
-    const pc = APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};
-    const totOsp = (r.arrivoOsp||0) + (r.arrivoBambini||0);
+    const pc = APT_PILL_COLORS[r.apt] || { bg:'#EDF4F9', color:'#0D5A8E' };
+    const totOsp = (r.arrivoOsp || 0) + (r.arrivoBambini || 0);
     const arrivoStr = r.maxCap2
       ? `<div class="max-badge">Massima capienza</div>`
-      : `<div class="ospiti-num">${totOsp}</div><div class="ospiti-det">${r.arrivoOsp||0} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</div>`;
+      : `<div class="ospiti-num">${totOsp}</div><div class="ospiti-det">${r.arrivoOsp || 0} adulti${r.arrivoBambini > 0 ? ' + ' + r.arrivoBambini + ' bimbi' : ''}</div>`;
     return `<tr>
       <td><strong>${fmtDate(r.coDate)}</strong></td>
       <td><span class="apt-pill" style="background:${pc.bg};color:${pc.color}">${r.apt}</span></td>
@@ -2038,37 +2079,47 @@ function generatePDF(persona, phone) {
     </tr>`;
   }).join('');
 
-  const totP=items.reduce((s,r)=>s+r.pulizia,0), totL=items.reduce((s,r)=>s+r.lavanderia,0);
-  const todayStr=today.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
-  const endStr=end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+  const todayStr = today.getFullYear() > 2001
+    ? today.toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })
+    : 'Tutte le date';
+  const endStr = end.getFullYear() < 2099
+    ? end.toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' })
+    : '';
 
-  const dotColor = {'Elda':'#2A7A4F','Dalila':'#8B5E2E','Giulia':'#C4883C'};
+  const dotColor = { 'Elda':'#2A7A4F', 'Dalila':'#8B5E2E', 'Giulia':'#C4883C' };
+  const titoloPersona = persona || 'Tutte le addette';
+  const filtroAptStr = filterApt !== 'tutti' ? ` · ${filterApt}` : '';
+
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <style>
     @media print { body { margin: 0; } }
     body { font-family: Arial, sans-serif; padding: 24px; color: #0D1F2D; max-width: 700px; margin: 0 auto; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #0D5A8E; }
-    .header h2 { color: #0D5A8E; margin: 0; font-size: 20px; }
-    .header .dot { width: 12px; height: 12px; border-radius: 50%; background: ${dotColor[persona]||'#0D5A8E'}; display: inline-block; margin-right: 8px; vertical-align: middle; }
-    .periodo { font-size: 12px; color: #7299B0; text-align: right; }
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th { background: #EDF4F9; padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #7299B0; border-bottom: 1px solid #D6EAFA; }
-    td { padding: 12px 14px; border-bottom: 1px solid #EDF4F9; font-size: 13px; vertical-align: middle; }
-    tr:nth-child(even) td { background: #F7FBFD; }
-    .apt-pill { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
-    .ospiti-num { font-size: 22px; font-weight: 600; color: #0D1F2D; line-height: 1; }
-    .ospiti-det { font-size: 11px; color: #7299B0; margin-top: 2px; }
-    .max-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; background: #FDF3E0; color: #A06820; margin-bottom: 3px; }
-    .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #D6EAFA; display: flex; justify-content: space-between; font-size: 11px; color: #7299B0; }
-    .footer strong { color: #0D5A8E; }
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:14px; border-bottom:2px solid #0D5A8E; }
+    .header h2 { color:#0D5A8E; margin:0; font-size:20px; }
+    .dot { width:12px; height:12px; border-radius:50%; background:${dotColor[persona]||'#0D5A8E'}; display:inline-block; margin-right:8px; vertical-align:middle; }
+    .periodo { font-size:12px; color:#7299B0; text-align:right; }
+    .filtro-apt { font-size:11px; color:#A06820; background:#FDF3E0; padding:2px 8px; border-radius:4px; margin-top:4px; display:inline-block; }
+    table { width:100%; border-collapse:collapse; margin-top:16px; }
+    th { background:#EDF4F9; padding:10px 14px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#7299B0; border-bottom:1px solid #D6EAFA; }
+    td { padding:12px 14px; border-bottom:1px solid #EDF4F9; font-size:13px; vertical-align:middle; }
+    tr:nth-child(even) td { background:#F7FBFD; }
+    .apt-pill { display:inline-block; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:500; }
+    .ospiti-num { font-size:22px; font-weight:600; color:#0D1F2D; line-height:1; }
+    .ospiti-det { font-size:11px; color:#7299B0; margin-top:2px; }
+    .max-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:500; background:#FDF3E0; color:#A06820; }
+    .footer { margin-top:20px; padding-top:12px; border-top:1px solid #D6EAFA; display:flex; justify-content:space-between; font-size:11px; color:#7299B0; }
+    .footer strong { color:#0D5A8E; }
   </style></head><body>
   <div class="header">
-    <div><span class="dot"></span><h2 style="display:inline">Planning Pulizie — ${persona}</h2></div>
-    <div class="periodo">${todayStr}<br>${endStr}</div>
+    <div>
+      <span class="dot"></span><h2 style="display:inline">Planning Pulizie — ${titoloPersona}</h2>
+      ${filtroAptStr ? `<div class="filtro-apt">📍 ${filterApt}</div>` : ''}
+    </div>
+    <div class="periodo">${todayStr}${endStr && endStr !== todayStr ? '<br>' + endStr : ''}</div>
   </div>
   <table>
     <thead><tr><th>Data pulizia</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead>
-    <tbody>${rows}</tbody>
+    <tbody>${rows || '<tr><td colspan="3" style="color:#7299B0;font-style:italic;padding:20px">Nessun intervento nel periodo selezionato.</td></tr>'}</tbody>
   </table>
   <div class="footer">
     <span>Visionari 3.0 · generato il ${new Date().toLocaleDateString('it-IT')}</span>
@@ -2076,23 +2127,17 @@ function generatePDF(persona, phone) {
   </div>
   </body></html>`;
 
-  // Apri in nuova finestra e stampa (funziona su iPhone e desktop)
   const printWin = window.open('', '_blank');
   printWin.document.write(html);
   printWin.document.close();
   printWin.focus();
   setTimeout(() => {
     printWin.print();
-    // Se c'è numero fisso apri direttamente, altrimenti apri WA senza numero
-    if (phone) {
-      window.open(`https://wa.me/${phone}`, '_blank');
-    } else {
-      window.open('https://wa.me/', '_blank');
-    }
+    if (phone) window.open(`https://wa.me/${phone}`, '_blank');
+    else window.open('https://wa.me/', '_blank');
   }, 500);
   closePlanningModal();
 }
-
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
