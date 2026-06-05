@@ -1518,6 +1518,18 @@ function lettiDaPreparare(aptName, numOspiti) {
   return letti;
 }
 
+function toggleAptFilter(apt) {
+  if (!window._filterApts) window._filterApts = [];
+  if (apt === 'tutti') {
+    window._filterApts = [];
+  } else {
+    const idx = window._filterApts.indexOf(apt);
+    if (idx === -1) window._filterApts.push(apt);
+    else            window._filterApts.splice(idx, 1);
+  }
+  renderPulizie();
+}
+  
 function renderPulizie() {
   const container = document.getElementById('pulizieContent');
   if (!container) return;
@@ -1526,7 +1538,7 @@ function renderPulizie() {
   const filterMode  = document.getElementById('filterMode')  ? document.getElementById('filterMode').value  : 'tutti';
   const filterDal   = document.getElementById('filterDal')   ? document.getElementById('filterDal').value   : '';
   const filterAl    = document.getElementById('filterAl')    ? document.getElementById('filterAl').value    : '';
-  const filterApt   = document.getElementById('filterApt')   ? document.getElementById('filterApt').value   : 'tutti';
+  const filterApts = window._filterApts || [];
 
   // Raccoglie check-out dagli appartamenti con tariffe definite
   const checkouts = prenotazioni
@@ -1598,7 +1610,7 @@ function renderPulizie() {
   const totLav     = filtered.reduce((s,r)=>s+r.lavanderia,0);
 
   // Applica filtro appartamento
-  const filteredApt = filterApt === 'tutti' ? filtered : filtered.filter(r => r.apt === filterApt);
+  const filteredApt = filterApts.length === 0 ? filtered : filtered.filter(r => filterApts.includes(r.apt));
 
   const totPuliziaF = filteredApt.reduce((s,r)=>s+r.pulizia,0);
   const totLavF     = filteredApt.reduce((s,r)=>s+r.lavanderia,0);
@@ -1638,11 +1650,18 @@ function renderPulizie() {
           &#10005; Reset
         </button>` : ''}` : ''}
 
-      <label style="margin-left:12px">Appartamento:</label>
-      <select id="filterApt" onchange="renderPulizie()">
-        <option value="tutti" ${filterApt==='tutti'?'selected':''}>Tutti</option>
-        ${aptOpts}
-      </select>
+     <label style="margin-left:12px">Appartamento:</label>
+<div id="filterAptPills" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+  ${['tutti', ...aptsDisp].map(a => {
+    const isSel = filterApts.includes(a) || (a==='tutti' && filterApts.length===0);
+    const label = a==='tutti' ? 'Tutti' : a;
+    return `<button onclick="toggleAptFilter('${a}')"
+      style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border-strong);
+      background:${isSel?'var(--accent)':'var(--surface)'};
+      color:${isSel?'#fff':'var(--text)'};
+      cursor:pointer;font-family:inherit;white-space:nowrap;transition:all 0.15s">${label}</button>`;
+  }).join('')}
+</div>
       <button class="planning-btn" onclick="openPlanningModal()">📋 Planning</button>
     </div>
     <div class="riepilogo-box">
