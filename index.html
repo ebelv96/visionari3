@@ -2369,7 +2369,24 @@ function switchTab(name, btn) {
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-updateDates();
+
+let lastLoad = 0;
+
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') {
+    const isLogged = sessionStorage.getItem(SESSION_KEY) === '1';
+    const minutiPassati = (Date.now() - lastLoad) / 60000;
+    if (isLogged && minutiPassati > 5) { // ricarica solo se sono passati 5+ minuti
+      loadAllData();
+      lastLoad = Date.now();
+    }
+  }
+});
+
+// Registra il momento del primo caricamento
+window.addEventListener('DOMContentLoaded', () => { lastLoad = Date.now(); });
+  
+  updateDates();
 window.addEventListener('DOMContentLoaded', () => {
   const picker = document.getElementById('datePicker');
   if (picker) {
