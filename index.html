@@ -1618,9 +1618,7 @@ function renderPulizie() {
 
   // Appartamenti disponibili per filtro
   const aptsDisp = [...new Set(checkouts.map(r => r.apt))].sort();
- const aptOpts = aptsDisp.map(a =>
-  `<option value="${a}" ${filterApt===a?'selected':''}>${a}</option>`
-).join('');
+
 
   let html = `
     <div class="filter-bar">
