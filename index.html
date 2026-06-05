@@ -1478,7 +1478,8 @@ function renderPricing() {
     </tr>`;
   }).join('');
 
-  document.getElementById('festGrid').innerHTML = FESTIVITA.map(f => `
+  document.getElementById('festGrid').innerHTML = FESTIVITA.ma
+    p(f => `
     <div class="fest-card">
       <div class="fest-date">${f.data}</div>
       <div class="fest-name">${f.nome}</div>
@@ -1617,9 +1618,9 @@ function renderPulizie() {
 
   // Appartamenti disponibili per filtro
   const aptsDisp = [...new Set(checkouts.map(r => r.apt))].sort();
-  const aptOpts = aptsDisp.map(a =>
-    `<option value="${a}" ${filterApt===a?'selected':''}>${a}</option>`
-  ).join('');
+ const aptOpts = aptsDisp.map(a =>
+  `<option value="${a}" ${filterApt===a?'selected':''}>${a}</option>`
+).join('');
 
   let html = `
     <div class="filter-bar">
