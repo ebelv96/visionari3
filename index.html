@@ -1539,86 +1539,107 @@ function renderPulizie() {
   const filterMode  = document.getElementById('filterMode')  ? document.getElementById('filterMode').value  : 'tutti';
   const filterDal   = document.getElementById('filterDal')   ? document.getElementById('filterDal').value   : '';
   const filterAl    = document.getElementById('filterAl')    ? document.getElementById('filterAl').value    : '';
-  const filterApts = window._filterApts || [];
+  const filterApts  = window._filterApts || [];
 
-  // Raccoglie check-out dagli appartamenti con tariffe definite
   const checkouts = prenotazioni
     .filter(r => r['Appartamento'] && r['Check-out'] && r['Nome Ospite'])
     .map(r => {
-      const apt = r['Appartamento'];
+      const apt     = r['Appartamento'];
       const addetta = getAddetta(apt);
-      const tariffa = TARIFFE[apt] || {pulizia:0, lavanderia:0};
-      const coDate = parseDate(r['Check-out']);
-      const ciDate = parseDate(r['Check-in']);
-      const ospiti = parseInt(r['N. Ospiti Adulti']) || 2;
+      const tariffa = TARIFFE[apt] || { pulizia:0, lavanderia:0 };
+      const coDate  = parseDate(r['Check-out']);
+      const ciDate  = parseDate(r['Check-in']);
+      const ospiti  = parseInt(r['N. Ospiti Adulti']) || 2;
       return {
         apt, coDate, ciDate, ospiti,
-        persona: addetta.persona,
-        phone: addetta.phone,
-        pulizia: tariffa.pulizia,
+        persona:    addetta.persona,
+        phone:      addetta.phone,
+        pulizia:    tariffa.pulizia,
         lavanderia: tariffa.lavanderia,
-        totale: tariffa.pulizia + tariffa.lavanderia,
+        totale:     tariffa.pulizia + tariffa.lavanderia,
         nomeOspite: r['Nome Ospite'] || '—',
-        letti: lettiDaPreparare(apt, ospiti),
+        letti:      lettiDaPreparare(apt, ospiti),
         nextGuest: null, nextGuestOspiti: 0, nextCiDate: null, lettiNext: [],
       };
     })
     .filter(r => r.coDate)
-    .sort((a,b) => a.coDate - b.coDate);
+    .sort((a, b) => a.coDate - b.coDate);
 
-  // Trova il prossimo check-in per ogni check-out
   checkouts.forEach(co => {
     const next = prenotazioni
       .filter(r => matchApt(r['Appartamento'], co.apt) && parseDate(r['Check-in']) >= co.coDate && r['Nome Ospite'])
-      .sort((a,b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
+      .sort((a, b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
     if (next) {
-      co.nextGuest = next['Nome Ospite'] || '—';
+      co.nextGuest      = next['Nome Ospite'] || '—';
       co.nextGuestOspiti = parseInt(next['N. Ospiti Adulti']) || 2;
-      co.nextCiDate = parseDate(next['Check-in']);
-      co.lettiNext = lettiDaPreparare(co.apt, next['N. Ospiti Adulti']);
-      co.letti = co.lettiNext; // letti basati sugli ospiti IN ARRIVO
+      co.nextCiDate     = parseDate(next['Check-in']);
+      co.lettiNext      = lettiDaPreparare(co.apt, next['N. Ospiti Adulti']);
+      co.letti          = co.lettiNext;
     }
   });
 
-  // Mesi disponibili per filtro
   const mesi = [...new Set(checkouts.map(r =>
     `${r.coDate.getFullYear()}-${String(r.coDate.getMonth()+1).padStart(2,'0')}`
   ))].sort();
 
   const mesiOpts = mesi.map(m => {
-    const [y,mo] = m.split('-');
-    const lbl = new Date(+y,+mo-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+    const [y, mo] = m.split('-');
+    const lbl = new Date(+y, +mo-1, 1).toLocaleDateString('it-IT', { month:'long', year:'numeric' });
     return `<option value="${m}" ${filterMese===m?'selected':''}>${lbl}</option>`;
   }).join('');
 
-  // Filtra in base alla modalità selezionata
   let filtered;
   if (filterMode === 'mese') {
     filtered = filterMese === 'tutti' ? checkouts : checkouts.filter(r => {
-      const [y,m] = filterMese.split('-');
+      const [y, m] = filterMese.split('-');
       return r.coDate.getFullYear()===+y && r.coDate.getMonth()===+m-1;
     });
   } else if (filterMode === 'range' && filterDal) {
     const dal = new Date(filterDal);
     const al  = filterAl ? new Date(filterAl) : new Date('2099-12-31');
-    al.setHours(23,59,59);
+    al.setHours(23, 59, 59);
     filtered = checkouts.filter(r => r.coDate >= dal && r.coDate <= al);
   } else {
     filtered = checkouts;
   }
 
-  const totPulizia = filtered.reduce((s,r)=>s+r.pulizia,0);
-  const totLav     = filtered.reduce((s,r)=>s+r.lavanderia,0);
-
-  // Applica filtro appartamento
-  const filteredApt = filterApts.length === 0 ? filtered : filtered.filter(r => filterApts.includes(r.apt));
-
-  const totPuliziaF = filteredApt.reduce((s,r)=>s+r.pulizia,0);
-  const totLavF     = filteredApt.reduce((s,r)=>s+r.lavanderia,0);
-
-  // Appartamenti disponibili per filtro
   const aptsDisp = [...new Set(checkouts.map(r => r.apt))].sort();
 
+  // Salva nomi appartamenti in array globale per evitare problemi con caratteri speciali
+  window._aptPillNames = ['tutti', ...aptsDisp];
+
+  const filteredApt = filterApts.length === 0
+    ? filtered
+    : filtered.filter(r => filterApts.includes(r.apt));
+
+  const totPuliziaF = filteredApt.reduce((s, r) => s + r.pulizia, 0);
+  const totLavF     = filteredApt.reduce((s, r) => s + r.lavanderia, 0);
+
+  // Dropdown label
+  const dropdownLabel = filterApts.length === 0
+    ? 'Tutti'
+    : filterApts.length === 1
+      ? filterApts[0]
+      : filterApts.length + ' selezionati';
+
+  // Voci dropdown
+  const dropdownItems = window._aptPillNames.map((a, idx) => {
+    const isSel  = a === 'tutti' ? filterApts.length === 0 : filterApts.includes(a);
+    const label  = a === 'tutti' ? 'Tutti gli appartamenti' : a;
+    const check  = isSel
+      ? `<span style="color:var(--accent);font-size:14px">&#10003;</span>`
+      : `<span style="width:14px;display:inline-block"></span>`;
+    return `<div onclick="toggleAptFilter(window._aptPillNames[${idx}])"
+      style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;
+      font-size:13px;color:var(--text);
+      background:${isSel && a!=='tutti' ? 'var(--accent-light)' : 'transparent'};
+      border-bottom:${a==='tutti' ? '1px solid var(--border)' : 'none'}"
+      onmouseover="this.style.background='var(--surface2)'"
+      onmouseout="this.style.background='${isSel && a!=='tutti' ? 'var(--accent-light)' : 'transparent'}'">
+      ${check}
+      <span>${label}</span>
+    </div>`;
+  }).join('');
 
   let html = `
     <div class="filter-bar">
@@ -1637,32 +1658,37 @@ function renderPulizie() {
 
       ${filterMode==='range' ? `
         <label style="margin-left:8px">Dal</label>
-        <input type="date" id="filterDal" value="${filterDal}"
-          onchange="renderPulizie()"
+        <input type="date" id="filterDal" value="${filterDal}" onchange="renderPulizie()"
           style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;">
         <label>al</label>
-        <input type="date" id="filterAl" value="${filterAl}"
-          onchange="renderPulizie()"
+        <input type="date" id="filterAl" value="${filterAl}" onchange="renderPulizie()"
           style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;">
         ${filterDal ? `<button onclick="document.getElementById('filterDal').value='';document.getElementById('filterAl').value='';renderPulizie()"
           style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit;">
           &#10005; Reset
         </button>` : ''}` : ''}
 
-     <label style="margin-left:12px">Appartamento:</label>
-<div id="filterAptPills" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-  ${['tutti', ...aptsDisp].map(a => {
-    const isSel = filterApts.includes(a) || (a==='tutti' && filterApts.length===0);
-    const label = a==='tutti' ? 'Tutti' : a;
-    return `<button onclick="toggleAptFilter('${a}')"
-      style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border-strong);
-      background:${isSel?'var(--accent)':'var(--surface)'};
-      color:${isSel?'#fff':'var(--text)'};
-      cursor:pointer;font-family:inherit;white-space:nowrap;transition:all 0.15s">${label}</button>`;
-  }).join('')}
-</div>
+      <label style="margin-left:12px">Appartamento:</label>
+      <div style="position:relative;display:inline-block">
+        <button onclick="toggleAptDropdown()" id="aptDropdownBtn"
+          style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;
+          background:${filterApts.length>0 ? 'var(--accent)' : 'var(--surface)'};
+          color:${filterApts.length>0 ? '#fff' : 'var(--text)'};
+          cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between">
+          <span>${dropdownLabel}</span>
+          <span style="font-size:10px;opacity:0.7">▼</span>
+        </button>
+        <div id="aptDropdownMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;
+          background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;
+          box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:200;min-width:240px;
+          padding:4px 0;max-height:300px;overflow-y:auto">
+          ${dropdownItems}
+        </div>
+      </div>
+
       <button class="planning-btn" onclick="openPlanningModal()">📋 Planning</button>
     </div>
+
     <div class="riepilogo-box">
       <div class="riepilogo-item"><div class="riepilogo-num">${filteredApt.length}</div><div class="riepilogo-lbl">interventi</div></div>
       <div class="riepilogo-item"><div class="riepilogo-num">€${totPuliziaF}</div><div class="riepilogo-lbl">pulizie</div></div>
@@ -1671,16 +1697,17 @@ function renderPulizie() {
     </div>`;
 
   const DOT_COLOR = { 'Elda':'#2A7A4F', 'Dalila':'#8B5E2E', 'Giulia':'#C4883C' };
-
-  // Raggruppa per persona
   const byPersona = {};
-  filteredApt.forEach(r => { if(!byPersona[r.persona]) byPersona[r.persona]=[]; byPersona[r.persona].push(r); });
+  filteredApt.forEach(r => {
+    if (!byPersona[r.persona]) byPersona[r.persona] = [];
+    byPersona[r.persona].push(r);
+  });
 
   for (const [persona, interventi] of Object.entries(byPersona)) {
-    const totP = interventi.reduce((s,r)=>s+r.pulizia,0);
-    const totL = interventi.reduce((s,r)=>s+r.lavanderia,0);
-    const dot  = DOT_COLOR[persona]||'#0D5A8E';
-    const fmtD = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
+    const totP = interventi.reduce((s, r) => s + r.pulizia, 0);
+    const totL = interventi.reduce((s, r) => s + r.lavanderia, 0);
+    const dot  = DOT_COLOR[persona] || '#0D5A8E';
+    const fmtD = d => d ? d.toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'short' }) : '—';
 
     html += `
       <div class="cleaner-section">
@@ -1697,44 +1724,44 @@ function renderPulizie() {
           </div>
         </div>
         <div class="pulizie-table-wrap">
-        <table class="pulizie-table">
-          <thead>
-            <tr>
-              <th>Check-out</th>
-              <th>Appartamento / Ospiti uscenti</th>
-              <th>Letti da cambiare</th>
-              <th>Prossimo arrivo</th>
-              <th>Compenso</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${interventi.map(r => `
+          <table class="pulizie-table">
+            <thead>
               <tr>
-                <td><strong>${fmtD(r.coDate)}</strong></td>
-                <td>
-                  <div style="font-weight:500">${r.apt}</div>
-                  <div class="periodo-range">${r.nomeOspite} — ${r.ospiti} ospiti</div>
-                </td>
-                <td><div class="letti-pills">${r.letti.map(l=>`<span class="letto-pill">${l}</span>`).join('')}</div></td>
-                <td>${r.nextGuest
-                  ? `<div style="font-size:13px">${r.nextGuest} — ${r.nextGuestOspiti} ospiti</div>
-                     <div class="periodo-range">&#8594; ${fmtD(r.nextCiDate)}</div>
-                     <div class="letti-pills">${r.lettiNext.map(l=>`<span class="letto-pill extra">${l}</span>`).join('')}</div>`
-                  : `<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun arrivo previsto</span>`}
-                </td>
-                <td>
-                  <div class="comp-row"><span class="comp-pulizia">€${r.pulizia}</span><span class="comp-lav">+ €${r.lavanderia} lav.</span></div>
-                  <div class="comp-tot">= €${r.totale}</div>
-                </td>
-              </tr>`).join('')}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="4" style="text-align:right;font-weight:500;font-size:12px;color:var(--text3)">Totale ${persona}</td>
-              <td><strong style="color:var(--accent)">€${totP+totL}</strong></td>
-            </tr>
-          </tfoot>
-        </table>
+                <th>Check-out</th>
+                <th>Appartamento / Ospiti uscenti</th>
+                <th>Letti da cambiare</th>
+                <th>Prossimo arrivo</th>
+                <th>Compenso</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${interventi.map(r => `
+                <tr>
+                  <td><strong>${fmtD(r.coDate)}</strong></td>
+                  <td>
+                    <div style="font-weight:500">${r.apt}</div>
+                    <div class="periodo-range">${r.nomeOspite} — ${r.ospiti} ospiti</div>
+                  </td>
+                  <td><div class="letti-pills">${r.letti.map(l => `<span class="letto-pill">${l}</span>`).join('')}</div></td>
+                  <td>${r.nextGuest
+                    ? `<div style="font-size:13px">${r.nextGuest} — ${r.nextGuestOspiti} ospiti</div>
+                       <div class="periodo-range">&#8594; ${fmtD(r.nextCiDate)}</div>
+                       <div class="letti-pills">${r.lettiNext.map(l => `<span class="letto-pill extra">${l}</span>`).join('')}</div>`
+                    : `<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun arrivo previsto</span>`}
+                  </td>
+                  <td>
+                    <div class="comp-row"><span class="comp-pulizia">€${r.pulizia}</span><span class="comp-lav">+ €${r.lavanderia} lav.</span></div>
+                    <div class="comp-tot">= €${r.totale}</div>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" style="text-align:right;font-weight:500;font-size:12px;color:var(--text3)">Totale ${persona}</td>
+                <td><strong style="color:var(--accent)">€${totP+totL}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>`;
   }
@@ -1745,6 +1772,36 @@ function renderPulizie() {
   }
 
   container.innerHTML = html;
+}
+
+function toggleAptDropdown() {
+  const menu = document.getElementById('aptDropdownMenu');
+  if (!menu) return;
+  const isOpen = menu.style.display !== 'none';
+  menu.style.display = isOpen ? 'none' : 'block';
+  // Chiudi cliccando fuori
+  if (!isOpen) {
+    setTimeout(() => {
+      document.addEventListener('click', function handler(e) {
+        if (!e.target.closest('#aptDropdownMenu') && !e.target.closest('#aptDropdownBtn')) {
+          menu.style.display = 'none';
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 10);
+  }
+}
+
+function toggleAptFilter(apt) {
+  if (!window._filterApts) window._filterApts = [];
+  if (apt === 'tutti') {
+    window._filterApts = [];
+  } else {
+    const idx = window._filterApts.indexOf(apt);
+    if (idx === -1) window._filterApts.push(apt);
+    else            window._filterApts.splice(idx, 1);
+  }
+  renderPulizie();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────
