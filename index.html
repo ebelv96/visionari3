@@ -1478,8 +1478,7 @@ function renderPricing() {
     </tr>`;
   }).join('');
 
-  document.getElementById('festGrid').innerHTML = FESTIVITA.ma
-    p(f => `
+document.getElementById('festGrid').innerHTML = FESTIVITA.map(f => `
     <div class="fest-card">
       <div class="fest-date">${f.data}</div>
       <div class="fest-name">${f.nome}</div>
