@@ -110,6 +110,8 @@
     --red-light: #FAE8E8;
     --blue: #1A4F7A;
     --blue-light: #D6EAFA;
+    --green: #1A7A3A;
+    --green-light: #E6F5EC;
     --radius: 12px;
     --radius-sm: 8px;
   }
@@ -207,6 +209,8 @@
   .kpi-num.warn { color: var(--amber); }
   .kpi-num.danger { color: var(--red); }
   .kpi-num.good { color: var(--accent); }
+  .kpi-num.green { color: var(--green); }
+  .kpi-num.red   { color: var(--red); }
   .kpi-lbl {
     font-size: 10px;
     color: var(--text3);
@@ -533,9 +537,7 @@
     border-bottom: 1px solid var(--border);
   }
   .pulizie-month-label:first-child { margin-top: 0; }
-  .cleaner-section {
-    margin-bottom: 28px;
-  }
+  .cleaner-section { margin-bottom: 28px; }
   .cleaner-header {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
@@ -545,9 +547,7 @@
     font-size: 17px; color: var(--text);
     display: flex; align-items: center; gap: 8px;
   }
-  .cleaner-totals {
-    display: flex; gap: 8px; flex-wrap: wrap;
-  }
+  .cleaner-totals { display: flex; gap: 8px; flex-wrap: wrap; }
   .cleaner-badge-pill {
     font-size: 12px; font-weight: 500;
     padding: 4px 12px; border-radius: 20px;
@@ -585,9 +585,7 @@
     background: var(--accent-light); color: var(--accent);
   }
   .letto-pill.extra { background: var(--amber-light); color: var(--amber); }
-  .periodo-range {
-    font-size: 11px; color: var(--text3); margin-top: 2px;
-  }
+  .periodo-range { font-size: 11px; color: var(--text3); margin-top: 2px; }
   .comp-row { display: flex; gap: 6px; align-items: center; font-size: 12px; }
   .comp-pulizia { color: var(--accent); font-weight: 500; }
   .comp-lav { color: var(--text3); }
@@ -677,7 +675,7 @@
     background: var(--accent-light); color: var(--accent);
     border: 1px solid rgba(13,90,142,0.2);
     text-decoration: none;
-    min-height: 36px; /* facile da toccare su mobile */
+    min-height: 36px;
   }
   .tc-wa:active { opacity: 0.7; }
   .tc-meta { font-size: 11px; color: var(--text3); }
@@ -688,7 +686,6 @@
     border-radius: var(--radius);
   }
 
-  /* ── NEW TODO ── */
   .date-picker-wrap {
     display: flex; align-items: center; gap: 8px;
   }
@@ -734,45 +731,6 @@
   .dot-domus-p   { background: #5AAF7A; }
   .dot-vis       { background: #8B5E2E; }
   .dot-mare      { background: #C4883C; }
-  @media (max-width: 600px) {
-    .header { padding: 14px 16px; }
-    .header-left h1 { font-size: 18px; }
-    .kpi-bar { padding: 10px 12px; }
-    .kpi-num { font-size: 22px; }
-    .kpi-item { min-width: 70px; padding: 0 8px; }
-    .tabs-wrap { padding: 0 12px; position: sticky; top: 72px; z-index: 90; }
-    .tab-btn { padding: 11px 12px; font-size: 12px; }
-    .content { padding: 14px 12px; }
-    .apt-grid { grid-template-columns: 1fr; }
-    /* Pulizie — tabella scrollabile su mobile */
-    .cleaner-section { overflow: hidden; }
-    .pulizie-table-wrap {
-      width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      margin-bottom: 8px;
-    }
-    .pulizie-table {
-      border: none;
-      border-radius: 0;
-      min-width: 580px;
-      margin-bottom: 0;
-    }
-    .cleaner-header { flex-direction: column; align-items: flex-start; }
-    .cleaner-totals { flex-wrap: wrap; }
-    .riepilogo-box { gap: 12px; }
-    .riepilogo-num { font-size: 22px; }
-    /* Tasse e pricing scrollabili */
-    .tasse-wrap, .pricing-wrap { overflow-x: auto; }
-    table.tasse-tbl, table.pricing-tbl { min-width: 500px; font-size: 11px; }
-    table.tasse-tbl th, table.tasse-tbl td,
-    table.pricing-tbl th, table.pricing-tbl td { padding: 8px 10px; }
-    /* Filter bar wrap */
-    .filter-bar { gap: 6px; }
-    .filter-bar select { font-size: 11px; padding: 5px 8px; }
-  }
 
   /* ── ANIMATION ── */
   @keyframes fadeUp {
@@ -783,23 +741,11 @@
     animation: fadeUp 0.3s ease both;
   }
 
-  /* ── GREEN / RED ── */
-  :root {
-    --green: #1A7A3A; --green-light: #E6F5EC;
-    --red: #8B2020; --red-light: #FAE8E8;
-  }
-  .kpi-num.green { color: var(--green); }
-  .kpi-num.red   { color: var(--red); }
-
   /* ── DASHBOARD ── */
   .dash-date-hero { text-align:center; padding:20px 0 16px; margin-bottom:20px; border-bottom:1px solid var(--border); }
   .dash-date-day  { font-family:'DM Serif Display',serif; font-size:56px; line-height:1; color:var(--text); }
   .dash-date-weekday   { font-size:16px; color:var(--text2); margin-top:4px; text-transform:capitalize; }
   .dash-date-monthyear { font-size:13px; color:var(--text3); font-weight:300; text-transform:capitalize; }
-  .dash-date-nav  { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
-  .dash-nav-btn   { background:var(--surface2); border:none; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px; color:var(--text2); display:flex; align-items:center; justify-content:center; }
-  .dash-date-input { font-size:13px; padding:5px 12px; border:1px solid var(--border-strong); border-radius:20px; background:var(--surface); color:var(--text); font-family:'DM Sans',sans-serif; outline:none; }
-  .dash-today-btn { font-size:12px; padding:5px 14px; border-radius:20px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; }
   .dash-sections  { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
   @media(max-width:650px){ .dash-sections { grid-template-columns:1fr; } }
   .dash-sec-title { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.08em; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px; }
@@ -842,6 +788,149 @@
   .pm-info { font-size:11px; color:var(--text3); margin-top:1px; }
   .pm-btn  { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:20px; font-size:12px; font-weight:500; background:var(--green-light); color:var(--green); border:none; cursor:pointer; font-family:'DM Sans',sans-serif; }
   .pm-close { margin-top:14px; width:100%; padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-strong); background:transparent; color:var(--text2); font-size:13px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+
+  /* ── INCASSI ── */
+  .incassi-wrap { max-width: 980px; }
+
+  .incassi-filter-bar {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    align-items: center; margin-bottom: 22px;
+  }
+  .incassi-filter-bar label { font-size: 12px; color: var(--text3); }
+  .incassi-filter-bar select {
+    font-size: 12px; padding: 6px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 20px; background: var(--surface);
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    cursor: pointer; outline: none;
+  }
+
+  .incassi-kpi {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; margin-bottom: 26px;
+  }
+  .incassi-kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    border-top: 3px solid var(--accent);
+  }
+  .incassi-kpi-card.netto   { border-top-color: #1A6FA8; }
+  .incassi-kpi-card.finale  { border-top-color: #2A7A4F; }
+  .incassi-kpi-card.pulizie { border-top-color: var(--amber); }
+  .incassi-kpi-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px; line-height: 1; color: var(--text);
+  }
+  .incassi-kpi-lbl {
+    font-size: 10px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .06em;
+    margin-top: 5px; font-weight: 400;
+  }
+
+  table.incassi-tbl {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px; background: var(--surface);
+    border-radius: var(--radius); overflow: hidden;
+    border: 1px solid var(--border); margin-bottom: 28px;
+  }
+  table.incassi-tbl th {
+    text-align: left; padding: 10px 14px;
+    font-size: 10px; font-weight: 500; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .06em;
+    border-bottom: 1px solid var(--border); background: var(--bg);
+  }
+  table.incassi-tbl td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border); color: var(--text);
+    vertical-align: middle;
+  }
+  table.incassi-tbl tr:last-child td { border-bottom: none; }
+  table.incassi-tbl tr:nth-child(even) td { background: rgba(0,0,0,.015); }
+  table.incassi-tbl tfoot td {
+    font-weight: 600; font-size: 13px;
+    background: var(--accent) !important;
+    color: #fff !important;
+    border-top: 2px solid var(--accent);
+    padding: 11px 14px;
+  }
+
+  .piatt-badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    font-weight: 500; white-space: nowrap; display: inline-block;
+  }
+  .piatt-booking { background: #E8F0FB; color: #1A3E8C; }
+  .piatt-airbnb  { background: #FCE8EC; color: #8C1A2E; }
+  .piatt-diretta { background: var(--green-light); color: var(--green); }
+  .piatt-altro   { background: var(--surface2); color: var(--text3); }
+  .piatt-domus   { background: var(--amber-light); color: var(--amber); }
+
+  .val-lordo  { color: var(--text); font-weight: 500; }
+  .val-netto  { color: #1A6FA8; font-weight: 500; }
+  .val-pulizie{ color: var(--amber); font-size: 12px; }
+  .val-finale { color: #2A7A4F; font-weight: 700; }
+
+  /* Grafico a barre inline SVG */
+  .incassi-chart-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px 16px;
+    margin-bottom: 28px;
+  }
+  .incassi-chart-title {
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text3); margin-bottom: 16px;
+  }
+  .chart-bars-wrap {
+    overflow-x: auto;
+  }
+  .chart-svg { display: block; }
+
+  .incassi-note {
+    font-size: 11px; color: var(--text3);
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    margin-bottom: 20px; line-height: 1.6;
+  }
+  .incassi-note strong { color: var(--text2); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .header { padding: 14px 16px; }
+    .header-left h1 { font-size: 18px; }
+    .kpi-bar { padding: 10px 12px; }
+    .kpi-num { font-size: 22px; }
+    .kpi-item { min-width: 70px; padding: 0 8px; }
+    .tabs-wrap { padding: 0 12px; position: sticky; top: 72px; z-index: 90; }
+    .tab-btn { padding: 11px 12px; font-size: 12px; }
+    .content { padding: 14px 12px; }
+    .apt-grid { grid-template-columns: 1fr; }
+    .cleaner-section { overflow: hidden; }
+    .pulizie-table-wrap {
+      width: 100%; overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 8px;
+    }
+    .pulizie-table { border: none; border-radius: 0; min-width: 580px; margin-bottom: 0; }
+    .cleaner-header { flex-direction: column; align-items: flex-start; }
+    .cleaner-totals { flex-wrap: wrap; }
+    .riepilogo-box { gap: 12px; }
+    .riepilogo-num { font-size: 22px; }
+    .tasse-wrap, .pricing-wrap, .incassi-wrap { overflow-x: auto; }
+    table.tasse-tbl, table.pricing-tbl, table.incassi-tbl { min-width: 540px; font-size: 11px; }
+    table.tasse-tbl th, table.tasse-tbl td,
+    table.pricing-tbl th, table.pricing-tbl td,
+    table.incassi-tbl th, table.incassi-tbl td { padding: 8px 10px; }
+    .filter-bar { gap: 6px; }
+    .filter-bar select { font-size: 11px; padding: 5px 8px; }
+    .incassi-kpi { grid-template-columns: 1fr 1fr; }
+    .incassi-kpi-num { font-size: 20px; }
+  }
 </style>
 </head>
 <body>
@@ -858,7 +947,7 @@
   </div>
 </div>
 
-<!-- APP (nascosta fino al login) -->
+<!-- APP -->
 <div id="app" style="display:none">
 
 <!-- HEADER -->
@@ -890,6 +979,7 @@
   <button class="tab-btn" onclick="switchTab('acquisti',this)">🛒 Acquisti</button>
   <button class="tab-btn" onclick="switchTab('tasse',this)">💶 Tasse</button>
   <button class="tab-btn" onclick="switchTab('pricing',this)">📈 Pricing</button>
+  <button class="tab-btn" onclick="switchTab('incassi',this)">💰 Incassi</button>
 </div>
 
 <!-- CONTENT -->
@@ -935,12 +1025,8 @@
       <table class="tasse-tbl">
         <thead>
           <tr>
-            <th>Appartamento</th>
-            <th>Ospite</th>
-            <th>Adulti</th>
-            <th>Notti tax.</th>
-            <th>Tassa (€)</th>
-            <th>Incassata</th>
+            <th>Appartamento</th><th>Ospite</th><th>Adulti</th>
+            <th>Notti tax.</th><th>Tassa (€)</th><th>Incassata</th>
           </tr>
         </thead>
         <tbody id="tasseBody"></tbody>
@@ -962,23 +1048,23 @@
       <table class="pricing-tbl">
         <thead>
           <tr>
-            <th>Appartamento</th>
-            <th>Notti libere</th>
-            <th>Prezzo attuale</th>
-            <th>Suggerimento</th>
-            <th>Motivo</th>
-            <th>Approva</th>
+            <th>Appartamento</th><th>Notti libere</th><th>Prezzo attuale</th>
+            <th>Suggerimento</th><th>Motivo</th><th>Approva</th>
           </tr>
         </thead>
         <tbody id="pricingBody"></tbody>
       </table>
-
       <div class="section-label">Festività e eventi — Bari 2025</div>
       <div class="fest-grid" id="festGrid"></div>
     </div>
   </div>
 
-</div>
+  <!-- TAB: INCASSI -->
+  <div id="tab-incassi" class="tab-pane">
+    <div class="incassi-wrap" id="incassiContent"></div>
+  </div>
+
+</div><!-- /content -->
 
 <!-- PLANNING MODAL -->
 <div id="planningModal" class="pulizie-modal-overlay" style="display:none" onclick="if(event.target===this)closePlanningModal()">
@@ -994,7 +1080,7 @@
 </div>
 
 <script>
-// ── CONFIG GOOGLE SHEETS ──────────────────────────────────────────────────────
+// ── CONFIG ────────────────────────────────────────────────────
 const SHEET_ID = '1njE_JQ-m_rzdAOR-OWDeI7NfCq2sn0LZe2Ia_A-xjRc';
 const GIDS = {
   prenotazioni: '1940746485',
@@ -1003,31 +1089,26 @@ const GIDS = {
   tasse:        '1162299491',
   prompt:       '955795025',
 };
-
 function sheetURL(gid) {
   return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
 }
-
-// Fetch con skip della prima riga (titolo) — legge dalla riga 2 come intestazione
 async function fetchSheetSkipTitle(gid) {
   const res = await fetch(sheetURL(gid));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
   const lines = text.trim().split('\n');
-  // Salta la prima riga (titolo decorativo), usa la seconda come intestazione
   if (lines.length < 3) return [];
-  const withoutTitle = lines.slice(1).join('\n');
-  return parseCSV(withoutTitle);
+  return parseCSV(lines.slice(1).join('\n'));
 }
 
-// ── APPARTAMENTI (config statica — nomi e cleaner non cambiano) ───────────────
+// ── APPARTAMENTI ──────────────────────────────────────────────
 const APTS = [
-  { name:'Enea Luxury – Putignani',       sub:'fino a 9 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-put', dot:'dot-enea-put', cap:9 },
-  { name:'Enea Luxury – Piccinni',        sub:'fino a 7 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-pic', dot:'dot-enea-pic', cap:7 },
-  { name:'Domus Pulchra (grande)',         sub:'fino a 6 persone', cleaner:'Elda',             cls:'apt-domus-g',  dot:'dot-domus-g',  cap:6 },
-  { name:'Domus Pulchra (piccolo)',        sub:'fino a 4 persone', cleaner:'Elda',             cls:'apt-domus-p',  dot:'dot-domus-p',  cap:4 },
-  { name:'Casa dei Visionari – Madonella', sub:'fino a 4 persone', cleaner:'Dalila',           cls:'apt-vis',      dot:'dot-vis',      cap:4 },
-  { name:'Casa dei Visionari – Mare',     sub:'fino a 4 persone', cleaner:'Giulia',            cls:'apt-mare',     dot:'dot-mare',     cap:4 },
+  { name:'Enea Luxury – Putignani',        sub:'fino a 9 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-put', dot:'dot-enea-put', cap:9 },
+  { name:'Enea Luxury – Piccinni',         sub:'fino a 7 persone', cleaner:'Teresa (agenzia)', cls:'apt-enea-pic', dot:'dot-enea-pic', cap:7 },
+  { name:'Domus Pulchra (grande)',          sub:'fino a 6 persone', cleaner:'Elda',             cls:'apt-domus-g',  dot:'dot-domus-g',  cap:6 },
+  { name:'Domus Pulchra (piccolo)',         sub:'fino a 4 persone', cleaner:'Elda',             cls:'apt-domus-p',  dot:'dot-domus-p',  cap:4 },
+  { name:'Casa dei Visionari – Madonella', sub:'fino a 4 persone', cleaner:'Dalila',            cls:'apt-vis',      dot:'dot-vis',      cap:4 },
+  { name:'Casa dei Visionari – Mare',      sub:'fino a 4 persone', cleaner:'Giulia',            cls:'apt-mare',     dot:'dot-mare',     cap:4 },
 ];
 
 const FESTIVITA = [
@@ -1041,17 +1122,95 @@ const FESTIVITA = [
   { data:'31 dic – 1 gen', nome:'Capodanno', mult:'+40–50%' },
 ];
 
-// ── STATO GLOBALE ─────────────────────────────────────────────────────────────
+// ── TARIFFE PULIZIE ───────────────────────────────────────────
+const TARIFFE = {
+  'Domus Pulchra (grande)':          { persona:'Elda',   pulizia:25, lavanderia:5 },
+  'Domus Pulchra (piccolo)':         { persona:'Elda',   pulizia:10, lavanderia:5 },
+  'Casa dei Visionari – Madonella':  { persona:'Dalila', pulizia:10, lavanderia:6 },
+  'Casa dei Visionari – Mare':       { persona:'Giulia', pulizia:15, lavanderia:5 },
+  'Enea Luxury – Piccinni':          { persona:'Enza',   pulizia:0,  lavanderia:0 },
+};
+
+const LETTI_APT = {
+  'Domus Pulchra (grande)':          ['Matrimoniale grande','Matrimoniale','Singolo'],
+  'Domus Pulchra (piccolo)':         ['Matrimoniale','Singolo x2'],
+  'Casa dei Visionari – Madonella':  ['Matrimoniale','Singolo x2'],
+  'Casa dei Visionari – Mare':       ['Matrimoniale','Doppio'],
+  'Enea Luxury – Piccinni':          ['Matrimoniale x2','Singolo','Divano letto'],
+  'Enea Luxury – Putignani':         ['Matrimoniale x4','Singolo'],
+};
+
+const CLEANER_PHONES = {
+  'Elda':   '+393792546937',
+  'Giulia': '+393200661575',
+  'Dalila': '+393478783103',
+  'Enza':   '+393473632307',
+  'Teresa': '+393473632307',
+};
+
+// ── INCASSI: logica commissioni e calcolo ─────────────────────
+// Appartamenti Domus: Eli incassa il 15% del lordo, indipendente da piattaforma.
+// Tutti gli altri: commissione piattaforma sul lordo, poi si decurtano le pulizie.
+const DOMUS_APTS = ['Domus Pulchra (grande)', 'Domus Pulchra (piccolo)'];
+
+const COMM_RATES = {
+  'Booking.com':          0.20,
+  'Airbnb':               0.15,
+  'Prenotazione diretta': 0.00,
+};
+
+function isDomus(aptName) {
+  return DOMUS_APTS.some(d => matchApt(aptName, d));
+}
+
+/**
+ * Calcola lordo, netto e incasso finale per una prenotazione.
+ * @param {object} r - riga prenotazione
+ * @param {number} costoSostenutoPulizie - costo pulizie attribuito a questa prenotazione
+ */
+function calcIncassi(r, costoSostenutoPulizie) {
+  const lordo = parseFloat((r['Prezzo Lordo (€)'] || '0').toString().replace(',', '.').replace('€','')) || 0;
+  const piatt = r['Piattaforma'] || '';
+  const apt   = r['Appartamento'] || '';
+
+  if (isDomus(apt)) {
+    // Domus: Eli prende il 15% del lordo; pulizie gestite da accordo con Elda
+    const netto  = lordo * 0.15;
+    return { lordo, netto, pulizie: 0, finale: netto };
+  } else {
+    // Altre case: netto = lordo * (1 - commissione piattaforma)
+    let commRate = 0;
+    for (const [key, rate] of Object.entries(COMM_RATES)) {
+      if (piatt.toLowerCase().includes(key.toLowerCase())) { commRate = rate; break; }
+    }
+    const netto  = lordo * (1 - commRate);
+    const finale = netto - costoSostenutoPulizie;
+    return { lordo, netto, pulizie: costoSostenutoPulizie, finale };
+  }
+}
+
+/**
+ * Per ogni prenotazione non-Domus, calcola il costo pulizie del check-out corrispondente.
+ * Usa TARIFFE come fonte (pulizia + lavanderia per ogni checkout dell'appartamento nel mese dato).
+ * Restituisce una mappa aptName → costoPerCheckout (costo singolo intervento).
+ */
+function getCostoPuliziePerPrenotazione(r) {
+  if (isDomus(r['Appartamento'] || '')) return 0;
+  const tar = TARIFFE[r['Appartamento']];
+  if (!tar) return 0;
+  return tar.pulizia + tar.lavanderia;
+}
+
+// ── STATO GLOBALE ─────────────────────────────────────────────
 let prenotazioni = [], pulizie = [], inventario = [], tasse = [], promptMessaggi = [], addette = [];
-let todoDone = JSON.parse(localStorage.getItem('v3_todo')||'{}');
-let acquistoDone = JSON.parse(localStorage.getItem('v3_acquisti')||'{}');
-let approved = {};
-const waMessages = {}; // store messaggi WA — evita problemi con caratteri speciali nell'onclick
-const TODAY = new Date();
-TODAY.setHours(0,0,0,0); // normalizza a mezzanotte per confronti corretti
+let todoDone    = JSON.parse(localStorage.getItem('v3_todo')    || '{}');
+let acquistoDone= JSON.parse(localStorage.getItem('v3_acquisti')|| '{}');
+let approved    = {};
+const waMessages = {};
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 let offset = 0;
 
-// ── CSV PARSER ────────────────────────────────────────────────────────────────
+// ── CSV PARSER ────────────────────────────────────────────────
 function parseCSV(text) {
   const lines = text.trim().split('\n');
   if (lines.length < 2) return [];
@@ -1063,10 +1222,8 @@ function parseCSV(text) {
     return obj;
   }).filter(r => Object.values(r).some(v => v !== ''));
 }
-
 function splitCSVLine(line) {
-  const result = [];
-  let cur = '', inQ = false;
+  const result = []; let cur = '', inQ = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (ch === '"') { inQ = !inQ; }
@@ -1076,52 +1233,42 @@ function splitCSVLine(line) {
   result.push(cur);
   return result;
 }
-
 function parseDate(str) {
   if (!str) return null;
   str = str.trim();
-
-  // DD/MM/YYYY o DD/MM/YYYY HH:MM:SS
   if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
     const parts = str.split(' ')[0].split('/');
-    return new Date(+parts[2], +parts[1] - 1, +parts[0]);
+    return new Date(+parts[2], +parts[1]-1, +parts[0]);
   }
-  // YYYY-MM-DD o YYYY-MM-DD HH:MM:SS
   if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
     const parts = str.split(' ')[0].split('-');
-    return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+    return new Date(+parts[0], +parts[1]-1, +parts[2]);
   }
-  // Serial number Excel/Sheets
   const n = Number(str);
-  if (!isNaN(n) && n > 10000) {
-    return new Date(Date.UTC(1899, 11, 30) + n * 86400000);
-  }
+  if (!isNaN(n) && n > 10000) return new Date(Date.UTC(1899,11,30) + n*86400000);
   const d = new Date(str);
   return isNaN(d) ? null : d;
 }
-
 function sameDay(a, b) {
   return a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
 }
-
 function getDay() {
-  const d = new Date(TODAY);
-  d.setDate(d.getDate() + offset);
-  return d;
+  const d = new Date(TODAY); d.setDate(d.getDate() + offset); return d;
+}
+function fmtEur(n) {
+  return '€' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-// ── FETCH ALL SHEETS ──────────────────────────────────────────────────────────
+// ── FETCH ALL ─────────────────────────────────────────────────
 function showLoading(msg) {
   document.getElementById('aptGrid').innerHTML =
     `<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);font-size:14px;">${msg}</div>`;
 }
-
 async function fetchSheet(gid) {
   const res = await fetch(sheetURL(gid));
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return parseCSV(await res.text());
 }
-
 async function loadAllData() {
   showLoading('Caricamento dati dal Google Sheet…');
   try {
@@ -1130,40 +1277,28 @@ async function loadAllData() {
       fetchSheetSkipTitle(GIDS.inventario),
       fetchSheetSkipTitle(GIDS.tasse),
     ]);
-    // Fetch addette dal foglio pulizie (col A=apt, B=nome, C=telefono)
     try {
-      const vizUrl2=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GIDS.addette}`;
-      const res2=await fetch(vizUrl2);
-      const text2=await res2.text();
-      const json2=JSON.parse(text2.replace(/^[^(]+\(/,'').replace(/\);?\s*$/,''));
-      addette=(json2.table.rows||[]).slice(2).map(row=>({
-        apt:  (row.c[0]&&row.c[0].v)?row.c[0].v.toString().trim():'',
-        nome: (row.c[1]&&row.c[1].v)?row.c[1].v.toString().trim():'',
-        tel:  (row.c[2]&&row.c[2].v)?row.c[2].v.toString().trim():'',
-      })).filter(r=>r.apt&&r.nome);
-      console.log('Addette:', addette.map(a=>a.apt+'='+a.nome+'='+a.tel));
-    } catch(e) { addette=[]; console.warn('Addette non caricate:', e.message); }
-    // Prompt messaggi — usa Google Visualization API per gestire celle multi-riga
+      const vizUrl2 = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GIDS.addette}`;
+      const res2    = await fetch(vizUrl2);
+      const text2   = await res2.text();
+      const json2   = JSON.parse(text2.replace(/^[^(]+\(/,'').replace(/\);?\s*$/,''));
+      addette = (json2.table.rows||[]).slice(2).map(row => ({
+        apt:  (row.c[0]&&row.c[0].v) ? row.c[0].v.toString().trim() : '',
+        nome: (row.c[1]&&row.c[1].v) ? row.c[1].v.toString().trim() : '',
+        tel:  (row.c[2]&&row.c[2].v) ? row.c[2].v.toString().trim() : '',
+      })).filter(r => r.apt && r.nome);
+    } catch(e) { addette = []; console.warn('Addette non caricate:', e.message); }
     try {
       const vizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GIDS.prompt}`;
-      const res = await fetch(vizUrl);
-      const text = await res.text();
-      // Rimuove il wrapper google.visualization.Query.setResponse( ... );
-      const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, ''));
-      const rows = json.table.rows || [];
-      // Salta le prime 2 righe (titolo + intestazioni)
-      promptMessaggi = rows.slice(2)
-        .map(row => ({
-          apt:   (row.c[0] && row.c[0].v) ? row.c[0].v.toString().trim() : '',
-          msg:   (row.c[1] && row.c[1].v) ? row.c[1].v.toString().trim() : '',
-          msgCO: (row.c[2] && row.c[2].v) ? row.c[2].v.toString().trim() : '',
-        }))
-        .filter(r => r.apt && r.apt !== 'Appartamento');
-      console.log('Prompt caricati:', promptMessaggi.length, promptMessaggi.map(p => p.apt));
-    } catch(e) {
-      console.warn('Prompt messaggi non caricati:', e.message);
-      promptMessaggi = [];
-    }
+      const res    = await fetch(vizUrl);
+      const text   = await res.text();
+      const json   = JSON.parse(text.replace(/^[^(]+\(/,'').replace(/\);?\s*$/,''));
+      promptMessaggi = (json.table.rows||[]).slice(2).map(row => ({
+        apt:   (row.c[0]&&row.c[0].v) ? row.c[0].v.toString().trim() : '',
+        msg:   (row.c[1]&&row.c[1].v) ? row.c[1].v.toString().trim() : '',
+        msgCO: (row.c[2]&&row.c[2].v) ? row.c[2].v.toString().trim() : '',
+      })).filter(r => r.apt && r.apt !== 'Appartamento');
+    } catch(e) { promptMessaggi = []; console.warn('Prompt non caricati:', e.message); }
     renderAll();
   } catch(e) {
     document.getElementById('aptGrid').innerHTML =
@@ -1176,44 +1311,44 @@ async function loadAllData() {
   }
 }
 
-// ── RECUPERA MESSAGGIO PER APPARTAMENTO ───────────────────────
+// ── PROMPT ────────────────────────────────────────────────────
 function getPrompt(aptName, nomeOspite) {
   const norm = s => s.toLowerCase().replace(/\s+/g,'').replace(/[–-]/g,'-');
   const found = promptMessaggi.find(p => norm(p.apt) === norm(aptName));
   if (!found) return null;
-  // Sostituisce [NOME OSPITE] con il nome reale
   return found.msg.replace(/\[NOME OSPITE\]/gi, nomeOspite.split(' ')[0]);
 }
+function getCheckoutPrompt(aptName, nomeOspite) {
+  const norm = s => s.toLowerCase().replace(/\s+/g,'').replace(/[–—\-]/g,'-').replace(/[()]/g,'');
+  const found = promptMessaggi.find(p => norm(p.apt) === norm(aptName));
+  if (!found || !found.msgCO) {
+    const found2 = promptMessaggi.find(p => norm(aptName).includes(norm(p.apt).slice(0,8)) || norm(p.apt).includes(norm(aptName).slice(0,8)));
+    if (!found2 || !found2.msgCO) return null;
+    return found2.msgCO.replace(/\[NOME OSPITE\]/gi, (nomeOspite||'').split(' ')[0]);
+  }
+  return found.msgCO.replace(/\[NOME OSPITE\]/gi, (nomeOspite||'').split(' ')[0]);
+}
 
-// ── DATE ──────────────────────────────────────────────────────────────────────
+// ── DATE NAV ──────────────────────────────────────────────────
 function updateDates() {
   const d = getDay();
   document.getElementById('fullDate').textContent =
-    d.toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    d.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('dayLabel').textContent =
     offset===0?'oggi':offset===1?'domani':offset===-1?'ieri':
     d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
-  // Sincronizza date picker
   const picker = document.getElementById('datePicker');
   if (picker) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const day = String(d.getDate()).padStart(2,'0');
-    picker.value = `${y}-${m}-${day}`;
+    picker.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 }
-
 function pickDate(val) {
   if (!val) return;
-  const [y, m, d] = val.split('-').map(Number);
-  const picked = new Date(y, m-1, d);
-  const diff = Math.round((picked - TODAY) / 86400000);
-  offset = diff;
-  dashOffset = diff;
-  updateDates();
-  renderAll();
+  const [y,m,d] = val.split('-').map(Number);
+  offset = Math.round((new Date(y,m-1,d) - TODAY) / 86400000);
+  dashOffset = offset;
+  updateDates(); renderAll();
 }
-
 function changeDay(n) { offset+=n; dashOffset=offset; updateDates(); renderAll(); }
 function resetDay()   { offset=0; dashOffset=0; updateDates(); renderAll(); }
 
@@ -1225,63 +1360,43 @@ function renderAll() {
   renderAcquisti();
   renderTasse();
   renderPricing();
+  renderIncassi();
 }
 
-// ── KPI ───────────────────────────────────────────────────────────────────────
+// ── KPI ───────────────────────────────────────────────────────
 function renderKPI() {
   const day = getDay();
   const co = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), day)).length;
   const ci = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']),  day)).length;
   const cl = pulizie.filter(r => sameDay(parseDate(r['Data']), day)).length;
-  const fr = APTS.filter(apt => {
-    return !prenotazioni.some(r => {
-      const ci = parseDate(r['Check-in']), co = parseDate(r['Check-out']);
-      return matchApt(r['Appartamento'], apt.name) && ci && co && day >= ci && day < co;
-    });
-  }).length;
-  const tx = tasse.filter(r => r['Incassata?']==='No' || r['Incassata?']==='no')
-    .reduce((s,r) => s + (parseFloat(r['Tassa Dovuta (€)'])||0), 0);
-
+  const fr = APTS.filter(apt => !prenotazioni.some(r => {
+    const ci2 = parseDate(r['Check-in']), co2 = parseDate(r['Check-out']);
+    return matchApt(r['Appartamento'], apt.name) && ci2 && co2 && day >= ci2 && day < co2;
+  })).length;
+  const tx = tasse.filter(r => r['Incassata?']==='No'||r['Incassata?']==='no')
+    .reduce((s,r) => s+(parseFloat(r['Tassa Dovuta (€)'])||0), 0);
   document.getElementById('kpiBar').innerHTML = `
     <div class="kpi-item"><div class="kpi-num green">${ci}</div><div class="kpi-lbl">&#8592; check-in</div></div>
     <div class="kpi-item"><div class="kpi-num red">${co}</div><div class="kpi-lbl">&#8594; check-out</div></div>
     <div class="kpi-item"><div class="kpi-num">${cl}</div><div class="kpi-lbl">&#9775; pulizie</div></div>
     <div class="kpi-item"><div class="kpi-num ${fr>0?'warn':''}">${fr}</div><div class="kpi-lbl">liberi</div></div>
-    <div class="kpi-item"><div class="kpi-num good">€${tx.toFixed(0)}</div><div class="kpi-lbl">tasse</div></div>
-  `;
+    <div class="kpi-item"><div class="kpi-num good">€${tx.toFixed(0)}</div><div class="kpi-lbl">tasse</div></div>`;
 }
 
-// ── APPARTAMENTI ──────────────────────────────────────────────────────────────
-// Matching esatto appartamento — normalizza entrambi i lati per confronto sicuro
+// ── MATCHING APPARTAMENTO ─────────────────────────────────────
 function matchApt(recordApt, aptName) {
   if (!recordApt) return false;
-  const normalize = s => s.trim().toLowerCase()
-    .replace(/\u2013|\u2014|-/g, '-')
-    .replace(/\s+/g, ' ');
+  const normalize = s => s.trim().toLowerCase().replace(/\u2013|\u2014|-/g,'-').replace(/\s+/g,' ');
   return normalize(recordApt) === normalize(aptName);
 }
 
+// ── APPARTAMENTI ──────────────────────────────────────────────
 const STATUS_LABEL = { turnover:'Turnover', checkin:'Check-in', checkout:'Check-out', occupied:'Occupato', free:'Libero' };
 const STATUS_CLASS = { turnover:'s-turnover', checkin:'s-checkin', checkout:'s-checkout', occupied:'s-occupied', free:'s-free' };
-
-function aptStatus(aptName, day) {
-  const hasCI = prenotazioni.some(r => matchApt(r['Appartamento'], aptName) && sameDay(parseDate(r['Check-in']), day));
-  const hasCO = prenotazioni.some(r => matchApt(r['Appartamento'], aptName) && sameDay(parseDate(r['Check-out']), day));
-  if (hasCI && hasCO) return 'turnover';
-  if (hasCI)  return 'checkin';
-  if (hasCO)  return 'checkout';
-  const occupied = prenotazioni.some(r => {
-    const ci = parseDate(r['Check-in']), co = parseDate(r['Check-out']);
-    return matchApt(r['Appartamento'], aptName) && ci && co && day >= ci && day < co;
-  });
-  return occupied ? 'occupied' : 'free';
-}
 
 function renderApts() {
   const day = getDay();
   const STATUS_ORDER = { turnover:0, checkin:1, checkout:2, occupied:3, free:4 };
-
-  // Calcola stato inline per ogni appartamento — fresco ad ogni render
   const aptWithStatus = APTS.map(apt => {
     const hasCI = prenotazioni.some(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Check-in']), day));
     const hasCO = prenotazioni.some(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Check-out']), day));
@@ -1298,38 +1413,29 @@ function renderApts() {
     }
     return { apt, status, order: STATUS_ORDER[status] ?? 9 };
   });
+  aptWithStatus.sort((a,b) => a.order - b.order);
 
-  // Ordina — turnover sempre primo
-  aptWithStatus.sort((a, b) => a.order - b.order);
-
-  document.getElementById('aptGrid').innerHTML = aptWithStatus.map(({ apt, status }, idx) => {
-    const coRec  = prenotazioni.find(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Check-out']), day));
-    const ciRec  = prenotazioni.find(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Check-in']),  day));
-    const pulRec = pulizie.find(r => matchApt(r['Appartamento'], apt.name) && sameDay(parseDate(r['Data']), day));
-
+  document.getElementById('aptGrid').innerHTML = aptWithStatus.map(({apt,status},idx) => {
+    const coRec  = prenotazioni.find(r => matchApt(r['Appartamento'],apt.name) && sameDay(parseDate(r['Check-out']),day));
+    const ciRec  = prenotazioni.find(r => matchApt(r['Appartamento'],apt.name) && sameDay(parseDate(r['Check-in']),day));
+    const pulRec = pulizie.find(r => matchApt(r['Appartamento'],apt.name) && sameDay(parseDate(r['Data']),day));
     let rows = '';
-    // Check-in PRIMA di check-out
-    if (ciRec) rows += aptRow('&#8592;', 'Check-in',  `${ciRec['Nome Ospite']||'—'} &mdash; ${ciRec['N. Ospiti Adulti']||'?'} adulti`);
-    if (coRec) rows += aptRow('&#8594;', 'Check-out', `${coRec['Nome Ospite']||'—'} &mdash; ${coRec['N. Ospiti Adulti']||'?'} adulti`);
-    if (pulRec) rows += aptRow('&#9775;', 'Pulizie', `${pulRec['Addetta Pulizie']||apt.cleaner} &mdash; ${pulRec['Ora Inizio']||''} ${pulRec['Ora Fine']?'→ '+pulRec['Ora Fine']:''}`);
+    if (ciRec) rows += aptRow('&#8592;','Check-in',`${ciRec['Nome Ospite']||'—'} &mdash; ${ciRec['N. Ospiti Adulti']||'?'} adulti`);
+    if (coRec) rows += aptRow('&#8594;','Check-out',`${coRec['Nome Ospite']||'—'} &mdash; ${coRec['N. Ospiti Adulti']||'?'} adulti`);
+    if (pulRec) rows += aptRow('&#9775;','Pulizie',`${pulRec['Addetta Pulizie']||apt.cleaner} &mdash; ${pulRec['Ora Inizio']||''} ${pulRec['Ora Fine']?'→ '+pulRec['Ora Fine']:''}`);
     if (status==='occupied' && !coRec && !ciRec) {
       const activeRec = prenotazioni.find(r => {
-        const ci = parseDate(r['Check-in']), co = parseDate(r['Check-out']);
-        return matchApt(r['Appartamento'], apt.name) && ci && co && day >= ci && day < co;
+        const ci=parseDate(r['Check-in']),co=parseDate(r['Check-out']);
+        return matchApt(r['Appartamento'],apt.name) && ci && co && day>=ci && day<co;
       });
       if (activeRec) {
-        const ciDate = parseDate(activeRec['Check-in']);
-        const coDate = parseDate(activeRec['Check-out']);
         const fmtD = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '?';
-        rows += aptRow('&#9679;', 'Ospiti', `${activeRec['Nome Ospite']||'—'} &mdash; ${activeRec['N. Ospiti Adulti']||'?'} adulti`);
-        rows += aptRow('&#8596;', 'Periodo', `${fmtD(ciDate)} → ${fmtD(coDate)}`);
-      } else {
-        rows += aptRow('&#9679;', 'Stato', '<span class="muted">Ospiti presenti</span>');
-      }
+        rows += aptRow('&#9679;','Ospiti',`${activeRec['Nome Ospite']||'—'} &mdash; ${activeRec['N. Ospiti Adulti']||'?'} adulti`);
+        rows += aptRow('&#8596;','Periodo',`${fmtD(parseDate(activeRec['Check-in']))} → ${fmtD(parseDate(activeRec['Check-out']))}`);
+      } else rows += aptRow('&#9679;','Stato','<span class="muted">Ospiti presenti</span>');
     }
-    if (status==='free') rows += aptRow('&#9675;', 'Stato', '<span class="muted">Nessuna prenotazione</span>');
+    if (status==='free') rows += aptRow('&#9675;','Stato','<span class="muted">Nessuna prenotazione</span>');
 
-    // alert pulizie
     let alerts = '';
     if (pulRec && (pulRec['Confermata?']||'').toLowerCase()==='no')
       alerts += `<div class="alert-box alert-warn">&#9651; Pulizie non ancora confermate da ${pulRec['Addetta Pulizie']||apt.cleaner}</div>`;
@@ -1338,53 +1444,119 @@ function renderApts() {
     if (pulRec && pulRec['Note/Segnalazioni'] && pulRec['Note/Segnalazioni'].trim())
       alerts += `<div class="alert-box alert-danger">&#9888; ${pulRec['Note/Segnalazioni']}</div>`;
 
-    // tassa
-    const tassaRec = tasse.find(r => matchApt(r['Appartamento'], apt.name) &&
-      (sameDay(parseDate(r['Check-in']), day) || sameDay(parseDate(r['Check-out']), day)));
+    const tassaRec = tasse.find(r => matchApt(r['Appartamento'],apt.name) &&
+      (sameDay(parseDate(r['Check-in']),day)||sameDay(parseDate(r['Check-out']),day)));
     const tassaVal = tassaRec ? `€${tassaRec['Tassa Dovuta (€)']||'—'}` : '—';
 
-    // Badge turnover evidenziato con stile speciale
-    const badgeHtml = status === 'turnover'
+    const badgeHtml = status==='turnover'
       ? `<span class="status-badge s-turnover" style="font-size:11px;padding:4px 12px;font-weight:700;letter-spacing:0.08em;box-shadow:0 0 0 2px rgba(42,75,122,0.3)">&#9650; TURNOVER</span>`
       : `<span class="status-badge ${STATUS_CLASS[status]}">${STATUS_LABEL[status]}</span>`;
 
     return `<div class="apt-card ${apt.cls}" style="animation-delay:${idx*0.05}s${status==='turnover'?';box-shadow:0 4px 20px rgba(42,75,122,0.15);border-color:rgba(42,75,122,0.3)':''}">
       <div class="apt-card-top">
-        <div>
-          <div class="apt-name"><span class="apt-dot ${apt.dot}"></span>${apt.name}</div>
-          <div class="apt-sub">${apt.sub}</div>
-        </div>
+        <div><div class="apt-name"><span class="apt-dot ${apt.dot}"></span>${apt.name}</div><div class="apt-sub">${apt.sub}</div></div>
         ${badgeHtml}
       </div>
       <div class="apt-body">${rows||'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun evento oggi</span>'}</div>
       ${alerts}
-      <div class="apt-footer">
-        <span>&#9775; ${apt.cleaner}</span>
-        <span>tassa: ${tassaVal}</span>
-      </div>
+      <div class="apt-footer"><span>&#9775; ${apt.cleaner}</span><span>tassa: ${tassaVal}</span></div>
     </div>`;
   }).join('');
 }
-
-function aptRow(icon, lbl, val) {
-  return `<div class="apt-row">
-    <span class="apt-row-icon">${icon}</span>
-    <span class="apt-row-lbl">${lbl}</span>
-    <span class="apt-row-val">${val}</span>
-  </div>`;
+function aptRow(icon,lbl,val) {
+  return `<div class="apt-row"><span class="apt-row-icon">${icon}</span><span class="apt-row-lbl">${lbl}</span><span class="apt-row-val">${val}</span></div>`;
 }
 
-// ── NUMERI ADDETTE PULIZIE ────────────────────────────────────
-const CLEANER_PHONES = {
-  'Elda':   '+393792546937',
-  'Giulia': '+393200661575',
-  'Dalila': '+393478783103',
-  'Enza':   '+393473632307',
-  'Teresa': '+393473632307',
-};
+// ── ADDETTE ───────────────────────────────────────────────────
+function getAddetta(aptName) {
+  const norm = s => s.toLowerCase().replace(/\s+/g,'').replace(/[\u2013-]/g,'-');
+  const found = addette.find(a => norm(a.apt) === norm(aptName));
+  if (found) return { persona: found.nome, phone: found.tel };
+  const tar = TARIFFE[aptName];
+  if (tar) return { persona: tar.persona, phone: CLEANER_PHONES[tar.persona]||'' };
+  return { persona:'—', phone:'' };
+}
 
-// ── TODO — due sezioni: Ospiti e Pulizie ─────────────────────
+// ── TODO ──────────────────────────────────────────────────────
+function renderTodo() {
+  const today    = getDay();
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  const ciOggi   = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']),  today) && r['Nome Ospite']);
+  const coOggi   = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), today) && r['Nome Ospite']);
+  const coDomani = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), tomorrow) && TARIFFE[r['Appartamento']]);
+  const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
+  let html = '';
 
+  html += `<div class="todo-section"><div class="todo-section-header">
+    <span class="todo-section-title">&#8592; Check-in</span>
+    <span class="todo-section-count count-ci">${ciOggi.length} oggi</span>
+  </div>`;
+  if (!ciOggi.length) html += `<div class="todo-empty">Nessun check-in oggi.</div>`;
+  else ciOggi.forEach((r,i) => {
+    const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+    const pClean=phone.replace('+','');
+    const msg=getPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 👋 Welcome!`;
+    const wKey=`ci_wa_${i}`; waMessages[wKey]={msg,phone:pClean};
+    const key=`ci_${i}`; const done=!!todoDone[key];
+    html += `<div class="todo-card ci ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-ci">check-in ${fmtS(parseDate(r['Check-in']))}</span></div>
+        <div class="tc-row2">${phone?`<button class="tc-wa ci wa-btn" data-key="${wKey}">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
+      </div></div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="todo-section"><div class="todo-section-header">
+    <span class="todo-section-title">&#8594; Check-out</span>
+    <span class="todo-section-count count-co">${coOggi.length} oggi</span>
+  </div>`;
+  if (!coOggi.length) html += `<div class="todo-empty">Nessun check-out oggi.</div>`;
+  else coOggi.forEach((r,i) => {
+    const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+    const pClean=phone.replace('+','');
+    const msg=getCheckoutPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 😊 I hope you enjoyed your stay! What time are you checking out?`;
+    const wKey=`co_wa_${i}`; waMessages[wKey]={msg,phone:pClean};
+    const key=`co_${i}`; const done=!!todoDone[key];
+    html += `<div class="todo-card co ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-co">check-out ${fmtS(parseDate(r['Check-out']))}</span></div>
+        <div class="tc-row2">${phone?`<button class="tc-wa co wa-btn" data-key="${wKey}">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
+      </div></div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="todo-section"><div class="todo-section-header">
+    <span class="todo-section-title">&#9775; Pulizie</span>
+    <span class="todo-section-count count-pul">${coDomani.length} check-out domani</span>
+  </div>`;
+  if (!coDomani.length) html += `<div class="todo-empty">Nessun check-out domani.</div>`;
+  else coDomani.forEach((r,i) => {
+    const apt=r['Appartamento']||'—';
+    const addettaT=getAddetta(apt); if(!addettaT||addettaT.persona==='—') return;
+    const persona=addettaT.persona, phone=addettaT.phone||'', pClean=phone.replace('+','');
+    const nome=r['Nome Ospite']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const coDate=parseDate(r['Check-out']);
+    const msgPul=`Ciao ${persona}, domani (${fmtS(coDate)}) c'è check-out a ${apt} di ${nome} (${osp} ospiti). Pulizie e cambio biancheria. Grazie!`;
+    const wKeyPul=`pul_wa_${i}`; waMessages[wKeyPul]={msg:msgPul,phone:pClean};
+    const key=`pul_${i}`; const done=!!todoDone[key];
+    const waBtn=!phone
+      ?`<button class="tc-wa pul wa-btn-share" onclick="event.stopPropagation();shareWAMsg('${wKeyPul}')">&#128172; Invia a...</button>`
+      :`<button class="tc-wa pul wa-btn" data-key="${wKeyPul}">&#128172; ${phone}</button>`;
+    html += `<div class="todo-card pul ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
+      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-row1"><span class="tc-name">${persona}</span><span class="tc-apt">${apt}</span><span class="tc-tag" style="background:var(--accent-light);color:var(--accent)">domani</span></div>
+        <div class="tc-row2">${waBtn}<span class="tc-meta">${nome} · ${osp} ospiti</span></div>
+      </div></div></div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('todoContent').innerHTML = html;
+}
 function toggleTodoKey(key, el) {
   todoDone[key] = !todoDone[key];
   localStorage.setItem('v3_todo', JSON.stringify(todoDone));
@@ -1392,42 +1564,15 @@ function toggleTodoKey(key, el) {
   el.querySelector('.tc-check').innerHTML = todoDone[key] ? '&#10003;' : '';
 }
 
-// Copia messaggio negli appunti e apre WhatsApp
-function copyMsg(idx) {
-  const btn = document.querySelectorAll('[data-msg]')[idx];
-  if (!btn) return;
-  const msg = decodeURIComponent(btn.getAttribute('data-msg'));
-  const phone = btn.getAttribute('data-phone');
-  // Copia negli appunti
-  navigator.clipboard.writeText(msg).then(() => {
-    const orig = btn.innerHTML;
-    btn.innerHTML = '&#10003; Copiato! Apro WA…';
-    setTimeout(() => {
-      btn.innerHTML = orig;
-      window.open(`https://wa.me/${phone}`, '_blank');
-    }, 800);
-  }).catch(() => {
-    // Fallback se clipboard non disponibile
-    window.open(`https://wa.me/${phone}`, '_blank');
-  });
-}
-
-function toggleTodo(id, el) {
-  todoDone[id] = !todoDone[id];
-  el.classList.toggle('done');
-  const chk = el.querySelector('.todo-check') || el.querySelector('.tc-check');
-  if (chk) chk.innerHTML = todoDone[id] ? '&#10003;' : '';
-}
-
-// ── ACQUISTI (da inventario sheet) ────────────────────────────────────────────
+// ── ACQUISTI ──────────────────────────────────────────────────
 function renderAcquisti() {
   const items = inventario.filter(r => (r['Da Acquistare?']||'').includes('ACQUISTARE'));
   if (!items.length) {
     document.getElementById('acquistiList').innerHTML =
-      '<div style="padding:20px;color:var(--text3);font-size:13px;font-style:italic;">Nessun articolo da acquistare al momento.</div>';
+      '<div style="padding:20px;color:var(--text3);font-size:13px;font-style:italic;">Nessun articolo da acquistare.</div>';
     return;
   }
-  document.getElementById('acquistiList').innerHTML = items.map((a, i) => {
+  document.getElementById('acquistiList').innerHTML = items.map((a,i) => {
     const done = !!acquistoDone[i];
     return `<div class="acq-item ${done?'bought':''}" onclick="toggleAcq(${i},this)">
       <div class="acq-check">${done?'&#10003;':''}</div>
@@ -1436,7 +1581,6 @@ function renderAcquisti() {
     </div>`;
   }).join('');
 }
-
 function toggleAcq(id, el) {
   acquistoDone[id] = !acquistoDone[id];
   localStorage.setItem('v3_acquisti', JSON.stringify(acquistoDone));
@@ -1444,13 +1588,13 @@ function toggleAcq(id, el) {
   el.querySelector('.acq-check').innerHTML = acquistoDone[id] ? '&#10003;' : '';
 }
 
-// ── TASSE ─────────────────────────────────────────────────────────────────────
+// ── TASSE ─────────────────────────────────────────────────────
 function renderTasse() {
   let total = 0;
   const rows = tasse.filter(r => r['Nome Ospite'] && r['Nome Ospite'].trim()).map(r => {
     const val = parseFloat(r['Tassa Dovuta (€)'])||0;
     total += val;
-    const paid = (r['Incassata?']||'').toLowerCase()==='sì' || (r['Incassata?']||'').toLowerCase()==='si';
+    const paid = (r['Incassata?']||'').toLowerCase()==='sì'||(r['Incassata?']||'').toLowerCase()==='si';
     return `<tr>
       <td>${r['Appartamento']||'—'}</td>
       <td>${r['Nome Ospite']||'—'}</td>
@@ -1460,54 +1604,306 @@ function renderTasse() {
       <td class="${paid?'incassata-yes':'incassata-no'}">${paid?'&#10003; sì':'&#9675; no'}</td>
     </tr>`;
   }).join('');
-  document.getElementById('tasseBody').innerHTML = rows || '<tr><td colspan="6" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato presente nel foglio.</td></tr>';
+  document.getElementById('tasseBody').innerHTML = rows || '<tr><td colspan="6" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato.</td></tr>';
   document.getElementById('tasseTotal').innerHTML = `<strong>€${total.toFixed(2)}</strong>`;
 }
 
-// ── PRICING ───────────────────────────────────────────────────────────────────
+// ── PRICING ───────────────────────────────────────────────────
 function renderPricing() {
   document.getElementById('pricingBody').innerHTML = APTS.map(apt => {
     const isApproved = !!approved[apt.name];
     return `<tr>
-      <td>${apt.name}</td>
-      <td>—</td>
-      <td>—</td>
+      <td>${apt.name}</td><td>—</td><td>—</td>
       <td class="price-ok">aggiorna nel Sheet</td>
       <td style="font-size:11px;color:var(--text3)">vedi tab Pricing</td>
       <td><button class="approv-btn ${isApproved?'approved':''}" onclick="toggleApprove('${apt.name}',this)">${isApproved?'&#10003; ok':'Approva'}</button></td>
     </tr>`;
   }).join('');
-
-document.getElementById('festGrid').innerHTML = FESTIVITA.map(f => `
+  document.getElementById('festGrid').innerHTML = FESTIVITA.map(f => `
     <div class="fest-card">
       <div class="fest-date">${f.data}</div>
       <div class="fest-name">${f.nome}</div>
       <div class="fest-mult">${f.mult}</div>
     </div>`).join('');
 }
-
 function toggleApprove(name, btn) {
   approved[name] = !approved[name];
   btn.className = 'approv-btn ' + (approved[name]?'approved':'');
   btn.innerHTML = approved[name] ? '&#10003; ok' : 'Approva';
 }
 
-// ── TARIFFE PULIZIE ───────────────────────────────────────────
-const TARIFFE = {
-  'Domus Pulchra (grande)':          { persona:'Elda',   pulizia:25, lavanderia:5 },
-  'Domus Pulchra (piccolo)':         { persona:'Elda',   pulizia:10, lavanderia:5 },
-  'Casa dei Visionari – Madonella':  { persona:'Dalila', pulizia:10, lavanderia:6 },
-  'Casa dei Visionari – Mare':       { persona:'Giulia', pulizia:15, lavanderia:5 },
-  'Enea Luxury – Piccinni':          { persona:'Enza', pulizia:0,  lavanderia:0 },
-};
+// ── INCASSI ───────────────────────────────────────────────────
+let incassiFilterMese = 'tutti';
+let incassiFilterApt  = 'tutti';
 
-const LETTI_APT = {
-  'Domus Pulchra (grande)':          ['Matrimoniale grande','Matrimoniale','Singolo'],
-  'Domus Pulchra (piccolo)':         ['Matrimoniale','Singolo x2'],
-  'Casa dei Visionari – Madonella':  ['Matrimoniale','Singolo x2'],
-  'Casa dei Visionari – Mare':       ['Matrimoniale','Doppio'],
-  'Enea Luxury – Piccinni':         ['Matrimoniale x2','Singolo','Divano letto'],
-  'Enea Luxury – Putignani':        ['Matrimoniale x4','Singolo'],
+function renderIncassi() {
+  const c = document.getElementById('incassiContent');
+  if (!c) return;
+
+  // Filtra prenotazioni valide (con appartamento e prezzo)
+  const prenoValide = prenotazioni.filter(r =>
+    r['Appartamento'] && r['Prezzo Lordo (€)'] && r['Check-in'] &&
+    parseFloat((r['Prezzo Lordo (€)']||'0').toString().replace(',','.').replace('€','')) > 0
+  );
+
+  // Raccogli mesi disponibili dal check-in
+  const mesiSet = new Set();
+  prenoValide.forEach(r => {
+    const d = parseDate(r['Check-in']);
+    if (d) mesiSet.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  });
+  const mesiList = [...mesiSet].sort();
+
+  // Raccogli appartamenti disponibili
+  const aptsSet = new Set(prenoValide.map(r => r['Appartamento']));
+  const aptsList = [...aptsSet].sort();
+
+  // Filtro mese
+  const meseOpts = mesiList.map(m => {
+    const [y, mo] = m.split('-');
+    const lbl = new Date(+y, +mo-1, 1).toLocaleDateString('it-IT', {month:'long', year:'numeric'});
+    return `<option value="${m}" ${incassiFilterMese===m?'selected':''}>${lbl}</option>`;
+  }).join('');
+
+  // Filtro appartamento
+  const aptOpts = aptsList.map(a =>
+    `<option value="${a}" ${incassiFilterApt===a?'selected':''}>${a}</option>`
+  ).join('');
+
+  // Filtra prenotazioni
+  let filtered = prenoValide;
+  if (incassiFilterMese !== 'tutti') {
+    const [fy, fm] = incassiFilterMese.split('-').map(Number);
+    filtered = filtered.filter(r => {
+      const d = parseDate(r['Check-in']);
+      return d && d.getFullYear()===fy && d.getMonth()===fm-1;
+    });
+  }
+  if (incassiFilterApt !== 'tutti') {
+    filtered = filtered.filter(r => matchApt(r['Appartamento'], incassiFilterApt));
+  }
+
+  // Calcola valori per ogni prenotazione
+  const rows = filtered.map(r => {
+    const costoP = getCostoPuliziePerPrenotazione(r);
+    return { r, ...calcIncassi(r, costoP) };
+  });
+
+  // Totali
+  const totLordo  = rows.reduce((s,x) => s+x.lordo,  0);
+  const totNetto  = rows.reduce((s,x) => s+x.netto,  0);
+  const totPul    = rows.reduce((s,x) => s+x.pulizie,0);
+  const totFinale = rows.reduce((s,x) => s+x.finale, 0);
+
+  // Riepilogo per appartamento (per il grafico)
+  const byApt = {};
+  rows.forEach(x => {
+    const apt = x.r['Appartamento'] || '—';
+    if (!byApt[apt]) byApt[apt] = { lordo:0, netto:0, pulizie:0, finale:0, n:0 };
+    byApt[apt].lordo   += x.lordo;
+    byApt[apt].netto   += x.netto;
+    byApt[apt].pulizie += x.pulizie;
+    byApt[apt].finale  += x.finale;
+    byApt[apt].n       += 1;
+  });
+
+  // Badge piattaforma
+  function piattBadge(piatt) {
+    if (!piatt) return '<span class="piatt-badge piatt-altro">—</span>';
+    const p = piatt.toLowerCase();
+    if (p.includes('booking'))  return `<span class="piatt-badge piatt-booking">Booking.com −20%</span>`;
+    if (p.includes('airbnb'))   return `<span class="piatt-badge piatt-airbnb">Airbnb −15%</span>`;
+    if (p.includes('diretta'))  return `<span class="piatt-badge piatt-diretta">Diretta</span>`;
+    return `<span class="piatt-badge piatt-altro">${piatt}</span>`;
+  }
+
+  function domusBadge() {
+    return `<span class="piatt-badge piatt-domus">Domus 15%</span>`;
+  }
+
+  // Mese label per header
+  const meseLabel = incassiFilterMese === 'tutti'
+    ? 'Tutti i periodi'
+    : (() => { const [y,m] = incassiFilterMese.split('-'); return new Date(+y,+m-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'}); })();
+
+  // ── GRAFICO A BARRE ──────────────────────────────────────────
+  const aptGrafici = Object.entries(byApt).sort((a,b) => b[1].finale - a[1].finale);
+  const maxVal = aptGrafici.reduce((m,[,v]) => Math.max(m, v.lordo), 0) || 1;
+  const BAR_H  = 28;
+  const BAR_GAP= 10;
+  const LABEL_W= 200;
+  const CHART_W= 560;
+  const svgH   = aptGrafici.length * (BAR_H + BAR_GAP) + 40;
+  const COLORS = { lordo:'#DAEAF4', netto:'#1A6FA8', finale:'#2A7A4F' };
+
+  const svgBars = aptGrafici.map(([apt, v], i) => {
+    const y        = 20 + i * (BAR_H + BAR_GAP);
+    const wLordo   = (v.lordo   / maxVal) * CHART_W;
+    const wNetto   = (v.netto   / maxVal) * CHART_W;
+    const wFinale  = (v.finale  / maxVal) * CHART_W;
+    const aptShort = apt.replace('Casa dei Visionari –','CdV').replace('Enea Luxury –','EL').replace('Domus Pulchra','DP');
+    return `
+      <text x="${LABEL_W-8}" y="${y+BAR_H/2+1}" text-anchor="end" dominant-baseline="middle"
+        font-size="11" fill="#7299B0" font-family="DM Sans,Arial,sans-serif">${aptShort}</text>
+      <rect x="${LABEL_W}" y="${y}" width="${wLordo}" height="${BAR_H}" rx="4" fill="${COLORS.lordo}"/>
+      <rect x="${LABEL_W}" y="${y+4}" width="${wNetto}" height="${BAR_H-8}" rx="3" fill="${COLORS.netto}" opacity="0.85"/>
+      <rect x="${LABEL_W}" y="${y+8}" width="${Math.max(wFinale,0)}" height="${BAR_H-16}" rx="2" fill="${COLORS.finale}"/>
+      <text x="${LABEL_W + wLordo + 6}" y="${y+BAR_H/2+1}" dominant-baseline="middle"
+        font-size="11" fill="#2A7A4F" font-weight="600" font-family="DM Sans,Arial,sans-serif">${fmtEur(v.finale)}</text>`;
+  }).join('');
+
+  const legendW = LABEL_W + CHART_W + 120;
+  const svgLegend = `
+    <rect x="${LABEL_W}" y="2" width="12" height="8" rx="2" fill="${COLORS.lordo}"/>
+    <text x="${LABEL_W+16}" y="10" font-size="10" fill="#7299B0" font-family="DM Sans,Arial,sans-serif">Lordo</text>
+    <rect x="${LABEL_W+60}" y="2" width="12" height="8" rx="2" fill="${COLORS.netto}"/>
+    <text x="${LABEL_W+76}" y="10" font-size="10" fill="#7299B0" font-family="DM Sans,Arial,sans-serif">Netto</text>
+    <rect x="${LABEL_W+120}" y="2" width="12" height="8" rx="2" fill="${COLORS.finale}"/>
+    <text x="${LABEL_W+136}" y="10" font-size="10" fill="#7299B0" font-family="DM Sans,Arial,sans-serif">Incasso finale</text>`;
+
+  const svgTot = `<svg class="chart-svg" viewBox="0 0 ${legendW} ${svgH}" xmlns="http://www.w3.org/2000/svg">
+    ${svgLegend}${svgBars}
+  </svg>`;
+
+  // ── RIGHE TABELLA ─────────────────────────────────────────────
+  const tblRows = rows.map(({r, lordo, netto, pulizie, finale}) => {
+    const ciDate = parseDate(r['Check-in']);
+    const apt    = r['Appartamento'] || '—';
+    const domus  = isDomus(apt);
+    const note   = domus
+      ? `<div style="font-size:10px;color:var(--amber);margin-top:2px">Accordo Elda · pulizie incluse</div>`
+      : (pulizie > 0 ? `<div class="val-pulizie" style="margin-top:2px">− ${fmtEur(pulizie)} pulizie</div>` : '');
+    return `<tr>
+      <td style="font-size:12px">${ciDate ? ciDate.toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'}) : '—'}</td>
+      <td style="font-size:12px">${apt}</td>
+      <td>${r['Nome Ospite']||'—'}</td>
+      <td>${domus ? domusBadge() : piattBadge(r['Piattaforma'])}</td>
+      <td class="val-lordo">${fmtEur(lordo)}</td>
+      <td class="val-netto">${fmtEur(netto)}</td>
+      <td>${note}<span class="val-finale">${fmtEur(finale)}</span></td>
+    </tr>`;
+  }).join('');
+
+  // ── TABELLA RIEPILOGO PER APPARTAMENTO ───────────────────────
+  const aptSummaryRows = Object.entries(byApt)
+    .sort((a,b) => b[1].finale - a[1].finale)
+    .map(([apt, v]) => {
+      const domus = isDomus(apt);
+      const note  = domus
+        ? `<span style="font-size:10px;color:var(--amber)">accordo Elda</span>`
+        : (v.pulizie > 0 ? `<span style="font-size:10px;color:var(--amber)">− ${fmtEur(v.pulizie)} pulizie</span>` : '');
+      return `<tr>
+        <td style="font-weight:500">${apt}</td>
+        <td style="text-align:center;color:var(--text3)">${v.n}</td>
+        <td class="val-lordo">${fmtEur(v.lordo)}</td>
+        <td class="val-netto">${fmtEur(v.netto)}</td>
+        <td>${note}</td>
+        <td class="val-finale" style="font-size:15px">${fmtEur(v.finale)}</td>
+      </tr>`;
+    }).join('');
+
+  c.innerHTML = `
+    <!-- FILTRI -->
+    <div class="incassi-filter-bar">
+      <label>Periodo:</label>
+      <select onchange="incassiFilterMese=this.value;renderIncassi()">
+        <option value="tutti" ${incassiFilterMese==='tutti'?'selected':''}>Tutti i mesi</option>
+        ${meseOpts}
+      </select>
+      <label style="margin-left:8px">Appartamento:</label>
+      <select onchange="incassiFilterApt=this.value;renderIncassi()">
+        <option value="tutti" ${incassiFilterApt==='tutti'?'selected':''}>Tutti</option>
+        ${aptOpts}
+      </select>
+    </div>
+
+    <!-- NOTE LOGICA -->
+    <div class="incassi-note">
+      <strong>Logica calcolo:</strong>
+      <strong>Domus Pulchra</strong> → incasso finale = 15% del lordo (accordo Elda, pulizie incluse, indipendente da piattaforma) ·
+      <strong>Altre case</strong> → netto = lordo dopo commissione piattaforma (Booking −20%, Airbnb −15%, Diretta 0%) · incasso finale = netto − costo pulizie (pulizia + lavanderia per ogni check-out)
+    </div>
+
+    <!-- KPI OVERVIEW -->
+    <div class="incassi-kpi">
+      <div class="incassi-kpi-card">
+        <div class="incassi-kpi-num">${fmtEur(totLordo)}</div>
+        <div class="incassi-kpi-lbl">Totale lordo</div>
+      </div>
+      <div class="incassi-kpi-card netto">
+        <div class="incassi-kpi-num">${fmtEur(totNetto)}</div>
+        <div class="incassi-kpi-lbl">Totale netto</div>
+      </div>
+      <div class="incassi-kpi-card pulizie">
+        <div class="incassi-kpi-num">${fmtEur(totPul)}</div>
+        <div class="incassi-kpi-lbl">Costo pulizie</div>
+      </div>
+      <div class="incassi-kpi-card finale">
+        <div class="incassi-kpi-num">${fmtEur(totFinale)}</div>
+        <div class="incassi-kpi-lbl">Incasso finale</div>
+      </div>
+    </div>
+
+    <!-- GRAFICO -->
+    <div class="incassi-chart-section">
+      <div class="incassi-chart-title">Proiezione per appartamento — ${meseLabel}</div>
+      ${aptGrafici.length
+        ? `<div class="chart-bars-wrap">${svgTot}</div>`
+        : `<div style="padding:20px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun dato disponibile per il periodo selezionato.</div>`}
+    </div>
+
+    <!-- RIEPILOGO PER APPARTAMENTO -->
+    <div class="section-label" style="margin-top:0">Riepilogo per appartamento</div>
+    <table class="incassi-tbl" style="margin-bottom:28px">
+      <thead>
+        <tr>
+          <th>Appartamento</th><th style="text-align:center">Prenot.</th>
+          <th>Lordo</th><th>Netto</th><th>Note</th><th>Incasso finale</th>
+        </tr>
+      </thead>
+      <tbody>${aptSummaryRows || '<tr><td colspan="6" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato.</td></tr>'}</tbody>
+      <tfoot>
+        <tr>
+          <td>Totale</td>
+          <td style="text-align:center">${rows.length}</td>
+          <td>${fmtEur(totLordo)}</td>
+          <td>${fmtEur(totNetto)}</td>
+          <td>${fmtEur(totPul)} pulizie</td>
+          <td>${fmtEur(totFinale)}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <!-- DETTAGLIO PRENOTAZIONI -->
+    <div class="section-label">Dettaglio prenotazioni</div>
+    <table class="incassi-tbl">
+      <thead>
+        <tr>
+          <th>Check-in</th><th>Appartamento</th><th>Ospite</th>
+          <th>Piattaforma</th><th>Lordo</th><th>Netto</th><th>Incasso finale</th>
+        </tr>
+      </thead>
+      <tbody>${tblRows || '<tr><td colspan="7" style="color:var(--text3);font-style:italic;padding:16px;">Nessuna prenotazione nel periodo selezionato.</td></tr>'}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4">Totale ${meseLabel}</td>
+          <td>${fmtEur(totLordo)}</td>
+          <td>${fmtEur(totNetto)}</td>
+          <td>${fmtEur(totFinale)}</td>
+        </tr>
+      </tfoot>
+    </table>`;
+}
+
+// ── PULIZIE ───────────────────────────────────────────────────
+const CLEANER_COLORS = {Elda:'#2A7A4F', Dalila:'#8B5E2E', Giulia:'#C4883C', Teresa:'#1A6FA8', Annamaria:'#1A6FA8', Enza:'#1A6FA8'};
+const APT_PILL_COLORS = {
+  'Domus Pulchra (grande)':            {bg:'#DBEEFF',color:'#0A3A6B'},
+  'Domus Pulchra (piccolo)':           {bg:'#E8F5EE',color:'#1A5C35'},
+  'Casa dei Visionari – Madonella':    {bg:'#F5EDE3',color:'#5C3A15'},
+  'Casa dei Visionari – Mare':         {bg:'#FDF0E0',color:'#7A4E10'},
+  'Enea Luxury – Putignani':           {bg:'#D6EAFA',color:'#1A4F7A'},
+  'Enea Luxury – Piccinni':            {bg:'#EDF6FF',color:'#2A6FA8'},
 };
 
 function lettiDaPreparare(aptName, numOspiti) {
@@ -1520,16 +1916,15 @@ function lettiDaPreparare(aptName, numOspiti) {
 
 function toggleAptFilter(apt) {
   if (!window._filterApts) window._filterApts = [];
-  if (apt === 'tutti') {
-    window._filterApts = [];
-  } else {
+  if (apt === 'tutti') { window._filterApts = []; }
+  else {
     const idx = window._filterApts.indexOf(apt);
     if (idx === -1) window._filterApts.push(apt);
     else            window._filterApts.splice(idx, 1);
   }
   renderPulizie();
 }
-  
+
 function renderPulizie() {
   const container = document.getElementById('pulizieContent');
   if (!container) return;
@@ -1543,12 +1938,12 @@ function renderPulizie() {
   const checkouts = prenotazioni
     .filter(r => r['Appartamento'] && r['Check-out'] && r['Nome Ospite'])
     .map(r => {
-      const apt     = r['Appartamento'];
-      const addetta = getAddetta(apt);
-      const tariffa = TARIFFE[apt] || { pulizia:0, lavanderia:0 };
-      const coDate  = parseDate(r['Check-out']);
-      const ciDate  = parseDate(r['Check-in']);
-      const ospiti  = parseInt(r['N. Ospiti Adulti']) || 2;
+      const apt      = r['Appartamento'];
+      const addetta  = getAddetta(apt);
+      const tariffa  = TARIFFE[apt] || { pulizia:0, lavanderia:0 };
+      const coDate   = parseDate(r['Check-out']);
+      const ciDate   = parseDate(r['Check-in']);
+      const ospiti   = parseInt(r['N. Ospiti Adulti']) || 2;
       return {
         apt, coDate, ciDate, ospiti,
         persona:    addetta.persona,
@@ -1558,22 +1953,22 @@ function renderPulizie() {
         totale:     tariffa.pulizia + tariffa.lavanderia,
         nomeOspite: r['Nome Ospite'] || '—',
         letti:      lettiDaPreparare(apt, ospiti),
-        nextGuest: null, nextGuestOspiti: 0, nextCiDate: null, lettiNext: [],
+        nextGuest: null, nextGuestOspiti:0, nextCiDate:null, lettiNext:[],
       };
     })
     .filter(r => r.coDate)
-    .sort((a, b) => a.coDate - b.coDate);
+    .sort((a,b) => a.coDate - b.coDate);
 
   checkouts.forEach(co => {
     const next = prenotazioni
-      .filter(r => matchApt(r['Appartamento'], co.apt) && parseDate(r['Check-in']) >= co.coDate && r['Nome Ospite'])
-      .sort((a, b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
+      .filter(r => matchApt(r['Appartamento'],co.apt) && parseDate(r['Check-in']) >= co.coDate && r['Nome Ospite'])
+      .sort((a,b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
     if (next) {
-      co.nextGuest      = next['Nome Ospite'] || '—';
+      co.nextGuest       = next['Nome Ospite'] || '—';
       co.nextGuestOspiti = parseInt(next['N. Ospiti Adulti']) || 2;
-      co.nextCiDate     = parseDate(next['Check-in']);
-      co.lettiNext      = lettiDaPreparare(co.apt, next['N. Ospiti Adulti']);
-      co.letti          = co.lettiNext;
+      co.nextCiDate      = parseDate(next['Check-in']);
+      co.lettiNext       = lettiDaPreparare(co.apt, next['N. Ospiti Adulti']);
+      co.letti           = co.lettiNext;
     }
   });
 
@@ -1583,60 +1978,47 @@ function renderPulizie() {
 
   const mesiOpts = mesi.map(m => {
     const [y, mo] = m.split('-');
-    const lbl = new Date(+y, +mo-1, 1).toLocaleDateString('it-IT', { month:'long', year:'numeric' });
+    const lbl = new Date(+y,+mo-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});
     return `<option value="${m}" ${filterMese===m?'selected':''}>${lbl}</option>`;
   }).join('');
 
   let filtered;
   if (filterMode === 'mese') {
     filtered = filterMese === 'tutti' ? checkouts : checkouts.filter(r => {
-      const [y, m] = filterMese.split('-');
+      const [y,m] = filterMese.split('-');
       return r.coDate.getFullYear()===+y && r.coDate.getMonth()===+m-1;
     });
   } else if (filterMode === 'range' && filterDal) {
     const dal = new Date(filterDal);
     const al  = filterAl ? new Date(filterAl) : new Date('2099-12-31');
-    al.setHours(23, 59, 59);
+    al.setHours(23,59,59);
     filtered = checkouts.filter(r => r.coDate >= dal && r.coDate <= al);
   } else {
     filtered = checkouts;
   }
 
   const aptsDisp = [...new Set(checkouts.map(r => r.apt))].sort();
-
-  // Salva nomi appartamenti in array globale per evitare problemi con caratteri speciali
   window._aptPillNames = ['tutti', ...aptsDisp];
+  const filteredApt = filterApts.length === 0 ? filtered : filtered.filter(r => filterApts.includes(r.apt));
+  const totPuliziaF = filteredApt.reduce((s,r) => s+r.pulizia, 0);
+  const totLavF     = filteredApt.reduce((s,r) => s+r.lavanderia, 0);
 
-  const filteredApt = filterApts.length === 0
-    ? filtered
-    : filtered.filter(r => filterApts.includes(r.apt));
+  const dropdownLabel = filterApts.length===0 ? 'Tutti'
+    : filterApts.length===1 ? filterApts[0]
+    : filterApts.length+' selezionati';
 
-  const totPuliziaF = filteredApt.reduce((s, r) => s + r.pulizia, 0);
-  const totLavF     = filteredApt.reduce((s, r) => s + r.lavanderia, 0);
-
-  // Dropdown label
-  const dropdownLabel = filterApts.length === 0
-    ? 'Tutti'
-    : filterApts.length === 1
-      ? filterApts[0]
-      : filterApts.length + ' selezionati';
-
-  // Voci dropdown
-  const dropdownItems = window._aptPillNames.map((a, idx) => {
-    const isSel  = a === 'tutti' ? filterApts.length === 0 : filterApts.includes(a);
-    const label  = a === 'tutti' ? 'Tutti gli appartamenti' : a;
-    const check  = isSel
-      ? `<span style="color:var(--accent);font-size:14px">&#10003;</span>`
-      : `<span style="width:14px;display:inline-block"></span>`;
+  const dropdownItems = window._aptPillNames.map((a,idx) => {
+    const isSel = a==='tutti' ? filterApts.length===0 : filterApts.includes(a);
+    const label = a==='tutti' ? 'Tutti gli appartamenti' : a;
+    const check = isSel ? `<span style="color:var(--accent);font-size:14px">&#10003;</span>`
+                        : `<span style="width:14px;display:inline-block"></span>`;
     return `<div onclick="toggleAptFilter(window._aptPillNames[${idx}])"
-      style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;
-      font-size:13px;color:var(--text);
-      background:${isSel && a!=='tutti' ? 'var(--accent-light)' : 'transparent'};
-      border-bottom:${a==='tutti' ? '1px solid var(--border)' : 'none'}"
+      style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text);
+      background:${isSel&&a!=='tutti'?'var(--accent-light)':'transparent'};
+      border-bottom:${a==='tutti'?'1px solid var(--border)':'none'}"
       onmouseover="this.style.background='var(--surface2)'"
-      onmouseout="this.style.background='${isSel && a!=='tutti' ? 'var(--accent-light)' : 'transparent'}'">
-      ${check}
-      <span>${label}</span>
+      onmouseout="this.style.background='${isSel&&a!=='tutti'?'var(--accent-light)':'transparent'}'">
+      ${check}<span>${label}</span>
     </div>`;
   }).join('');
 
@@ -1648,13 +2030,11 @@ function renderPulizie() {
         <option value="mese"  ${filterMode==='mese' ?'selected':''}>Per mese</option>
         <option value="range" ${filterMode==='range'?'selected':''}>Intervallo date</option>
       </select>
-
       ${filterMode==='mese' ? `
         <select id="filterMese" onchange="renderPulizie()">
           <option value="tutti" ${filterMese==='tutti'?'selected':''}>Tutti i mesi</option>
           ${mesiOpts}
         </select>` : ''}
-
       ${filterMode==='range' ? `
         <label style="margin-left:8px">Dal</label>
         <input type="date" id="filterDal" value="${filterDal}" onchange="renderPulizie()"
@@ -1666,16 +2046,14 @@ function renderPulizie() {
           style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit;">
           &#10005; Reset
         </button>` : ''}` : ''}
-
       <label style="margin-left:12px">Appartamento:</label>
       <div style="position:relative;display:inline-block">
         <button onclick="toggleAptDropdown()" id="aptDropdownBtn"
           style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;
-          background:${filterApts.length>0 ? 'var(--accent)' : 'var(--surface)'};
-          color:${filterApts.length>0 ? '#fff' : 'var(--text)'};
+          background:${filterApts.length>0?'var(--accent)':'var(--surface)'};
+          color:${filterApts.length>0?'#fff':'var(--text)'};
           cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between">
-          <span>${dropdownLabel}</span>
-          <span style="font-size:10px;opacity:0.7">▼</span>
+          <span>${dropdownLabel}</span><span style="font-size:10px;opacity:0.7">▼</span>
         </button>
         <div id="aptDropdownMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;
           background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;
@@ -1684,10 +2062,8 @@ function renderPulizie() {
           ${dropdownItems}
         </div>
       </div>
-
       <button class="planning-btn" onclick="openPlanningModal()">📋 Planning</button>
-<button class="planning-btn" onclick="exportPuliziePDF()" style="margin-left:6px">📄 PDF</button>
-
+      <button class="planning-btn" onclick="exportPuliziePDF()" style="margin-left:6px">📄 PDF</button>
     </div>
 
     <div class="riepilogo-box">
@@ -1697,7 +2073,6 @@ function renderPulizie() {
       <div class="riepilogo-item"><div class="riepilogo-num">€${totPuliziaF+totLavF}</div><div class="riepilogo-lbl">totale</div></div>
     </div>`;
 
-  const DOT_COLOR = { 'Elda':'#2A7A4F', 'Dalila':'#8B5E2E', 'Giulia':'#C4883C' };
   const byPersona = {};
   filteredApt.forEach(r => {
     if (!byPersona[r.persona]) byPersona[r.persona] = [];
@@ -1705,11 +2080,10 @@ function renderPulizie() {
   });
 
   for (const [persona, interventi] of Object.entries(byPersona)) {
-    const totP = interventi.reduce((s, r) => s + r.pulizia, 0);
-    const totL = interventi.reduce((s, r) => s + r.lavanderia, 0);
-    const dot  = DOT_COLOR[persona] || '#0D5A8E';
-    const fmtD = d => d ? d.toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'short' }) : '—';
-
+    const totP = interventi.reduce((s,r) => s+r.pulizia, 0);
+    const totL = interventi.reduce((s,r) => s+r.lavanderia, 0);
+    const dot  = CLEANER_COLORS[persona] || '#0D5A8E';
+    const fmtD = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
     html += `
       <div class="cleaner-section">
         <div class="cleaner-header">
@@ -1727,27 +2101,18 @@ function renderPulizie() {
         <div class="pulizie-table-wrap">
           <table class="pulizie-table">
             <thead>
-              <tr>
-                <th>Check-out</th>
-                <th>Appartamento / Ospiti uscenti</th>
-                <th>Letti da cambiare</th>
-                <th>Prossimo arrivo</th>
-                <th>Compenso</th>
-              </tr>
+              <tr><th>Check-out</th><th>Appartamento / Ospiti uscenti</th><th>Letti da cambiare</th><th>Prossimo arrivo</th><th>Compenso</th></tr>
             </thead>
             <tbody>
               ${interventi.map(r => `
                 <tr>
                   <td><strong>${fmtD(r.coDate)}</strong></td>
-                  <td>
-                    <div style="font-weight:500">${r.apt}</div>
-                    <div class="periodo-range">${r.nomeOspite} — ${r.ospiti} ospiti</div>
-                  </td>
-                  <td><div class="letti-pills">${r.letti.map(l => `<span class="letto-pill">${l}</span>`).join('')}</div></td>
+                  <td><div style="font-weight:500">${r.apt}</div><div class="periodo-range">${r.nomeOspite} — ${r.ospiti} ospiti</div></td>
+                  <td><div class="letti-pills">${r.letti.map(l=>`<span class="letto-pill">${l}</span>`).join('')}</div></td>
                   <td>${r.nextGuest
                     ? `<div style="font-size:13px">${r.nextGuest} — ${r.nextGuestOspiti} ospiti</div>
                        <div class="periodo-range">&#8594; ${fmtD(r.nextCiDate)}</div>
-                       <div class="letti-pills">${r.lettiNext.map(l => `<span class="letto-pill extra">${l}</span>`).join('')}</div>`
+                       <div class="letti-pills">${r.lettiNext.map(l=>`<span class="letto-pill extra">${l}</span>`).join('')}</div>`
                     : `<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun arrivo previsto</span>`}
                   </td>
                   <td>
@@ -1768,10 +2133,8 @@ function renderPulizie() {
   }
 
   if (!filteredApt.length) {
-    html += `<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;font-style:italic">
-      Nessun check-out trovato per il periodo selezionato.</div>`;
+    html += `<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;font-style:italic">Nessun check-out trovato per il periodo selezionato.</div>`;
   }
-
   container.innerHTML = html;
 }
 
@@ -1780,7 +2143,6 @@ function toggleAptDropdown() {
   if (!menu) return;
   const isOpen = menu.style.display !== 'none';
   menu.style.display = isOpen ? 'none' : 'block';
-  // Chiudi cliccando fuori
   if (!isOpen) {
     setTimeout(() => {
       document.addEventListener('click', function handler(e) {
@@ -1793,39 +2155,20 @@ function toggleAptDropdown() {
   }
 }
 
-function toggleAptFilter(apt) {
-  if (!window._filterApts) window._filterApts = [];
-  if (apt === 'tutti') {
-    window._filterApts = [];
-  } else {
-    const idx = window._filterApts.indexOf(apt);
-    if (idx === -1) window._filterApts.push(apt);
-    else            window._filterApts.splice(idx, 1);
-  }
-  renderPulizie();
-}
 function exportPuliziePDF() {
   const container = document.getElementById('pulizieContent');
   if (!container) return;
-
   const filterApts = window._filterApts || [];
-  const aptLabel   = filterApts.length === 0 ? 'Tutti gli appartamenti' : filterApts.join(', ');
-
-  // Clona il contenuto attuale
-  const clone = container.cloneNode(true);
-
-  // Rimuovi la filter-bar dal clone (non serve nel PDF)
-  const filterBar = clone.querySelector('.filter-bar');
+  const aptLabel   = filterApts.length===0 ? 'Tutti gli appartamenti' : filterApts.join(', ');
+  const clone      = container.cloneNode(true);
+  const filterBar  = clone.querySelector('.filter-bar');
   if (filterBar) filterBar.remove();
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <style>
     @media print { body { margin:0; } .no-print { display:none; } }
     body { font-family:Arial,sans-serif; padding:24px; color:#0D1F2D; }
-    .riepilogo-box {
-      background:#0D5A8E; border-radius:10px; padding:14px 20px;
-      display:flex; gap:20px; flex-wrap:wrap; margin-bottom:24px;
-    }
+    .riepilogo-box { background:#0D5A8E; border-radius:10px; padding:14px 20px; display:flex; gap:20px; flex-wrap:wrap; margin-bottom:24px; }
     .riepilogo-item { text-align:center; }
     .riepilogo-num { font-size:26px; font-weight:700; color:#fff; line-height:1; }
     .riepilogo-lbl { font-size:10px; color:rgba(255,255,255,0.65); margin-top:3px; text-transform:uppercase; letter-spacing:.05em; }
@@ -1854,76 +2197,52 @@ function exportPuliziePDF() {
     tfoot strong { color:#0D5A8E; }
     .pulizie-table-wrap { overflow:visible; }
     .print-btn { display:block; margin:20px auto 0; padding:10px 28px; background:#0D5A8E; color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer; font-family:Arial,sans-serif; }
-  </style>
-  </head><body>
+  </style></head><body>
   <div class="header">
-    <div>
-      <h2>🧹 Riepilogo Pulizie</h2>
-      <div style="font-size:12px;color:#7299B0;margin-top:4px">${aptLabel}</div>
-    </div>
-    <div class="header-sub">
-      <strong>Visionari 3.0</strong><br>
-      generato il ${new Date().toLocaleDateString('it-IT')}
-    </div>
+    <div><h2>🧹 Riepilogo Pulizie</h2><div style="font-size:12px;color:#7299B0;margin-top:4px">${aptLabel}</div></div>
+    <div class="header-sub"><strong>Visionari 3.0</strong><br>generato il ${new Date().toLocaleDateString('it-IT')}</div>
   </div>
   ${clone.innerHTML}
-  <div class="footer">
-    <span>Visionari 3.0</span>
-    <span>generato il ${new Date().toLocaleDateString('it-IT')}</span>
-  </div>
+  <div class="footer"><span>Visionari 3.0</span><span>generato il ${new Date().toLocaleDateString('it-IT')}</span></div>
   <button class="print-btn no-print" onclick="window.print()">🖨️ Stampa / Salva PDF</button>
   </body></html>`;
 
   const printWin = window.open('', '_blank');
-  if (!printWin) {
-    alert('Il browser ha bloccato il popup. Consenti i popup per questo sito e riprova.');
-    return;
-  }
+  if (!printWin) { alert('Il browser ha bloccato il popup. Consenti i popup e riprova.'); return; }
   printWin.document.write(html);
   printWin.document.close();
   printWin.focus();
 }
+
 // ── DASHBOARD ─────────────────────────────────────────────────
 let dashOffset = 0;
 function getDashDay() { const d=new Date(TODAY); d.setDate(d.getDate()+dashOffset); return d; }
-function changeDashDay(n) { dashOffset+=n; renderDashboard(); }
-function resetDashDay()   { dashOffset=0;  renderDashboard(); }
-function pickDashDate(val) {
-  if (!val) return;
-  const [y,m,d] = val.split('-').map(Number);
-  dashOffset = Math.round((new Date(y,m-1,d) - TODAY) / 86400000);
-  renderDashboard();
-}
 
 function renderDashboard() {
   const c = document.getElementById('dashboardContent'); if (!c) return;
   const day = getDashDay();
-  const y=day.getFullYear(), m=String(day.getMonth()+1).padStart(2,'0'), dd=String(day.getDate()).padStart(2,'0');
-  const ciList = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']), day) && r['Nome Ospite']);
+  const ciList = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']),  day) && r['Nome Ospite']);
   const coList = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), day) && r['Nome Ospite']);
   const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
 
   function gCard(r, type) {
-    const nome = r['Nome Ospite']||'—', apt = r['Appartamento']||'—', osp = r['N. Ospiti Adulti']||'?';
-    const phone = (r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
-    const pClean = phone.replace('+','');
-    const isCI = type==='ci';
-    const msg = isCI
-      ? (getPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} \uD83D\uDC4B Welcome to Bari!`)
-      : (getCheckoutPrompt(apt,nome) || `Hello ${nome.split(' ')[0]} \uD83D\uDE0A I hope you are enjoying your stay! What time are you planning to check out?`);
-    // Usa data-idx per evitare problemi con caratteri speciali nel messaggio
-    const cardIdx = `dash_${type}_${pClean}`;
-    waMessages[cardIdx] = {msg, phone: pClean};
-    const wa = phone
-      ? `<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')">&#128172; ${phone}</button>`
-      : `<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')" style="opacity:0.7;border:1px dashed currentColor;background:transparent">&#128172; Invia a...</button>`;
-    // Calcola notti per check-in
-    let nottiStr = '';
+    const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
+    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+    const pClean=phone.replace('+','');
+    const isCI=type==='ci';
+    const msg=isCI
+      ? (getPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 👋 Welcome to Bari!`)
+      : (getCheckoutPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 😊 I hope you enjoyed your stay! What time are you checking out?`);
+    const cardIdx=`dash_${type}_${pClean}`; waMessages[cardIdx]={msg,phone:pClean};
+    const wa=phone
+      ?`<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')">&#128172; ${phone}</button>`
+      :`<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')" style="opacity:0.7;border:1px dashed currentColor;background:transparent">&#128172; Invia a...</button>`;
+    let nottiStr='';
     if (isCI) {
-      const ciDate = parseDate(r['Check-in']), coDate = parseDate(r['Check-out']);
-      if (ciDate && coDate) {
-        const notti = Math.round((coDate - ciDate) / 86400000);
-        nottiStr = `<span style="font-size:11px;color:var(--text3);margin-left:auto">${notti} nott${notti===1?'e':'i'}</span>`;
+      const ciDate=parseDate(r['Check-in']),coDate=parseDate(r['Check-out']);
+      if (ciDate&&coDate) {
+        const notti=Math.round((coDate-ciDate)/86400000);
+        nottiStr=`<span style="font-size:11px;color:var(--text3);margin-left:auto">${notti} nott${notti===1?'e':'i'}</span>`;
       }
     }
     return `<div class="dash-card ${type}"><div class="dash-guest-name">${nome}</div><div class="dash-meta" style="display:flex;align-items:center">${osp} ospiti · ${apt}${nottiStr}</div>${wa}</div>`;
@@ -1947,187 +2266,33 @@ function renderDashboard() {
     </div>`;
 }
 
-function sendWADirect(enc, phone) {
-  const msg = decodeURIComponent(enc);
-  navigator.clipboard.writeText(msg)
-    .then(() => setTimeout(() => window.open(`https://wa.me/${phone}`, '_blank'), 600))
-    .catch(() => window.open(`https://wa.me/${phone}`, '_blank'));
-}
-
 function sendWA(key) {
-  const item = waMessages[key];
-  if (!item) return;
+  const item = waMessages[key]; if (!item) return;
   navigator.clipboard.writeText(item.msg)
-    .then(() => setTimeout(() => window.open(`https://wa.me/${item.phone}`, '_blank'), 600))
-    .catch(() => window.open(`https://wa.me/${item.phone}`, '_blank'));
+    .then(() => setTimeout(() => window.open(`https://wa.me/${item.phone}`,'_blank'), 600))
+    .catch(() => window.open(`https://wa.me/${item.phone}`,'_blank'));
 }
-
-// Per Enea: copia messaggio e apre WA senza numero fisso
 function shareWAMsg(key) {
-  const item = waMessages[key];
-  if (!item) return;
+  const item = waMessages[key]; if (!item) return;
   navigator.clipboard.writeText(item.msg)
-    .then(() => setTimeout(() => window.open('https://wa.me/', '_blank'), 600))
-    .catch(() => window.open('https://wa.me/', '_blank'));
+    .then(() => setTimeout(() => window.open('https://wa.me/','_blank'), 600))
+    .catch(() => window.open('https://wa.me/','_blank'));
 }
 
-function dashCopy(enc, phone) {
-  const msg = decodeURIComponent(enc);
-  navigator.clipboard.writeText(msg)
-    .then(() => setTimeout(() => window.open(`https://wa.me/${phone}`,'_blank'), 600))
-    .catch(() => window.open(`https://wa.me/${phone}`,'_blank'));
-}
-
-function getCheckoutPrompt(aptName, nomeOspite) {
-  const norm = s => s.toLowerCase().replace(/\s+/g,'').replace(/[–—\-]/g,'-').replace(/[()]/g,'');
-  const found = promptMessaggi.find(p => norm(p.apt) === norm(aptName));
-  if (!found || !found.msgCO) {
-    // Fallback: cerca per corrispondenza parziale
-    const found2 = promptMessaggi.find(p => norm(aptName).includes(norm(p.apt).slice(0,8)) || norm(p.apt).includes(norm(aptName).slice(0,8)));
-    if (!found2 || !found2.msgCO) return null;
-    return found2.msgCO.replace(/\[NOME OSPITE\]/gi, (nomeOspite||'').split(' ')[0]);
-  }
-  return found.msgCO.replace(/\[NOME OSPITE\]/gi, (nomeOspite||'').split(' ')[0]);
-}
-
-// ── TODO aggiornato — oggi ─────────────────────────────────────
-function renderTodo() {
-  const today = getDay();
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
-  const ciOggi  = prenotazioni.filter(r => sameDay(parseDate(r['Check-in']),  today) && r['Nome Ospite']);
-  const coOggi  = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), today) && r['Nome Ospite']);
-  const coDomani = prenotazioni.filter(r => sameDay(parseDate(r['Check-out']), tomorrow) && TARIFFE[r['Appartamento']]);
-  const fmtS = d => d ? d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}) : '—';
-  let html = '';
-
-  // CHECK-IN oggi
-  html += `<div class="todo-section"><div class="todo-section-header">
-    <span class="todo-section-title">&#8592; Check-in</span>
-    <span class="todo-section-count count-ci">${ciOggi.length} oggi</span>
-  </div>`;
-  if (!ciOggi.length) html += `<div class="todo-empty">Nessun check-in oggi.</div>`;
-  else ciOggi.forEach((r,i) => {
-    const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
-    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
-    const pClean=phone.replace('+','');
-    const msg=getPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} \uD83D\uDC4B Welcome!`;
-    const wKey=`ci_wa_${i}`; waMessages[wKey]={msg,phone:pClean};
-    const key=`ci_${i}`; const done=!!todoDone[key];
-    html += `<div class="todo-card ci ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
-      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
-      <div class="tc-body">
-        <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-ci">check-in ${fmtS(parseDate(r['Check-in']))}</span></div>
-        <div class="tc-row2">${phone?`<button class="tc-wa ci wa-btn" data-key="${wKey}">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
-      </div></div></div>`;
-  });
-  html += `</div>`;
-
-  // CHECK-OUT oggi
-  html += `<div class="todo-section"><div class="todo-section-header">
-    <span class="todo-section-title">&#8594; Check-out</span>
-    <span class="todo-section-count count-co">${coOggi.length} oggi</span>
-  </div>`;
-  if (!coOggi.length) html += `<div class="todo-empty">Nessun check-out oggi.</div>`;
-  else coOggi.forEach((r,i) => {
-    const nome=r['Nome Ospite']||'—', apt=r['Appartamento']||'—', osp=r['N. Ospiti Adulti']||'?';
-    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
-    const pClean=phone.replace('+','');
-    const msg=getCheckoutPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 😊 I hope you enjoyed your stay! What time are you checking out?`;
-    const wKey=`co_wa_${i}`; waMessages[wKey]={msg,phone:pClean};
-    const key=`co_${i}`; const done=!!todoDone[key];
-    html += `<div class="todo-card co ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
-      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
-      <div class="tc-body">
-        <div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-co">check-out ${fmtS(parseDate(r['Check-out']))}</span></div>
-        <div class="tc-row2">${phone?`<button class="tc-wa co wa-btn" data-key="${wKey}">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div>
-      </div></div></div>`;
-  });
-  html += `</div>`;
-
-  // PULIZIE domani
-  html += `<div class="todo-section"><div class="todo-section-header">
-    <span class="todo-section-title">&#9775; Pulizie</span>
-    <span class="todo-section-count count-pul">${coDomani.length} check-out domani</span>
-  </div>`;
-  if (!coDomani.length) html += `<div class="todo-empty">Nessun check-out domani.</div>`;
-  else coDomani.forEach((r,i) => {
-    const apt=r['Appartamento']||'—';
-    const addettaT=getAddetta(apt); if(!addettaT||addettaT.persona==='—') return;
-    const persona=addettaT.persona, phone=addettaT.phone||'', pClean=phone.replace('+','');
-    const nome=r['Nome Ospite']||'—', osp=r['N. Ospiti Adulti']||'?';
-    const coDate=parseDate(r['Check-out']);
-    const msgPul = `Ciao ${persona}, domani (${fmtS(coDate)}) c'è check-out a ${apt} di ${nome} (${osp} ospiti). Pulizie e cambio biancheria. Grazie!`;
-    const wKeyPul = `pul_wa_${i}`; waMessages[wKeyPul] = {msg: msgPul, phone: pClean};
-    const key=`pul_${i}`; const done=!!todoDone[key];
-    // Per shareLink: apre WA senza numero fisso per scegliere il destinatario
-    const waBtn = !phone
-      ? `<button class="tc-wa pul wa-btn-share" onclick="event.stopPropagation();shareWAMsg('${wKeyPul}')">&#128172; Invia a...</button>`
-      : `<button class="tc-wa pul wa-btn" data-key="${wKeyPul}">&#128172; ${phone}</button>`;
-  
-    html += `<div class="todo-card pul ${done?'done':''}" onclick="toggleTodoKey('${key}',this)">
-      <div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div>
-      <div class="tc-body">
-        <div class="tc-row1"><span class="tc-name">${persona}</span><span class="tc-apt">${apt}</span><span class="tc-tag" style="background:var(--accent-light);color:var(--accent)">domani</span></div>
-        <div class="tc-row2">${waBtn}<span class="tc-meta">${nome} · ${osp} ospiti</span></div>
-      </div></div></div>`;
-  });
-  html += `</div>`;
-
-  document.getElementById('todoContent').innerHTML = html;
-}
-
-function toggleTodoKey(key, el) {
-  todoDone[key] = !todoDone[key];
-  localStorage.setItem('v3_todo', JSON.stringify(todoDone));
-  el.classList.toggle('done');
-  el.querySelector('.tc-check').innerHTML = todoDone[key] ? '&#10003;' : '';
-}
-
-// ── PLANNING PDF ──────────────────────────────────────────────
-const CLEANER_COLORS = {Elda:'#2A7A4F', Dalila:'#8B5E2E', Giulia:'#C4883C', Teresa:'#1A6FA8', Annamaria:'#1A6FA8', Enza:'#1A6FA8'};
-
-// Recupera addetta e telefono dal foglio Sheet (con fallback su TARIFFE)
-function getAddetta(aptName) {
-  const norm = s => s.toLowerCase().replace(/\s+/g,'').replace(/[\u2013-]/g,'-');
-  const found = addette.find(a => norm(a.apt) === norm(aptName));
-  if (found) return {persona: found.nome, phone: found.tel};
-  // Fallback su TARIFFE se Sheet non disponibile
-  const tar = TARIFFE[aptName];
-  if (tar) return {persona: tar.persona, phone: CLEANER_PHONES[tar.persona]||''};
-  return {persona:'—', phone:''};
-}
-const APT_PILL_COLORS = {
-  'Domus Pulchra (grande)':             {bg:'#DBEEFF',color:'#0A3A6B'},
-  'Domus Pulchra (piccolo)':            {bg:'#E8F5EE',color:'#1A5C35'},
-  'Casa dei Visionari – Madonella':     {bg:'#F5EDE3',color:'#5C3A15'},
-  'Casa dei Visionari – Mare':          {bg:'#FDF0E0',color:'#7A4E10'},
-  'Enea Luxury – Putignani':            {bg:'#D6EAFA',color:'#1A4F7A'},
-  'Enea Luxury – Piccinni':             {bg:'#EDF6FF',color:'#2A6FA8'},
-};
-
+// ── PLANNING MODAL ────────────────────────────────────────────
 function openPlanningModal() {
   const today = new Date(TODAY);
-  const end   = new Date(today);
-  end.setDate(end.getDate() + 14);
-  const todayStr = today.toISOString().slice(0, 10);
-  const endStr   = end.toISOString().slice(0, 10);
+  const end   = new Date(today); end.setDate(end.getDate()+14);
+  const todayStr = today.toISOString().slice(0,10);
+  const endStr   = end.toISOString().slice(0,10);
 
-  // Persone disponibili
   const persone = [...new Set(
-    prenotazioni
-      .filter(r => r['Appartamento'])
-      .map(r => getAddetta(r['Appartamento']).persona)
-      .filter(p => p && p !== '—')
+    prenotazioni.filter(r=>r['Appartamento']).map(r=>getAddetta(r['Appartamento']).persona).filter(p=>p&&p!=='—')
   )].sort();
-
-  // Appartamenti disponibili
-  const aptsDisp = [...new Set(
-    prenotazioni.filter(r => r['Appartamento']).map(r => r['Appartamento'])
-  )].sort();
+  const aptsDisp = [...new Set(prenotazioni.filter(r=>r['Appartamento']).map(r=>r['Appartamento']))].sort();
 
   document.getElementById('planningModalSub').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
-
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--text3);width:70px">📅 Periodo</span>
         <input type="date" id="planDal" value="${todayStr}" onchange="refreshPlanningRows()"
@@ -2136,25 +2301,22 @@ function openPlanningModal() {
         <input type="date" id="planAl" value="${endStr}" onchange="refreshPlanningRows()"
           style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
       </div>
-
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--text3);width:70px">🏠 Casa</span>
         <select id="planApt" onchange="refreshPlanningRows()"
           style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px">
           <option value="tutti">Tutte le case</option>
-          ${aptsDisp.map(a => `<option value="${a}">${a}</option>`).join('')}
+          ${aptsDisp.map(a=>`<option value="${a}">${a}</option>`).join('')}
         </select>
       </div>
-
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--text3);width:70px">👤 Persona</span>
         <select id="planPersona" onchange="refreshPlanningRows()"
           style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px">
           <option value="tutti">Tutte le persone</option>
-          ${persone.map(p => `<option value="${p}">${p}</option>`).join('')}
+          ${persone.map(p=>`<option value="${p}">${p}</option>`).join('')}
         </select>
       </div>
-
     </div>
     <div style="height:1px;background:var(--border);margin:14px 0"></div>`;
 
@@ -2167,75 +2329,59 @@ function refreshPlanningRows() {
   const alVal     = document.getElementById('planAl')      ? document.getElementById('planAl').value      : '';
   const filterApt = document.getElementById('planApt')     ? document.getElementById('planApt').value     : 'tutti';
   const filterPer = document.getElementById('planPersona') ? document.getElementById('planPersona').value : 'tutti';
-
   if (!dalVal) return;
-  const start = new Date(dalVal + 'T00:00:00');
-  const end   = new Date(alVal  + 'T23:59:59');
+  const start = new Date(dalVal+'T00:00:00');
+  const end   = new Date(alVal +'T23:59:59');
 
-  // Calcola interventi filtrati
   const interventi = prenotazioni
     .filter(r => r['Appartamento'] && r['Check-out'])
     .map(r => {
       const coDate      = parseDate(r['Check-out']);
       const apt         = r['Appartamento'];
       const addettaInfo = getAddetta(apt);
-      return { apt, coDate, persona: addettaInfo.persona, phone: addettaInfo.phone };
+      return { apt, coDate, persona:addettaInfo.persona, phone:addettaInfo.phone };
     })
     .filter(r => {
-      if (!r.coDate || r.coDate < start || r.coDate > end) return false;
-      if (filterApt !== 'tutti' && r.apt !== filterApt)    return false;
-      if (filterPer !== 'tutti' && r.persona !== filterPer) return false;
+      if (!r.coDate || r.coDate<start || r.coDate>end) return false;
+      if (filterApt!=='tutti' && r.apt!==filterApt)    return false;
+      if (filterPer!=='tutti' && r.persona!==filterPer) return false;
       return true;
     });
 
-  // Raggruppa per persona
   const byP = {};
-  interventi.forEach(r => {
-    if (!byP[r.persona]) byP[r.persona] = [];
-    byP[r.persona].push(r);
-  });
+  interventi.forEach(r => { if (!byP[r.persona]) byP[r.persona]=[]; byP[r.persona].push(r); });
 
   const rows = Object.entries(byP).map(([persona, items]) => {
     const dot    = CLEANER_COLORS[persona] || '#0D5A8E';
-    const adInfo = addette.find(a => a.nome === persona) || {};
+    const adInfo = addette.find(a=>a.nome===persona) || {};
     const phone  = adInfo.tel || CLEANER_PHONES[persona] || '';
-    const pClean = phone.replace('+', '');
-    const apts   = [...new Set(items.map(r => r.apt))].join(' · ');
+    const pClean = phone.replace('+','');
+    const apts   = [...new Set(items.map(r=>r.apt))].join(' · ');
     const btn = pClean
-      ? `<button class="pm-btn" onclick="generatePDF('${persona}','${pClean}')">📄 PDF + WA</button>`
-      : `<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF('${persona}','')">📄 PDF</button>`;
+      ?`<button class="pm-btn" onclick="generatePDF('${persona}','${pClean}')">📄 PDF + WA</button>`
+      :`<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF('${persona}','')">📄 PDF</button>`;
     return `<div class="pm-row">
-      <div class="pm-persona">
-        <span class="pm-dot" style="background:${dot}"></span>
-        <div>
-          <div class="pm-name">${persona}</div>
-          <div class="pm-info">${apts} · ${items.length} interventi</div>
-        </div>
-      </div>
-      ${btn}
-    </div>`;
+      <div class="pm-persona"><span class="pm-dot" style="background:${dot}"></span>
+        <div><div class="pm-name">${persona}</div><div class="pm-info">${apts} · ${items.length} interventi</div></div>
+      </div>${btn}</div>`;
   }).join('');
 
   document.getElementById('planningModalRows').innerHTML = rows ||
-    `<div style="padding:20px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">
-      Nessun intervento nel periodo selezionato.
-    </div>`;
+    `<div style="padding:20px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun intervento nel periodo selezionato.</div>`;
 }
+
 function closePlanningModal() {
   document.getElementById('planningModal').style.display = 'none';
 }
+
 function generatePDF(persona, phone) {
   const dalVal    = document.getElementById('planDal')     ? document.getElementById('planDal').value     : '';
   const alVal     = document.getElementById('planAl')      ? document.getElementById('planAl').value      : '';
   const filterApt = document.getElementById('planApt')     ? document.getElementById('planApt').value     : 'tutti';
-
   if (!dalVal) return;
-  const start = new Date(dalVal + 'T00:00:00');
-  const end   = new Date(alVal  + 'T23:59:59');
-
-  const fmtDate = d => d
-    ? d.toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'short' })
-    : '—';
+  const start = new Date(dalVal+'T00:00:00');
+  const end   = new Date(alVal +'T23:59:59');
+  const fmtDate = d => d ? d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}) : '—';
 
   const items = prenotazioni
     .filter(r => r['Appartamento'] && r['Check-out'])
@@ -2243,47 +2389,36 @@ function generatePDF(persona, phone) {
       const coDate      = parseDate(r['Check-out']);
       const apt         = r['Appartamento'];
       const addettaInfo = getAddetta(apt);
-      const tar         = TARIFFE[apt] || { pulizia:0, lavanderia:0 };
-      const aptObj      = APTS.find(a => matchApt(a.name, apt));
+      const tar         = TARIFFE[apt] || {pulizia:0,lavanderia:0};
+      const aptObj      = APTS.find(a => matchApt(a.name,apt));
       const maxCap      = aptObj ? aptObj.cap : 4;
       const nextCI      = prenotazioni
-        .filter(nr => matchApt(nr['Appartamento'], apt) && parseDate(nr['Check-in']) >= coDate)
-        .sort((a, b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
-      let arrivoOsp = maxCap, maxCap2 = true, arrivoBambini = 0;
+        .filter(nr => matchApt(nr['Appartamento'],apt) && parseDate(nr['Check-in']) >= coDate)
+        .sort((a,b) => parseDate(a['Check-in']) - parseDate(b['Check-in']))[0];
+      let arrivoOsp=maxCap, maxCap2=true, arrivoBambini=0;
       if (nextCI) {
         arrivoOsp     = parseInt(nextCI['N. Ospiti Adulti']) || maxCap;
         arrivoBambini = parseInt(nextCI['N. Ospiti Minori']) || 0;
         maxCap2       = false;
       }
-      return {
-        apt, coDate,
-        persona:      addettaInfo.persona,
-        pulizia:      tar.pulizia,
-        lavanderia:   tar.lavanderia,
-        totale:       tar.pulizia + tar.lavanderia,
-        arrivoOsp, arrivoBambini, maxCap2,
-      };
+      return { apt, coDate, persona:addettaInfo.persona, pulizia:tar.pulizia, lavanderia:tar.lavanderia, totale:tar.pulizia+tar.lavanderia, arrivoOsp, arrivoBambini, maxCap2 };
     })
     .filter(r => {
-      if (!r.coDate || r.coDate < start || r.coDate > end) return false;
-      if (r.persona !== persona)                            return false;
-      if (filterApt !== 'tutti' && r.apt !== filterApt)    return false;
+      if (!r.coDate || r.coDate<start || r.coDate>end) return false;
+      if (r.persona!==persona)                          return false;
+      if (filterApt!=='tutti' && r.apt!==filterApt)    return false;
       return true;
     })
-    .sort((a, b) => a.coDate - b.coDate);
+    .sort((a,b) => a.coDate - b.coDate);
 
-  if (!items.length) {
-    alert('Nessun intervento trovato per i filtri selezionati.');
-    return;
-  }
+  if (!items.length) { alert('Nessun intervento trovato per i filtri selezionati.'); return; }
 
   const tableRows = items.map(r => {
-    const pc      = APT_PILL_COLORS[r.apt] || { bg:'#EDF4F9', color:'#0D5A8E' };
-    const totOsp  = (r.arrivoOsp || 0) + (r.arrivoBambini || 0);
+    const pc     = APT_PILL_COLORS[r.apt] || {bg:'#EDF4F9',color:'#0D5A8E'};
+    const totOsp = (r.arrivoOsp||0) + (r.arrivoBambini||0);
     const arrivoStr = r.maxCap2
-      ? `<span class="max-badge">Massima capienza</span>`
-      : `<div class="ospiti-num">${totOsp}</div>
-         <div class="ospiti-det">${r.arrivoOsp || 0} adulti${r.arrivoBambini > 0 ? ' + ' + r.arrivoBambini + ' bimbi' : ''}</div>`;
+      ?`<span class="max-badge">Massima capienza</span>`
+      :`<div class="ospiti-num">${totOsp}</div><div class="ospiti-det">${r.arrivoOsp||0} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</div>`;
     return `<tr>
       <td><strong>${fmtDate(r.coDate)}</strong></td>
       <td><span class="apt-pill" style="background:${pc.bg};color:${pc.color}">${r.apt}</span></td>
@@ -2291,10 +2426,10 @@ function generatePDF(persona, phone) {
     </tr>`;
   }).join('');
 
-  const dotColor  = { 'Elda':'#2A7A4F', 'Dalila':'#8B5E2E', 'Giulia':'#C4883C' };
-  const startStr  = start.toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' });
-  const endStr2   = end.toLocaleDateString('it-IT',   { day:'numeric', month:'long', year:'numeric' });
-  const aptLabel  = filterApt !== 'tutti' ? `<div class="filtro-apt">🏠 ${filterApt}</div>` : '';
+  const dotColor  = {Elda:'#2A7A4F',Dalila:'#8B5E2E',Giulia:'#C4883C'};
+  const startStr  = start.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+  const endStr2   = end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+  const aptLabel  = filterApt!=='tutti' ? `<div class="filtro-apt">🏠 ${filterApt}</div>` : '';
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <style>
@@ -2315,22 +2450,13 @@ function generatePDF(persona, phone) {
     .max-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:500; background:#FDF3E0; color:#A06820; }
     .footer { margin-top:20px; padding-top:12px; border-top:1px solid #D6EAFA; display:flex; justify-content:space-between; font-size:11px; color:#7299B0; }
     .print-btn { display:block; margin:20px auto 0; padding:10px 28px; background:#0D5A8E; color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer; font-family:Arial,sans-serif; }
-  </style>
-  </head><body>
+  </style></head><body>
   <div class="header">
-    <div class="header-left">
-      <h2><span class="dot"></span>${persona}</h2>
-      ${aptLabel}
-    </div>
-    <div class="periodo">
-      <strong>Planning Pulizie</strong><br>
-      ${startStr}<br>${endStr2}
-    </div>
+    <div class="header-left"><h2><span class="dot"></span>${persona}</h2>${aptLabel}</div>
+    <div class="periodo"><strong>Planning Pulizie</strong><br>${startStr}<br>${endStr2}</div>
   </div>
   <table>
-    <thead>
-      <tr><th>Data pulizia</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr>
-    </thead>
+    <thead><tr><th>Data pulizia</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead>
     <tbody>${tableRows}</tbody>
   </table>
   <div class="footer">
@@ -2340,81 +2466,61 @@ function generatePDF(persona, phone) {
   <button class="print-btn no-print" onclick="window.print()">🖨️ Stampa / Salva PDF</button>
   </body></html>`;
 
-  const printWin = window.open('', '_blank');
-  if (!printWin) {
-    alert('Il browser ha bloccato il popup. Consenti i popup per questo sito e riprova.');
-    return;
-  }
+  const printWin = window.open('','_blank');
+  if (!printWin) { alert('Il browser ha bloccato il popup. Consenti i popup e riprova.'); return; }
   printWin.document.write(html);
   printWin.document.close();
   printWin.focus();
-
-  setTimeout(() => {
-    if (phone) window.open('https://wa.me/' + phone, '_blank');
-    else       window.open('https://wa.me/', '_blank');
-  }, 600);
-
+  setTimeout(() => { if (phone) window.open('https://wa.me/'+phone,'_blank'); else window.open('https://wa.me/','_blank'); }, 600);
   closePlanningModal();
 }
-// ── TABS ──────────────────────────────────────────────────────────────────────
+
+// ── TABS ──────────────────────────────────────────────────────
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
-  if (name==='pulizie') renderPulizie();
-  if (name==='todo') renderTodo();
+  if (name==='pulizie')   renderPulizie();
+  if (name==='todo')      renderTodo();
   if (name==='dashboard') renderDashboard();
+  if (name==='incassi')   renderIncassi();
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
-
+// ── INIT ──────────────────────────────────────────────────────
 let lastLoad = 0;
-
 document.addEventListener('visibilitychange', function() {
-  if (document.visibilityState === 'visible') {
-    const isLogged = sessionStorage.getItem(SESSION_KEY) === '1';
-    const minutiPassati = (Date.now() - lastLoad) / 60000;
-    if (isLogged && minutiPassati > 5) { // ricarica solo se sono passati 5+ minuti
-      loadAllData();
-      lastLoad = Date.now();
-    }
+  if (document.visibilityState==='visible') {
+    const isLogged = sessionStorage.getItem(SESSION_KEY)==='1';
+    const minutiPassati = (Date.now()-lastLoad)/60000;
+    if (isLogged && minutiPassati>5) { loadAllData(); lastLoad=Date.now(); }
   }
 });
-
-// Registra il momento del primo caricamento
-window.addEventListener('DOMContentLoaded', () => { lastLoad = Date.now(); });
-  
-  updateDates();
 window.addEventListener('DOMContentLoaded', () => {
+  lastLoad = Date.now();
   const picker = document.getElementById('datePicker');
   if (picker) {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth()+1).padStart(2,'0');
-    const d = String(now.getDate()).padStart(2,'0');
-    picker.value = `${y}-${m}-${d}`;
+    const now=new Date();
+    picker.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   }
 });
+
+updateDates();
 
 // ── GLOBAL WA BUTTON HANDLER ──────────────────────────────────
 document.addEventListener('click', function(e) {
   const btn = e.target.closest('.wa-btn');
   if (!btn) return;
-  e.stopPropagation();
-  e.preventDefault();
+  e.stopPropagation(); e.preventDefault();
   const key = btn.getAttribute('data-key');
   if (!key) return;
   const item = waMessages[key];
   if (!item || !item.phone) return;
   navigator.clipboard.writeText(item.msg)
-    .then(() => setTimeout(() => window.open('https://wa.me/' + item.phone, '_blank'), 600))
-    .catch(() => window.open('https://wa.me/' + item.phone, '_blank'));
+    .then(() => setTimeout(() => window.open('https://wa.me/'+item.phone,'_blank'), 600))
+    .catch(() => window.open('https://wa.me/'+item.phone,'_blank'));
 });
-
 </script>
 </div><!-- /app -->
 </body>
-</html> 
-
-
+</html>
