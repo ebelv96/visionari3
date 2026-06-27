@@ -524,7 +524,10 @@ function isEnea(aptName) {
 
 // Recupera dati addetta dal foglio (già caricato in `addetteSheet`)
 function getAddettaSheet(aptName) {
-  const norm = s => (s||'').toLowerCase().replace(/\s+/g,'').replace(/[\u2013\u2014\-]/g,'-').replace(/[()]/g,'');
+  const norm = s => (s||'').toLowerCase()
+    .replace(/\s+/g,' ').trim()
+    .replace(/[\u2013\u2014\u2012\-]/g,'-')
+    .replace(/[()]/g,'');
   const found = addetteSheet.find(a => norm(a['Appartamento']) === norm(aptName));
   return found || null;
 }
@@ -535,10 +538,19 @@ function getAddettaSheet(aptName) {
 function getCostiPulizie(aptName, numOspiti) {
   const row = getAddettaSheet(aptName);
   if (!row) return { pulizia: 0, lavanderia: 0, totale: 0 };
-  const pulizia    = parseFloat(row['Costo pulizia'])     || 0;
-  const lavBase    = parseFloat(row['Costo lavanderia'])   || 0;
-  const ospiti     = parseInt(numOspiti) || 1;
-  const lavanderia = isEnea(aptName) ? lavBase * ospiti : lavBase;
+  
+  // Pulisce "€ 25,00" → 25
+  const cleanNum = s => parseFloat((s||'0').toString().replace(/[€\s]/g,'').replace(',','.')) || 0;
+  
+  const pulizia  = cleanNum(row['Costo pulizia']);
+  const lavBase  = row['Costo lavanderia'];
+  const ospiti   = parseInt(numOspiti) || 1;
+  
+  // Se "variabile" → Enea: 9€ × ospiti
+  const lavanderia = (lavBase||'').toString().toLowerCase().includes('variabile')
+    ? 9 * ospiti
+    : cleanNum(lavBase);
+  
   return { pulizia, lavanderia, totale: pulizia + lavanderia };
 }
 
