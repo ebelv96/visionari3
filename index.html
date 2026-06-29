@@ -435,7 +435,13 @@ function normStr(s){return(s||'').toString().trim().toLowerCase().replace(/[\u20
 function matchApt(a,b){return normStr(a)===normStr(b);}
 
 // Legge numero da "€ 25,00" o "25,00" o "25.00"
-function parseEur(s){   const clean=(s||'0').toString()     .replace(/[€\s]/g,'')   // toglie € e spazi     .replace(/\./g,'')       // toglie i punti (separatori migliaia)     .replace(',','.');        // converte virgola in punto decimale   return parseFloat(clean)||0; }
+function parseEur(s){
+  const clean=(s||'0').toString()
+    .replace(/[€\s]/g,'')
+    .replace(/\./g,'')
+    .replace(',','.');
+  return parseFloat(clean)||0;
+}
 
 function isDomus(aptName){return DOMUS_APTS.some(d=>matchApt(aptName,d));}
 function isEnea(aptName){return normStr(aptName).includes('enea');}
