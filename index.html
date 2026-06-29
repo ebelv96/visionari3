@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -438,9 +437,9 @@ function matchApt(a,b){return normStr(a)===normStr(b);}
 // Legge numero da "€ 25,00" o "25,00" o "25.00"
 function parseEur(s){
   const clean=(s||'0').toString()
-    .replace(/[€\s]/g,'')
-    .replace(/\./g,'')
-    .replace(',','.');
+    .replace(/[€\s]/g,'')   // toglie € e spazi
+    .replace(/\./g,'')       // toglie i punti (separatori migliaia)
+    .replace(',','.');        // converte virgola in punto decimale
   return parseFloat(clean)||0;
 }
 
@@ -716,7 +715,7 @@ function renderIncassi(){
     byApt[apt].servizi+=x.servizi;byApt[apt].finale+=x.finale;byApt[apt].n+=1;
   });
 
-// Per mese (grafico) — sempre tutti i mesi, filtra solo per appartamento
+  // Per mese (grafico) — sempre tutti i mesi, filtra solo per appartamento
   const rowsGraf = incassiFilterApt === 'tutti'
     ? prenoValide.map(r => ({r, ...calcIncasso(r)}))
     : prenoValide.filter(r => matchApt(r['Appartamento'], incassiFilterApt)).map(r => ({r, ...calcIncasso(r)}));
@@ -728,7 +727,6 @@ function renderIncassi(){
     byMese[mk].finale+=x.finale;byMese[mk].lordo+=x.lordo;
   });
   const mesiGraf=Object.keys(byMese).sort();
- 
   const meseLabel=incassiFilterMese==='tutti'?'Tutti i periodi':(()=>{const[y,m]=incassiFilterMese.split('-');return new Date(+y,+m-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});})();
 
   function piattBadge(r){
