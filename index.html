@@ -787,6 +787,13 @@ function renderIncassi(){
       <div class="incassi-kpi-card servizi"><div class="incassi-kpi-num">${fmtEur(totServ)}</div><div class="incassi-kpi-lbl">Servizi</div></div>
       <div class="incassi-kpi-card finale"><div class="incassi-kpi-num">${fmtEur(totFinale)}</div><div class="incassi-kpi-lbl">Incasso finale</div></div>
     </div>
+    +'<div style="margin-bottom:16px">'
++'<button onclick="var n=document.getElementById(\'incassi-note\');n.style.display=n.style.display===\'none\'?\'block\':\'none\'" style="font-size:12px;padding:6px 14px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">&#9432; Come vengono calcolati gli importi &#9660;</button>'
++'<div id="incassi-note" style="display:none;margin-top:10px;font-size:11px;color:var(--text3);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;line-height:1.7">'
++'<strong style="color:var(--text2)">Domus Pulchra</strong> \u2192 incasso finale = 15% del lordo (accordo Elda, servizi inclusi, indipendente da piattaforma)<br>'
++'<strong style="color:var(--text2)">Altre case</strong> \u2192 netto = lordo \u2212 commissione (Booking \u221220%, Airbnb \u221215%, Diretta 0%) \u2192 incasso finale = netto \u2212 pulizia \u2212 lavanderia<br>'
++'<strong style="color:var(--text2)">Enea</strong>: lavanderia = tariffa/ospite \u00d7 n. ospiti (decurtata dall\'incasso ma esclusa dal compenso Giulia)'
++'</div></div>'
     <div class="section-label" style="margin-top:0">Riepilogo per appartamento — ${meseLabel}</div>
     <table class="incassi-tbl">
       <thead><tr><th>Appartamento</th><th style="text-align:center">Prenot.</th><th>Lordo</th><th>Netto</th><th>Servizi</th><th>Incasso finale</th></tr></thead>
