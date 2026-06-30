@@ -203,17 +203,20 @@ table.pricing-tbl tr:nth-child(even) td{background:rgba(0,0,0,.015);}
 .dash-wa-btn.ci{background:var(--green-light);color:var(--green);}
 .dash-wa-btn.co{background:var(--red-light);color:var(--red);}
 .dash-empty{padding:16px;text-align:center;font-size:13px;color:var(--text3);font-style:italic;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);}
-.incassi-wrap{max-width:980px;}
+.incassi-wrap{max-width:1060px;}
 .incassi-filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:22px;}
 .incassi-filter-bar label{font-size:12px;color:var(--text3);}
 .incassi-filter-bar select{font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;cursor:pointer;outline:none;}
-.incassi-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:26px;}
+.incassi-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px;}
 .incassi-kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;border-top:3px solid var(--accent);}
 .incassi-kpi-card.netto{border-top-color:#1A6FA8;}
 .incassi-kpi-card.servizi{border-top-color:var(--amber);}
+.incassi-kpi-card.costi{border-top-color:var(--red);}
 .incassi-kpi-card.finale{border-top-color:#2A7A4F;}
-.incassi-kpi-num{font-family:'DM Serif Display',serif;font-size:26px;line-height:1;color:var(--text);}
+.incassi-kpi-num{font-family:'DM Serif Display',serif;font-size:24px;line-height:1;color:var(--text);}
 .incassi-kpi-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:5px;}
+.incassi-note-toggle{font-size:12px;padding:6px 14px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;}
+.incassi-note-box{display:none;margin-top:10px;font-size:11px;color:var(--text3);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;line-height:1.8;}
 table.incassi-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);margin-bottom:28px;}
 table.incassi-tbl th{text-align:left;padding:10px 14px;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--bg);}
 table.incassi-tbl td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
@@ -245,8 +248,8 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   .pulizie-table{min-width:580px;}
   .cleaner-header{flex-direction:column;align-items:flex-start;}
   .tasse-wrap,.pricing-wrap,.incassi-wrap{overflow-x:auto;}
-  table.tasse-tbl,table.pricing-tbl,table.incassi-tbl{min-width:500px;font-size:11px;}
-  .incassi-kpi{grid-template-columns:1fr 1fr;}.incassi-kpi-num{font-size:20px;}
+  table.tasse-tbl,table.pricing-tbl,table.incassi-tbl{min-width:600px;font-size:11px;}
+  .incassi-kpi{grid-template-columns:1fr 1fr;}.incassi-kpi-num{font-size:18px;}
 }
 </style>
 </head>
@@ -334,60 +337,78 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   </div>
 </div>
 <script>
-// ── CONFIG ────────────────────────────────────────────────────
 const SHEET_ID='1njE_JQ-m_rzdAOR-OWDeI7NfCq2sn0LZe2Ia_A-xjRc';
 const GIDS={prenotazioni:'1940746485',addette:'1820111522',inventario:'658069847',tasse:'1162299491',prompt:'955795025'};
-function sheetURL(gid){return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;}
-
-// Salta riga 1 (titolo), usa riga 2 come intestazioni
+function sheetURL(gid){return 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=csv&gid='+gid;}
 async function fetchSheetSkipTitle(gid){
   const res=await fetch(sheetURL(gid));
-  if(!res.ok)throw new Error(`HTTP ${res.status}`);
+  if(!res.ok)throw new Error('HTTP '+res.status);
   const text=await res.text();
   const lines=text.trim().split('\n');
   if(lines.length<3)return[];
   return parseCSV(lines.slice(1).join('\n'));
 }
 
+// ── COSTI FISSI MENSILI ───────────────────────────────────────
+const COSTI_FISSI={
+  'Casa dei Visionari – Mare':{
+    voci:[{label:'Affitto',val:860}]
+  },
+  'Enea Luxury – Putignani':{
+    voci:[{label:'Affitto',val:1480},{label:'Commercialista',val:125},{label:'Bollette/manutenzione',val:250}]
+  },
+  'Enea Luxury – Piccinni':{
+    voci:[{label:'Affitto',val:1700},{label:'Commercialista',val:125},{label:'Bollette/manutenzione',val:250}]
+  }
+};
+
+function getCostiFissi(aptName){
+  const key=Object.keys(COSTI_FISSI).find(function(k){return matchApt(k,aptName);});
+  if(!key)return{totale:0,dettaglio:''};
+  const voci=COSTI_FISSI[key].voci;
+  const totale=voci.reduce(function(s,v){return s+v.val;},0);
+  const dettaglio=voci.map(function(v){return v.label+' \u20ac'+v.val;}).join(' + ');
+  return{totale:totale,dettaglio:dettaglio};
+}
+
 // ── DATI STATICI ──────────────────────────────────────────────
 const APTS=[
-  {name:'Enea Luxury – Putignani',  sub:'fino a 9 persone',cls:'apt-enea-put',dot:'dot-enea-put',cap:9},
-  {name:'Enea Luxury – Piccinni',   sub:'fino a 7 persone',cls:'apt-enea-pic',dot:'dot-enea-pic',cap:7},
-  {name:'Domus Pulchra (grande)',    sub:'fino a 6 persone',cls:'apt-domus-g', dot:'dot-domus-g', cap:6},
-  {name:'Domus Pulchra (piccolo)',   sub:'fino a 4 persone',cls:'apt-domus-p', dot:'dot-domus-p', cap:4},
-  {name:'Casa dei Visionari – Madonella',sub:'fino a 4 persone',cls:'apt-vis', dot:'dot-vis',    cap:4},
-  {name:'Casa dei Visionari – Mare', sub:'fino a 4 persone',cls:'apt-mare',    dot:'dot-mare',    cap:4},
+  {name:'Enea Luxury \u2013 Putignani',sub:'fino a 9 persone',cls:'apt-enea-put',dot:'dot-enea-put',cap:9},
+  {name:'Enea Luxury \u2013 Piccinni',sub:'fino a 7 persone',cls:'apt-enea-pic',dot:'dot-enea-pic',cap:7},
+  {name:'Domus Pulchra (grande)',sub:'fino a 6 persone',cls:'apt-domus-g',dot:'dot-domus-g',cap:6},
+  {name:'Domus Pulchra (piccolo)',sub:'fino a 4 persone',cls:'apt-domus-p',dot:'dot-domus-p',cap:4},
+  {name:'Casa dei Visionari \u2013 Madonella',sub:'fino a 4 persone',cls:'apt-vis',dot:'dot-vis',cap:4},
+  {name:'Casa dei Visionari \u2013 Mare',sub:'fino a 4 persone',cls:'apt-mare',dot:'dot-mare',cap:4},
 ];
 const FESTIVITA=[
-  {data:'25 apr',nome:'Liberazione',mult:'+20–25%'},
+  {data:'25 apr',nome:'Liberazione',mult:'+20\u201325%'},
   {data:'1 mag',nome:'Festa dei Lavoratori',mult:'+15%'},
-  {data:'2 giu',nome:'Festa della Repubblica',mult:'+25–35%'},
-  {data:'7–9 mag',nome:'San Nicola (patrono Bari)',mult:'+20%'},
-  {data:'15 ago',nome:'Ferragosto',mult:'+35–40%'},
-  {data:'7–8 dic',nome:'Immacolata + ponte',mult:'+20–30%'},
-  {data:'24–26 dic',nome:'Natale',mult:'+30–40%'},
-  {data:'31 dic – 1 gen',nome:'Capodanno',mult:'+40–50%'},
+  {data:'2 giu',nome:'Festa della Repubblica',mult:'+25\u201335%'},
+  {data:'7\u20139 mag',nome:'San Nicola (patrono Bari)',mult:'+20%'},
+  {data:'15 ago',nome:'Ferragosto',mult:'+35\u201340%'},
+  {data:'7\u20138 dic',nome:'Immacolata + ponte',mult:'+20\u201330%'},
+  {data:'24\u201326 dic',nome:'Natale',mult:'+30\u201340%'},
+  {data:'31 dic \u2013 1 gen',nome:'Capodanno',mult:'+40\u201350%'},
 ];
 const LETTI_APT={
   'Domus Pulchra (grande)':['Matrimoniale grande','Matrimoniale','Singolo'],
   'Domus Pulchra (piccolo)':['Matrimoniale','Singolo x2'],
-  'Casa dei Visionari – Madonella':['Matrimoniale','Singolo x2'],
-  'Casa dei Visionari – Mare':['Matrimoniale','Doppio'],
-  'Enea Luxury – Piccinni':['Matrimoniale x2','Singolo','Divano letto'],
-  'Enea Luxury – Putignani':['Matrimoniale x4','Singolo'],
+  'Casa dei Visionari \u2013 Madonella':['Matrimoniale','Singolo x2'],
+  'Casa dei Visionari \u2013 Mare':['Matrimoniale','Doppio'],
+  'Enea Luxury \u2013 Piccinni':['Matrimoniale x2','Singolo','Divano letto'],
+  'Enea Luxury \u2013 Putignani':['Matrimoniale x4','Singolo'],
 };
 const CLEANER_COLORS={'Elda':'#2A7A4F','Dalila':'#8B5E2E','Giulia':'#C4883C','Teresa':'#1A6FA8','Enza':'#1A6FA8','Annamaria':'#1A6FA8'};
 const APT_PILL_COLORS={
   'Domus Pulchra (grande)':{bg:'#DBEEFF',color:'#0A3A6B'},
   'Domus Pulchra (piccolo)':{bg:'#E8F5EE',color:'#1A5C35'},
-  'Casa dei Visionari – Madonella':{bg:'#F5EDE3',color:'#5C3A15'},
-  'Casa dei Visionari – Mare':{bg:'#FDF0E0',color:'#7A4E10'},
-  'Enea Luxury – Putignani':{bg:'#D6EAFA',color:'#1A4F7A'},
-  'Enea Luxury – Piccinni':{bg:'#EDF6FF',color:'#2A6FA8'},
+  'Casa dei Visionari \u2013 Madonella':{bg:'#F5EDE3',color:'#5C3A15'},
+  'Casa dei Visionari \u2013 Mare':{bg:'#FDF0E0',color:'#7A4E10'},
+  'Enea Luxury \u2013 Putignani':{bg:'#D6EAFA',color:'#1A4F7A'},
+  'Enea Luxury \u2013 Piccinni':{bg:'#EDF6FF',color:'#2A6FA8'},
 };
 const DOMUS_APTS=['Domus Pulchra (grande)','Domus Pulchra (piccolo)'];
 
-// ── STATO GLOBALE ─────────────────────────────────────────────
 let prenotazioni=[],addetteSheet=[],inventario=[],tasse=[],promptMessaggi=[];
 let todoDone=JSON.parse(localStorage.getItem('v3_todo')||'{}');
 let acquistoDone=JSON.parse(localStorage.getItem('v3_acquisti')||'{}');
@@ -396,22 +417,21 @@ const waMessages={};
 const TODAY=new Date();TODAY.setHours(0,0,0,0);
 let offset=0,dashOffset=0;
 
-// ── UTILITY ───────────────────────────────────────────────────
 function parseCSV(text){
   const lines=text.trim().split('\n');
   if(lines.length<2)return[];
   const headers=splitCSVLine(lines[0]);
-  return lines.slice(1).map(line=>{
+  return lines.slice(1).map(function(line){
     const vals=splitCSVLine(line);
     const obj={};
-    headers.forEach((h,i)=>obj[h.trim()]=(vals[i]||'').trim());
+    headers.forEach(function(h,i){obj[h.trim()]=(vals[i]||'').trim();});
     return obj;
-  }).filter(r=>Object.values(r).some(v=>v!==''));
+  }).filter(function(r){return Object.values(r).some(function(v){return v!=='';});});
 }
 function splitCSVLine(line){
-  const result=[];let cur='',inQ=false;
-  for(let i=0;i<line.length;i++){
-    const ch=line[i];
+  const result=[];var cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
     if(ch==='"'){inQ=!inQ;}
     else if(ch===','&&!inQ){result.push(cur);cur='';}
     else{cur+=ch;}
@@ -421,636 +441,563 @@ function splitCSVLine(line){
 }
 function parseDate(str){
   if(!str)return null;str=str.trim();
-  if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)){const p=str.split(' ')[0].split('/');return new Date(+p[2],+p[1]-1,+p[0]);}
-  if(/^\d{4}-\d{2}-\d{2}/.test(str)){const p=str.split(' ')[0].split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
-  const n=Number(str);if(!isNaN(n)&&n>10000)return new Date(Date.UTC(1899,11,30)+n*86400000);
-  const d=new Date(str);return isNaN(d)?null:d;
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)){var p=str.split(' ')[0].split('/');return new Date(+p[2],+p[1]-1,+p[0]);}
+  if(/^\d{4}-\d{2}-\d{2}/.test(str)){var p2=str.split(' ')[0].split('-');return new Date(+p2[0],+p2[1]-1,+p2[2]);}
+  var n=Number(str);if(!isNaN(n)&&n>10000)return new Date(Date.UTC(1899,11,30)+n*86400000);
+  var d=new Date(str);return isNaN(d)?null:d;
 }
 function sameDay(a,b){return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
-function getDay(){const d=new Date(TODAY);d.setDate(d.getDate()+offset);return d;}
-function fmtEur(n){return '€'+Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
-
-// Normalizza stringa per matching (trattini, spazi, minuscolo)
+function getDay(){var d=new Date(TODAY);d.setDate(d.getDate()+offset);return d;}
+function fmtEur(n){return '\u20ac'+Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
 function normStr(s){return(s||'').toString().trim().toLowerCase().replace(/[\u2013\u2014\u2012]/g,'-').replace(/\s+/g,' ');}
 function matchApt(a,b){return normStr(a)===normStr(b);}
-
-// Legge numero da "€ 25,00" o "25,00" o "25.00"
 function parseEur(s){
-  const clean=(s||'0').toString()
-    .replace(/[€\s]/g,'')   // toglie € e spazi
-    .replace(/\./g,'')       // toglie i punti (separatori migliaia)
-    .replace(',','.');        // converte virgola in punto decimale
+  var clean=(s||'0').toString().replace(/[\u20ac\s]/g,'').replace(/\./g,'').replace(',','.');
   return parseFloat(clean)||0;
 }
+function isDomus(aptName){return DOMUS_APTS.some(function(d){return matchApt(aptName,d);});}
+function isEnea(aptName){return normStr(aptName).indexOf('enea')!==-1;}
 
-function isDomus(aptName){return DOMUS_APTS.some(d=>matchApt(aptName,d));}
-function isEnea(aptName){return normStr(aptName).includes('enea');}
-
-// ── PULIZIE DAL FOGLIO ────────────────────────────────────────
 function getRowAddetta(aptName){
-  return addetteSheet.find(r=>matchApt(r['Appartamento'],aptName))||null;
+  return addetteSheet.find(function(r){return matchApt(r['Appartamento'],aptName);})||null;
 }
-
-// Calcola costi pulizie per una prenotazione
-// Enea: lavanderia = CostoLavanderia(sheet) × N.OspitiAdulti della prenotazione
-// Altri: lavanderia = CostoLavanderia(sheet) fisso per check-out
 function getCostiPulizie(aptName,numOspiti){
-  const row=getRowAddetta(aptName);
-  if(!row)return{persona:'—',phone:'',pulizia:0,lavanderia:0,totServizi:0};
-  const persona=(row['Addetta Pulizie']||'—').trim();
-  const phone=(row['Numero telefono']||'').trim();
-  const pulizia=parseEur(row['Costo pulizia']);
-  const lavBase=parseEur(row['Costo lavanderia']);
-  const ospiti=parseInt(numOspiti)||1;
-  const lavanderia=isEnea(aptName)?lavBase*ospiti:lavBase;
-  return{persona,phone,pulizia,lavanderia,totServizi:pulizia+lavanderia};
+  var row=getRowAddetta(aptName);
+  if(!row)return{persona:'\u2014',phone:'',pulizia:0,lavanderia:0,totServizi:0};
+  var persona=(row['Addetta Pulizie']||'\u2014').trim();
+  var phone=(row['Numero telefono']||'').trim();
+  var pulizia=parseEur(row['Costo pulizia']);
+  var lavBase=parseEur(row['Costo lavanderia']);
+  var ospiti=parseInt(numOspiti)||1;
+  var lavanderia=isEnea(aptName)?lavBase*ospiti:lavBase;
+  return{persona:persona,phone:phone,pulizia:pulizia,lavanderia:lavanderia,totServizi:pulizia+lavanderia};
 }
-
-// Compenso addetta (Pulizie tab):
-// Enea → solo pulizia (lavanderia esclusa dalla provvigione Giulia)
-// Altri → pulizia + lavanderia
 function getCompenso(aptName,numOspiti){
-  const{pulizia,lavanderia}=getCostiPulizie(aptName,numOspiti);
-  if(isEnea(aptName))return{compenso:pulizia,dettaglio:`€${pulizia} pulizia (lav. esclusa)`};
-  return{compenso:pulizia+lavanderia,dettaglio:`€${pulizia} pul. + €${lavanderia} lav.`};
+  var c=getCostiPulizie(aptName,numOspiti);
+  if(isEnea(aptName))return{compenso:c.pulizia,dettaglio:'\u20ac'+c.pulizia+' pulizia (lav. esclusa)'};
+  return{compenso:c.pulizia+c.lavanderia,dettaglio:'\u20ac'+c.pulizia+' pul. + \u20ac'+c.lavanderia+' lav.'};
 }
-
-// ── CALCOLO INCASSO ───────────────────────────────────────────
-// Commissioni: Booking −20% del lordo, Airbnb −15% del lordo, Diretta 0%
-// Domus: Eli incassa 15% del lordo, pulizie incluse nell'accordo con Elda
 function calcIncasso(r){
-  const lordo=parseEur(r['Prezzo Lordo (€)']);
-  const piatt=normStr(r['Piattaforma']||'');
-  const apt=r['Appartamento']||'';
-  const ospiti=parseInt(r['N. Ospiti Adulti'])||1;
-
+  var lordo=parseEur(r['Prezzo Lordo (\u20ac)']);
+  var piatt=normStr(r['Piattaforma']||'');
+  var apt=r['Appartamento']||'';
+  var ospiti=parseInt(r['N. Ospiti Adulti'])||1;
   if(isDomus(apt)){
-    const netto=lordo*0.15;
-    return{lordo,netto,pulizia:0,lavanderia:0,servizi:0,finale:netto};
+    var netto=lordo*0.15;
+    return{lordo:lordo,netto:netto,pulizia:0,lavanderia:0,servizi:0,finale:netto};
   }
-
-  // Commissione piattaforma
-  let commRate=0;
-  if(piatt.includes('booking'))commRate=0.20;
-  else if(piatt.includes('airbnb'))commRate=0.15;
-  const netto=lordo*(1-commRate);
-
-  // Servizi: pulizia + lavanderia (entrambi decurtati dall'incasso finale)
-  const{pulizia,lavanderia,totServizi}=getCostiPulizie(apt,ospiti);
-  const finale=netto-totServizi;
-  return{lordo,netto,pulizia,lavanderia,servizi:totServizi,finale};
+  var commRate=0;
+  if(piatt.indexOf('booking')!==-1)commRate=0.20;
+  else if(piatt.indexOf('airbnb')!==-1)commRate=0.15;
+  var netto2=lordo*(1-commRate);
+  var cp=getCostiPulizie(apt,ospiti);
+  var finale=netto2-cp.totServizi;
+  return{lordo:lordo,netto:netto2,pulizia:cp.pulizia,lavanderia:cp.lavanderia,servizi:cp.totServizi,finale:finale};
 }
 
-// ── FETCH ─────────────────────────────────────────────────────
-function showLoading(msg){document.getElementById('aptGrid').innerHTML=`<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);font-size:14px;">${msg}</div>`;}
-
+function showLoading(msg){document.getElementById('aptGrid').innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);font-size:14px;">'+msg+'</div>';}
 async function loadAllData(){
-  showLoading('Caricamento dati…');
+  showLoading('Caricamento dati\u2026');
   try{
-    [prenotazioni,addetteSheet,inventario,tasse]=await Promise.all([
-      fetchSheetSkipTitle(GIDS.prenotazioni),
-      fetchSheetSkipTitle(GIDS.addette),
-      fetchSheetSkipTitle(GIDS.inventario),
-      fetchSheetSkipTitle(GIDS.tasse),
-    ]);
-    console.log('addetteSheet:',addetteSheet.length,'righe',addetteSheet[0]);
+    var res=await Promise.all([fetchSheetSkipTitle(GIDS.prenotazioni),fetchSheetSkipTitle(GIDS.addette),fetchSheetSkipTitle(GIDS.inventario),fetchSheetSkipTitle(GIDS.tasse)]);
+    prenotazioni=res[0];addetteSheet=res[1];inventario=res[2];tasse=res[3];
     try{
-      const vizUrl=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GIDS.prompt}`;
-      const res=await fetch(vizUrl);const text=await res.text();
-      const json=JSON.parse(text.replace(/^[^(]+\(/,'').replace(/\);?\s*$/,''));
-      promptMessaggi=(json.table.rows||[]).slice(2).map(row=>({
-        apt:(row.c[0]&&row.c[0].v)?row.c[0].v.toString().trim():'',
-        msg:(row.c[1]&&row.c[1].v)?row.c[1].v.toString().trim():'',
-        msgCO:(row.c[2]&&row.c[2].v)?row.c[2].v.toString().trim():'',
-      })).filter(r=>r.apt&&r.apt!=='Appartamento');
-    }catch(e){promptMessaggi=[];console.warn('Prompt non caricati:',e.message);}
+      var vizUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&gid='+GIDS.prompt;
+      var r2=await fetch(vizUrl);var t2=await r2.text();
+      var json=JSON.parse(t2.replace(/^[^(]+\(/,'').replace(/\);\s*$/,''));
+      promptMessaggi=(json.table.rows||[]).slice(2).map(function(row){return{apt:(row.c[0]&&row.c[0].v)?row.c[0].v.toString().trim():'',msg:(row.c[1]&&row.c[1].v)?row.c[1].v.toString().trim():'',msgCO:(row.c[2]&&row.c[2].v)?row.c[2].v.toString().trim():''};}).filter(function(r){return r.apt&&r.apt!=='Appartamento';});
+    }catch(e){promptMessaggi=[];}
     renderAll();
   }catch(e){
-    document.getElementById('aptGrid').innerHTML=`<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--red);font-size:13px;"><strong>Errore caricamento.</strong><br><br>Verifica che il Google Sheet sia condiviso come "Chiunque abbia il link → Visualizzatore".<br><br><small style="color:var(--text3)">${e.message}</small><br><br><button onclick="loadAllData()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:inherit;font-size:13px;">Riprova</button></div>`;
+    document.getElementById('aptGrid').innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--red);font-size:13px;"><strong>Errore caricamento.</strong><br><br>'+e.message+'<br><br><button onclick="loadAllData()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:inherit;font-size:13px;">Riprova</button></div>';
   }
 }
-
-// ── PROMPT ────────────────────────────────────────────────────
 function getPrompt(aptName,nomeOspite){
-  const found=promptMessaggi.find(p=>matchApt(p.apt,aptName));
+  var found=promptMessaggi.find(function(p){return matchApt(p.apt,aptName);});
   if(!found)return null;
   return found.msg.replace(/\[NOME OSPITE\]/gi,(nomeOspite||'').split(' ')[0]);
 }
 function getCheckoutPrompt(aptName,nomeOspite){
-  const found=promptMessaggi.find(p=>matchApt(p.apt,aptName))||promptMessaggi.find(p=>normStr(aptName).includes(normStr(p.apt).slice(0,8)));
+  var found=promptMessaggi.find(function(p){return matchApt(p.apt,aptName);})||promptMessaggi.find(function(p){return normStr(aptName).indexOf(normStr(p.apt).slice(0,8))!==-1;});
   if(!found||!found.msgCO)return null;
   return found.msgCO.replace(/\[NOME OSPITE\]/gi,(nomeOspite||'').split(' ')[0]);
 }
-
-// ── DATE ──────────────────────────────────────────────────────
 function updateDates(){
-  const d=getDay();
+  var d=getDay();
   document.getElementById('fullDate').textContent=d.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('dayLabel').textContent=offset===0?'oggi':offset===1?'domani':offset===-1?'ieri':d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
-  const pk=document.getElementById('datePicker');
-  if(pk)pk.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  var pk=document.getElementById('datePicker');
+  if(pk)pk.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
-function pickDate(val){if(!val)return;const[y,m,d]=val.split('-').map(Number);offset=Math.round((new Date(y,m-1,d)-TODAY)/86400000);dashOffset=offset;updateDates();renderAll();}
+function pickDate(val){if(!val)return;var p=val.split('-').map(Number);offset=Math.round((new Date(p[0],p[1]-1,p[2])-TODAY)/86400000);dashOffset=offset;updateDates();renderAll();}
 function changeDay(n){offset+=n;dashOffset=offset;updateDates();renderAll();}
 function resetDay(){offset=0;dashOffset=0;updateDates();renderAll();}
 function renderAll(){renderKPI();renderDashboard();renderApts();renderTodo();renderAcquisti();renderTasse();renderPricing();renderIncassi();}
 
-// ── KPI ───────────────────────────────────────────────────────
 function renderKPI(){
-  const day=getDay();
-  const ci=prenotazioni.filter(r=>sameDay(parseDate(r['Check-in']),day)).length;
-  const co=prenotazioni.filter(r=>sameDay(parseDate(r['Check-out']),day)).length;
-  const fr=APTS.filter(apt=>!prenotazioni.some(r=>{const c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;})).length;
-  const tx=tasse.filter(r=>r['Incassata?']==='No'||r['Incassata?']==='no').reduce((s,r)=>s+parseEur(r['Tassa Dovuta (€)']),0);
-  document.getElementById('kpiBar').innerHTML=`
-    <div class="kpi-item"><div class="kpi-num green">${ci}</div><div class="kpi-lbl">&#8592; check-in</div></div>
-    <div class="kpi-item"><div class="kpi-num red">${co}</div><div class="kpi-lbl">&#8594; check-out</div></div>
-    <div class="kpi-item"><div class="kpi-num ${fr>0?'warn':''}">${fr}</div><div class="kpi-lbl">liberi</div></div>
-    <div class="kpi-item"><div class="kpi-num good">€${tx.toFixed(0)}</div><div class="kpi-lbl">tasse</div></div>`;
+  var day=getDay();
+  var ci=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-in']),day);}).length;
+  var co=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),day);}).length;
+  var fr=APTS.filter(function(apt){return !prenotazioni.some(function(r){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;});}).length;
+  var tx=tasse.filter(function(r){return r['Incassata?']==='No'||r['Incassata?']==='no';}).reduce(function(s,r){return s+parseEur(r['Tassa Dovuta (\u20ac)']);},0);
+  document.getElementById('kpiBar').innerHTML='<div class="kpi-item"><div class="kpi-num green">'+ci+'</div><div class="kpi-lbl">&#8592; check-in</div></div><div class="kpi-item"><div class="kpi-num red">'+co+'</div><div class="kpi-lbl">&#8594; check-out</div></div><div class="kpi-item"><div class="kpi-num '+(fr>0?'warn':'')+'">'+fr+'</div><div class="kpi-lbl">liberi</div></div><div class="kpi-item"><div class="kpi-num good">\u20ac'+tx.toFixed(0)+'</div><div class="kpi-lbl">tasse</div></div>';
 }
 
-// ── APPARTAMENTI ──────────────────────────────────────────────
 const STATUS_LABEL={turnover:'Turnover',checkin:'Check-in',checkout:'Check-out',occupied:'Occupato',free:'Libero'};
 const STATUS_CLASS={turnover:'s-turnover',checkin:'s-checkin',checkout:'s-checkout',occupied:'s-occupied',free:'s-free'};
 function renderApts(){
-  const day=getDay();const ORDER={turnover:0,checkin:1,checkout:2,occupied:3,free:4};
-  const list=APTS.map(apt=>{
-    const hasCI=prenotazioni.some(r=>matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-in']),day));
-    const hasCO=prenotazioni.some(r=>matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-out']),day));
-    let status;
+  var day=getDay();var ORDER={turnover:0,checkin:1,checkout:2,occupied:3,free:4};
+  var list=APTS.map(function(apt){
+    var hasCI=prenotazioni.some(function(r){return matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-in']),day);});
+    var hasCO=prenotazioni.some(function(r){return matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-out']),day);});
+    var status;
     if(hasCI&&hasCO)status='turnover';else if(hasCI)status='checkin';else if(hasCO)status='checkout';
-    else status=prenotazioni.some(r=>{const c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;})?'occupied':'free';
-    return{apt,status,order:ORDER[status]??9};
-  }).sort((a,b)=>a.order-b.order);
-  document.getElementById('aptGrid').innerHTML=list.map(({apt,status},idx)=>{
-    const ciRec=prenotazioni.find(r=>matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-in']),day));
-    const coRec=prenotazioni.find(r=>matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-out']),day));
-    const ai=getCostiPulizie(apt.name,2);
-    let rows='';
-    if(ciRec)rows+=aptRow('&#8592;','Check-in',`${ciRec['Nome Ospite']||'—'} &mdash; ${ciRec['N. Ospiti Adulti']||'?'} adulti`);
-    if(coRec)rows+=aptRow('&#8594;','Check-out',`${coRec['Nome Ospite']||'—'} &mdash; ${coRec['N. Ospiti Adulti']||'?'} adulti`);
+    else status=prenotazioni.some(function(r){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;})?'occupied':'free';
+    return{apt:apt,status:status,order:ORDER[status]!=null?ORDER[status]:9};
+  }).sort(function(a,b){return a.order-b.order;});
+  document.getElementById('aptGrid').innerHTML=list.map(function(item,idx){
+    var apt=item.apt,status=item.status;
+    var ciRec=prenotazioni.find(function(r){return matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-in']),day);});
+    var coRec=prenotazioni.find(function(r){return matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-out']),day);});
+    var ai=getCostiPulizie(apt.name,2);
+    var rows='';
+    if(ciRec)rows+=aptRow('&#8592;','Check-in',(ciRec['Nome Ospite']||'\u2014')+' &mdash; '+(ciRec['N. Ospiti Adulti']||'?')+' adulti');
+    if(coRec)rows+=aptRow('&#8594;','Check-out',(coRec['Nome Ospite']||'\u2014')+' &mdash; '+(coRec['N. Ospiti Adulti']||'?')+' adulti');
     if(status==='occupied'&&!ciRec&&!coRec){
-      const ar=prenotazioni.find(r=>{const c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;});
-      if(ar){const fd=d=>d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}):'?';rows+=aptRow('&#9679;','Ospiti',`${ar['Nome Ospite']||'—'} &mdash; ${ar['N. Ospiti Adulti']||'?'} adulti`);rows+=aptRow('&#8596;','Periodo',`${fd(parseDate(ar['Check-in']))} → ${fd(parseDate(ar['Check-out']))}`);}
+      var ar=prenotazioni.find(function(r){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;});
+      if(ar){var fd=function(d){return d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}):'?';};rows+=aptRow('&#9679;','Ospiti',(ar['Nome Ospite']||'\u2014')+' &mdash; '+(ar['N. Ospiti Adulti']||'?')+' adulti');rows+=aptRow('&#8596;','Periodo',fd(parseDate(ar['Check-in']))+' \u2192 '+fd(parseDate(ar['Check-out'])));}
       else rows+=aptRow('&#9679;','Stato','<span class="muted">Ospiti presenti</span>');
     }
     if(status==='free')rows+=aptRow('&#9675;','Stato','<span class="muted">Nessuna prenotazione</span>');
-    const tassaRec=tasse.find(r=>matchApt(r['Appartamento'],apt.name)&&(sameDay(parseDate(r['Check-in']),day)||sameDay(parseDate(r['Check-out']),day)));
-    const badge=status==='turnover'?`<span class="status-badge s-turnover" style="font-weight:700;box-shadow:0 0 0 2px rgba(42,75,122,0.3)">&#9650; TURNOVER</span>`:`<span class="status-badge ${STATUS_CLASS[status]}">${STATUS_LABEL[status]}</span>`;
-    return `<div class="apt-card ${apt.cls}" style="animation-delay:${idx*.05}s${status==='turnover'?';box-shadow:0 4px 20px rgba(42,75,122,0.15);border-color:rgba(42,75,122,0.3)':''}">
-      <div class="apt-card-top"><div><div class="apt-name"><span class="apt-dot ${apt.dot}"></span>${apt.name}</div><div class="apt-sub">${apt.sub}</div></div>${badge}</div>
-      <div class="apt-body">${rows||'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun evento oggi</span>'}</div>
-      <div class="apt-footer"><span>&#9775; ${ai.persona}</span><span>tassa: ${tassaRec?'€'+tassaRec['Tassa Dovuta (€)']:'—'}</span></div>
-    </div>`;
+    var tassaRec=tasse.find(function(r){return matchApt(r['Appartamento'],apt.name)&&(sameDay(parseDate(r['Check-in']),day)||sameDay(parseDate(r['Check-out']),day));});
+    var badge=status==='turnover'?'<span class="status-badge s-turnover" style="font-weight:700;box-shadow:0 0 0 2px rgba(42,75,122,0.3)">&#9650; TURNOVER</span>':'<span class="status-badge '+STATUS_CLASS[status]+'">'+STATUS_LABEL[status]+'</span>';
+    return '<div class="apt-card '+apt.cls+'" style="animation-delay:'+(idx*.05)+'s'+(status==='turnover'?';box-shadow:0 4px 20px rgba(42,75,122,0.15);border-color:rgba(42,75,122,0.3)':'')+'">'+'<div class="apt-card-top"><div><div class="apt-name"><span class="apt-dot '+apt.dot+'"></span>'+apt.name+'</div><div class="apt-sub">'+apt.sub+'</div></div>'+badge+'</div>'+'<div class="apt-body">'+(rows||'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun evento oggi</span>')+'</div>'+'<div class="apt-footer"><span>&#9775; '+ai.persona+'</span><span>tassa: '+(tassaRec?'\u20ac'+tassaRec['Tassa Dovuta (\u20ac)']:'\u2014')+'</span></div></div>';
   }).join('');
 }
-function aptRow(icon,lbl,val){return `<div class="apt-row"><span class="apt-row-icon">${icon}</span><span class="apt-row-lbl">${lbl}</span><span class="apt-row-val">${val}</span></div>`;}
+function aptRow(icon,lbl,val){return '<div class="apt-row"><span class="apt-row-icon">'+icon+'</span><span class="apt-row-lbl">'+lbl+'</span><span class="apt-row-val">'+val+'</span></div>';}
 
-// ── TODO ──────────────────────────────────────────────────────
 function renderTodo(){
-  const today=getDay(),tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
-  const ciOggi=prenotazioni.filter(r=>sameDay(parseDate(r['Check-in']),today)&&r['Nome Ospite']);
-  const coOggi=prenotazioni.filter(r=>sameDay(parseDate(r['Check-out']),today)&&r['Nome Ospite']);
-  const coDomani=prenotazioni.filter(r=>sameDay(parseDate(r['Check-out']),tomorrow)&&getRowAddetta(r['Appartamento']));
-  const fmtS=d=>d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}):'—';
-  let html='';
-  html+=`<div class="todo-section"><div class="todo-section-header"><span class="todo-section-title">&#8592; Check-in</span><span class="todo-section-count count-ci">${ciOggi.length} oggi</span></div>`;
-  if(!ciOggi.length)html+=`<div class="todo-empty">Nessun check-in oggi.</div>`;
-  else ciOggi.forEach((r,i)=>{
-    const nome=r['Nome Ospite']||'—',apt=r['Appartamento']||'—',osp=r['N. Ospiti Adulti']||'?';
-    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
-    const msg=getPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 👋 Welcome!`;
-    const wKey=`ci_wa_${i}`;waMessages[wKey]={msg,phone:pClean};
-    const key=`ci_${i}`;const done=!!todoDone[key];
-    html+=`<div class="todo-card ci ${done?'done':''}" onclick="toggleTodoKey('${key}',this)"><div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-ci">check-in ${fmtS(parseDate(r['Check-in']))}</span></div><div class="tc-row2">${phone?`<button class="tc-wa ci wa-btn" data-key="${wKey}">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div></div></div></div>`;
+  var today=getDay(),tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
+  var ciOggi=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-in']),today)&&r['Nome Ospite'];});
+  var coOggi=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),today)&&r['Nome Ospite'];});
+  var coDomani=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),tomorrow)&&getRowAddetta(r['Appartamento']);});
+  var fmtS=function(d){return d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}):'\u2014';};
+  var html='';
+  html+='<div class="todo-section"><div class="todo-section-header"><span class="todo-section-title">&#8592; Check-in</span><span class="todo-section-count count-ci">'+ciOggi.length+' oggi</span></div>';
+  if(!ciOggi.length)html+='<div class="todo-empty">Nessun check-in oggi.</div>';
+  else ciOggi.forEach(function(r,i){
+    var nome=r['Nome Ospite']||'\u2014',apt=r['Appartamento']||'\u2014',osp=r['N. Ospiti Adulti']||'?';
+    var phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
+    var msg=getPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDC4B Welcome!';
+    var wKey='ci_wa_'+i;waMessages[wKey]={msg:msg,phone:pClean};
+    var key='ci_'+i;var done=!!todoDone[key];
+    html+='<div class="todo-card ci '+(done?'done':'')+'" onclick="toggleTodoKey(\''+key+'\',this)"><div class="tc-top"><div class="tc-check">'+(done?'&#10003;':'')+'</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">'+nome+'</span><span class="tc-apt">'+apt+'</span><span class="tc-tag tc-tag-ci">check-in '+fmtS(parseDate(r['Check-in']))+'</span></div><div class="tc-row2">'+(phone?'<button class="tc-wa ci wa-btn" data-key="'+wKey+'">&#128172; '+phone+'</button>':'<span class="tc-meta">N/D</span>')+'<span class="tc-meta">'+osp+' ospiti</span></div></div></div></div>';
   });
-  html+=`</div>`;
-  html+=`<div class="todo-section"><div class="todo-section-header"><span class="todo-section-title">&#8594; Check-out</span><span class="todo-section-count count-co">${coOggi.length} oggi</span></div>`;
-  if(!coOggi.length)html+=`<div class="todo-empty">Nessun check-out oggi.</div>`;
-  else coOggi.forEach((r,i)=>{
-    const nome=r['Nome Ospite']||'—',apt=r['Appartamento']||'—',osp=r['N. Ospiti Adulti']||'?';
-    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
-    const msg=getCheckoutPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 😊 What time are you checking out?`;
-    const wKey=`co_wa_${i}`;waMessages[wKey]={msg,phone:pClean};
-    const key=`co_${i}`;const done=!!todoDone[key];
-    html+=`<div class="todo-card co ${done?'done':''}" onclick="toggleTodoKey('${key}',this)"><div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">${nome}</span><span class="tc-apt">${apt}</span><span class="tc-tag tc-tag-co">check-out ${fmtS(parseDate(r['Check-out']))}</span></div><div class="tc-row2">${phone?`<button class="tc-wa co wa-btn" data-key="${wKey}">&#128172; ${phone}</button>`:`<span class="tc-meta">N/D</span>`}<span class="tc-meta">${osp} ospiti</span></div></div></div></div>`;
+  html+='</div>';
+  html+='<div class="todo-section"><div class="todo-section-header"><span class="todo-section-title">&#8594; Check-out</span><span class="todo-section-count count-co">'+coOggi.length+' oggi</span></div>';
+  if(!coOggi.length)html+='<div class="todo-empty">Nessun check-out oggi.</div>';
+  else coOggi.forEach(function(r,i){
+    var nome=r['Nome Ospite']||'\u2014',apt=r['Appartamento']||'\u2014',osp=r['N. Ospiti Adulti']||'?';
+    var phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
+    var msg=getCheckoutPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDE0A What time are you checking out?';
+    var wKey='co_wa_'+i;waMessages[wKey]={msg:msg,phone:pClean};
+    var key='co_'+i;var done=!!todoDone[key];
+    html+='<div class="todo-card co '+(done?'done':'')+'" onclick="toggleTodoKey(\''+key+'\',this)"><div class="tc-top"><div class="tc-check">'+(done?'&#10003;':'')+'</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">'+nome+'</span><span class="tc-apt">'+apt+'</span><span class="tc-tag tc-tag-co">check-out '+fmtS(parseDate(r['Check-out']))+'</span></div><div class="tc-row2">'+(phone?'<button class="tc-wa co wa-btn" data-key="'+wKey+'">&#128172; '+phone+'</button>':'<span class="tc-meta">N/D</span>')+'<span class="tc-meta">'+osp+' ospiti</span></div></div></div></div>';
   });
-  html+=`</div>`;
-  html+=`<div class="todo-section"><div class="todo-section-header"><span class="todo-section-title">&#9775; Pulizie</span><span class="todo-section-count count-pul">${coDomani.length} check-out domani</span></div>`;
-  if(!coDomani.length)html+=`<div class="todo-empty">Nessun check-out domani.</div>`;
-  else coDomani.forEach((r,i)=>{
-    const apt=r['Appartamento']||'—';
-    const ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);
-    if(!ai||ai.persona==='—')return;
-    const persona=ai.persona,phone=ai.phone,pClean=phone.replace('+','');
-    const nome=r['Nome Ospite']||'—',osp=r['N. Ospiti Adulti']||'?';
-    const coDate=parseDate(r['Check-out']);
-    const msgPul=`Ciao ${persona}, domani (${fmtS(coDate)}) c'è check-out a ${apt} di ${nome} (${osp} ospiti). Pulizie e cambio biancheria. Grazie!`;
-    const wKey=`pul_wa_${i}`;waMessages[wKey]={msg:msgPul,phone:pClean};
-    const key=`pul_${i}`;const done=!!todoDone[key];
-    const waBtn=!phone?`<button class="tc-wa pul wa-btn-share" onclick="event.stopPropagation();shareWAMsg('${wKey}')">&#128172; Invia a...</button>`:`<button class="tc-wa pul wa-btn" data-key="${wKey}">&#128172; ${phone}</button>`;
-    html+=`<div class="todo-card pul ${done?'done':''}" onclick="toggleTodoKey('${key}',this)"><div class="tc-top"><div class="tc-check">${done?'&#10003;':''}</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">${persona}</span><span class="tc-apt">${apt}</span><span class="tc-tag" style="background:var(--accent-light);color:var(--accent)">domani</span></div><div class="tc-row2">${waBtn}<span class="tc-meta">${nome} · ${osp} ospiti</span></div></div></div></div>`;
+  html+='</div>';
+  html+='<div class="todo-section"><div class="todo-section-header"><span class="todo-section-title">&#9775; Pulizie</span><span class="todo-section-count count-pul">'+coDomani.length+' check-out domani</span></div>';
+  if(!coDomani.length)html+='<div class="todo-empty">Nessun check-out domani.</div>';
+  else coDomani.forEach(function(r,i){
+    var apt=r['Appartamento']||'\u2014';
+    var ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);
+    if(!ai||ai.persona==='\u2014')return;
+    var persona=ai.persona,phone=ai.phone,pClean=phone.replace('+','');
+    var nome=r['Nome Ospite']||'\u2014',osp=r['N. Ospiti Adulti']||'?';
+    var coDate=parseDate(r['Check-out']);
+    var msgPul='Ciao '+persona+', domani ('+fmtS(coDate)+') c\'\u00e8 check-out a '+apt+' di '+nome+' ('+osp+' ospiti). Pulizie e cambio biancheria. Grazie!';
+    var wKey='pul_wa_'+i;waMessages[wKey]={msg:msgPul,phone:pClean};
+    var key='pul_'+i;var done=!!todoDone[key];
+    var waBtn=!phone?'<button class="tc-wa pul wa-btn-share" onclick="event.stopPropagation();shareWAMsg(\''+wKey+'\')">&#128172; Invia a...</button>':'<button class="tc-wa pul wa-btn" data-key="'+wKey+'">&#128172; '+phone+'</button>';
+    html+='<div class="todo-card pul '+(done?'done':'')+'" onclick="toggleTodoKey(\''+key+'\',this)"><div class="tc-top"><div class="tc-check">'+(done?'&#10003;':'')+'</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">'+persona+'</span><span class="tc-apt">'+apt+'</span><span class="tc-tag" style="background:var(--accent-light);color:var(--accent)">domani</span></div><div class="tc-row2">'+waBtn+'<span class="tc-meta">'+nome+' \u00b7 '+osp+' ospiti</span></div></div></div></div>';
   });
-  html+=`</div>`;
+  html+='</div>';
   document.getElementById('todoContent').innerHTML=html;
 }
 function toggleTodoKey(key,el){todoDone[key]=!todoDone[key];localStorage.setItem('v3_todo',JSON.stringify(todoDone));el.classList.toggle('done');el.querySelector('.tc-check').innerHTML=todoDone[key]?'&#10003;':'';}
 
-// ── ACQUISTI ──────────────────────────────────────────────────
 function renderAcquisti(){
-  const items=inventario.filter(r=>(r['Da Acquistare?']||'').includes('ACQUISTARE'));
+  var items=inventario.filter(function(r){return(r['Da Acquistare?']||'').indexOf('ACQUISTARE')!==-1;});
   if(!items.length){document.getElementById('acquistiList').innerHTML='<div style="padding:20px;color:var(--text3);font-size:13px;font-style:italic;">Nessun articolo.</div>';return;}
-  document.getElementById('acquistiList').innerHTML=items.map((a,i)=>{const done=!!acquistoDone[i];return `<div class="acq-item ${done?'bought':''}" onclick="toggleAcq(${i},this)"><div class="acq-check">${done?'&#10003;':''}</div><span class="acq-name">${a['Articolo']||'—'}</span><span class="acq-apt">${a['Appartamento']||''}</span></div>`;}).join('');
+  document.getElementById('acquistiList').innerHTML=items.map(function(a,i){var done=!!acquistoDone[i];return '<div class="acq-item '+(done?'bought':'')+'" onclick="toggleAcq('+i+',this)"><div class="acq-check">'+(done?'&#10003;':'')+'</div><span class="acq-name">'+(a['Articolo']||'\u2014')+'</span><span class="acq-apt">'+(a['Appartamento']||'')+'</span></div>';}).join('');
 }
 function toggleAcq(id,el){acquistoDone[id]=!acquistoDone[id];localStorage.setItem('v3_acquisti',JSON.stringify(acquistoDone));el.classList.toggle('bought');el.querySelector('.acq-check').innerHTML=acquistoDone[id]?'&#10003;':'';}
 
-// ── TASSE ─────────────────────────────────────────────────────
 function renderTasse(){
-  let total=0;
-  const rows=tasse.filter(r=>r['Nome Ospite']&&r['Nome Ospite'].trim()).map(r=>{
-    const val=parseEur(r['Tassa Dovuta (€)']);total+=val;
-    const paid=(r['Incassata?']||'').toLowerCase()==='sì'||(r['Incassata?']||'').toLowerCase()==='si';
-    return `<tr><td>${r['Appartamento']||'—'}</td><td>${r['Nome Ospite']||'—'}</td><td>${r['Adulti']||r['N. Ospiti Adulti']||'—'}</td><td>${r['Notti tassabili']||'—'}</td><td><strong>€${val.toFixed(2)}</strong></td><td class="${paid?'incassata-yes':'incassata-no'}">${paid?'&#10003; sì':'&#9675; no'}</td></tr>`;
+  var total=0;
+  var rows=tasse.filter(function(r){return r['Nome Ospite']&&r['Nome Ospite'].trim();}).map(function(r){
+    var val=parseEur(r['Tassa Dovuta (\u20ac)']);total+=val;
+    var paid=(r['Incassata?']||'').toLowerCase()==='s\u00ec'||(r['Incassata?']||'').toLowerCase()==='si';
+    return '<tr><td>'+(r['Appartamento']||'\u2014')+'</td><td>'+(r['Nome Ospite']||'\u2014')+'</td><td>'+(r['Adulti']||r['N. Ospiti Adulti']||'\u2014')+'</td><td>'+(r['Notti tassabili']||'\u2014')+'</td><td><strong>\u20ac'+val.toFixed(2)+'</strong></td><td class="'+(paid?'incassata-yes':'incassata-no')+'">'+(paid?'&#10003; s\u00ec':'&#9675; no')+'</td></tr>';
   }).join('');
   document.getElementById('tasseBody').innerHTML=rows||'<tr><td colspan="6" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato.</td></tr>';
-  document.getElementById('tasseTotal').innerHTML=`<strong>€${total.toFixed(2)}</strong>`;
+  document.getElementById('tasseTotal').innerHTML='<strong>\u20ac'+total.toFixed(2)+'</strong>';
 }
 
-// ── PRICING ───────────────────────────────────────────────────
 function renderPricing(){
-  document.getElementById('pricingBody').innerHTML=APTS.map(apt=>{const ok=!!approved[apt.name];return `<tr><td>${apt.name}</td><td>—</td><td>—</td><td style="color:var(--text3)">aggiorna nel Sheet</td><td style="font-size:11px;color:var(--text3)">vedi tab Pricing</td><td><button class="approv-btn ${ok?'approved':''}" onclick="toggleApprove('${apt.name}',this)">${ok?'&#10003; ok':'Approva'}</button></td></tr>`;}).join('');
-  document.getElementById('festGrid').innerHTML=FESTIVITA.map(f=>`<div class="fest-card"><div class="fest-date">${f.data}</div><div class="fest-name">${f.nome}</div><div class="fest-mult">${f.mult}</div></div>`).join('');
+  document.getElementById('pricingBody').innerHTML=APTS.map(function(apt){var ok=!!approved[apt.name];return '<tr><td>'+apt.name+'</td><td>\u2014</td><td>\u2014</td><td style="color:var(--text3)">aggiorna nel Sheet</td><td style="font-size:11px;color:var(--text3)">vedi tab Pricing</td><td><button class="approv-btn '+(ok?'approved':'')+'" onclick="toggleApprove(\''+apt.name+'\',this)">'+(ok?'&#10003; ok':'Approva')+'</button></td></tr>';}).join('');
+  document.getElementById('festGrid').innerHTML=FESTIVITA.map(function(f){return '<div class="fest-card"><div class="fest-date">'+f.data+'</div><div class="fest-name">'+f.nome+'</div><div class="fest-mult">'+f.mult+'</div></div>';}).join('');
 }
 function toggleApprove(name,btn){approved[name]=!approved[name];btn.className='approv-btn '+(approved[name]?'approved':'');btn.innerHTML=approved[name]?'&#10003; ok':'Approva';}
 
 // ── INCASSI ───────────────────────────────────────────────────
-let incassiFilterMese='tutti',incassiFilterApt='tutti';
+var incassiFilterMese='tutti',incassiFilterApt='tutti';
+function toggleIncassiNote(){
+  var box=document.getElementById('incassi-note');
+  if(!box)return;
+  box.style.display=box.style.display==='none'?'block':'none';
+}
 function renderIncassi(){
-  const c=document.getElementById('incassiContent');if(!c)return;
-  const prenoValide=prenotazioni.filter(r=>r['Appartamento']&&r['Prezzo Lordo (€)']&&r['Check-in']&&parseEur(r['Prezzo Lordo (€)'])>0);
-  const mesiSet=new Set();
-  prenoValide.forEach(r=>{const d=parseDate(r['Check-in']);if(d)mesiSet.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);});
-  const mesiList=[...mesiSet].sort();
-  const aptsList=[...new Set(prenoValide.map(r=>r['Appartamento']))].sort();
-  const meseOpts=mesiList.map(m=>{const[y,mo]=m.split('-');const lbl=new Date(+y,+mo-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return `<option value="${m}" ${incassiFilterMese===m?'selected':''}>${lbl}</option>`;}).join('');
-  const aptOpts=aptsList.map(a=>`<option value="${a}" ${incassiFilterApt===a?'selected':''}>${a}</option>`).join('');
+  var c=document.getElementById('incassiContent');if(!c)return;
+  var prenoValide=prenotazioni.filter(function(r){return r['Appartamento']&&r['Prezzo Lordo (\u20ac)']&&r['Check-in']&&parseEur(r['Prezzo Lordo (\u20ac)'])>0;});
+  var mesiSet=new Set();
+  prenoValide.forEach(function(r){var d=parseDate(r['Check-in']);if(d)mesiSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));});
+  var mesiList=Array.from(mesiSet).sort();
+  var aptsList=Array.from(new Set(prenoValide.map(function(r){return r['Appartamento'];}))).sort();
+  var meseOpts=mesiList.map(function(m){var p=m.split('-');var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return '<option value="'+m+'" '+(incassiFilterMese===m?'selected':'')+'>'+lbl+'</option>';}).join('');
+  var aptOpts=aptsList.map(function(a){return '<option value="'+a+'" '+(incassiFilterApt===a?'selected':'')+'>'+a+'</option>';}).join('');
 
-  let filtered=prenoValide;
-  if(incassiFilterMese!=='tutti'){const[fy,fm]=incassiFilterMese.split('-').map(Number);filtered=filtered.filter(r=>{const d=parseDate(r['Check-in']);return d&&d.getFullYear()===fy&&d.getMonth()===fm-1;});}
-  if(incassiFilterApt!=='tutti')filtered=filtered.filter(r=>matchApt(r['Appartamento'],incassiFilterApt));
+  var filtered=prenoValide;
+  if(incassiFilterMese!=='tutti'){
+    var fp=incassiFilterMese.split('-').map(Number);
+    filtered=filtered.filter(function(r){var d=parseDate(r['Check-in']);return d&&d.getFullYear()===fp[0]&&d.getMonth()===fp[1]-1;});
+  }
+  if(incassiFilterApt!=='tutti')filtered=filtered.filter(function(r){return matchApt(r['Appartamento'],incassiFilterApt);});
 
-  const rows=filtered.map(r=>({r,...calcIncasso(r)}));
-  const totLordo=rows.reduce((s,x)=>s+x.lordo,0);
-  const totNetto=rows.reduce((s,x)=>s+x.netto,0);
-  const totServ=rows.reduce((s,x)=>s+x.servizi,0);
-  const totFinale=rows.reduce((s,x)=>s+x.finale,0);
+  var rows=filtered.map(function(r){var ci=calcIncasso(r);return{r:r,lordo:ci.lordo,netto:ci.netto,pulizia:ci.pulizia,lavanderia:ci.lavanderia,servizi:ci.servizi,finale:ci.finale};});
+  var totLordo=rows.reduce(function(s,x){return s+x.lordo;},0);
+  var totNetto=rows.reduce(function(s,x){return s+x.netto;},0);
+  var totServ=rows.reduce(function(s,x){return s+x.servizi;},0);
 
-  // Per appartamento
-  const byApt={};
-  rows.forEach(x=>{
-    const apt=x.r['Appartamento']||'—';
+  // Mesi presenti per appartamento (per costi fissi mensili)
+  var mesiPerApt={};
+  rows.forEach(function(x){
+    var apt=x.r['Appartamento']||'';
+    var d=parseDate(x.r['Check-in']);
+    if(!d||!apt)return;
+    if(!mesiPerApt[apt])mesiPerApt[apt]=new Set();
+    mesiPerApt[apt].add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  });
+
+  // Aggregato per appartamento
+  var byApt={};
+  rows.forEach(function(x){
+    var apt=x.r['Appartamento']||'\u2014';
     if(!byApt[apt])byApt[apt]={lordo:0,netto:0,pulizia:0,lavanderia:0,servizi:0,finale:0,n:0};
     byApt[apt].lordo+=x.lordo;byApt[apt].netto+=x.netto;
     byApt[apt].pulizia+=x.pulizia;byApt[apt].lavanderia+=x.lavanderia;
     byApt[apt].servizi+=x.servizi;byApt[apt].finale+=x.finale;byApt[apt].n+=1;
   });
 
-  // Per mese (grafico) — sempre tutti i mesi, filtra solo per appartamento
-  const rowsGraf = incassiFilterApt === 'tutti'
-    ? prenoValide.map(r => ({r, ...calcIncasso(r)}))
-    : prenoValide.filter(r => matchApt(r['Appartamento'], incassiFilterApt)).map(r => ({r, ...calcIncasso(r)}));
-  const byMese={};
-  rowsGraf.forEach(x=>{
-    const d=parseDate(x.r['Check-in']);if(!d)return;
-    const mk=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if(!byMese[mk])byMese[mk]={finale:0,lordo:0};
-    byMese[mk].finale+=x.finale;byMese[mk].lordo+=x.lordo;
+  // Applica costi fissi mensili per appartamento
+  var totCostiFissi=0;
+  Object.keys(byApt).forEach(function(apt){
+    var numMesi=mesiPerApt[apt]?mesiPerApt[apt].size:1;
+    var cf=getCostiFissi(apt);
+    byApt[apt].costiFissiTot=cf.totale*numMesi;
+    byApt[apt].costiFissiDettaglio=cf.dettaglio;
+    byApt[apt].costiFissiNumMesi=numMesi;
+    byApt[apt].finaleNetto=byApt[apt].finale-byApt[apt].costiFissiTot;
+    totCostiFissi+=byApt[apt].costiFissiTot;
   });
-  const mesiGraf=Object.keys(byMese).sort();
-  const meseLabel=incassiFilterMese==='tutti'?'Tutti i periodi':(()=>{const[y,m]=incassiFilterMese.split('-');return new Date(+y,+m-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});})();
 
-  function piattBadge(r){
-    if(isDomus(r['Appartamento']||''))return`<span class="piatt-badge piatt-domus">Domus 15%</span>`;
-    const p=normStr(r['Piattaforma']||'');
-    if(p.includes('booking'))return`<span class="piatt-badge piatt-booking">Booking −20%</span>`;
-    if(p.includes('airbnb'))return`<span class="piatt-badge piatt-airbnb">Airbnb −15%</span>`;
-    if(p.includes('diretta'))return`<span class="piatt-badge piatt-diretta">Diretta</span>`;
-    return`<span class="piatt-badge piatt-altro">${r['Piattaforma']||'—'}</span>`;
-  }
+  var totFinale=Object.values(byApt).reduce(function(s,v){return s+v.finaleNetto;},0);
+
+  // Grafico — sempre tutti i mesi, filtra solo per appartamento
+  var rowsGraf=incassiFilterApt==='tutti'
+    ?prenoValide.map(function(r){var ci=calcIncasso(r);return{r:r,finale:ci.finale,lordo:ci.lordo};})
+    :prenoValide.filter(function(r){return matchApt(r['Appartamento'],incassiFilterApt);}).map(function(r){var ci=calcIncasso(r);return{r:r,finale:ci.finale,lordo:ci.lordo};});
+
+  var byMeseGraf={};
+  var mesiPerAptGraf={};
+  rowsGraf.forEach(function(x){
+    var apt=x.r['Appartamento']||'';
+    var d=parseDate(x.r['Check-in']);if(!d||!apt)return;
+    var mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(!mesiPerAptGraf[apt])mesiPerAptGraf[apt]=new Set();
+    mesiPerAptGraf[apt].add(mk);
+    if(!byMeseGraf[mk])byMeseGraf[mk]={finale:0,costi:0};
+    byMeseGraf[mk].finale+=x.finale;
+  });
+  Object.keys(mesiPerAptGraf).forEach(function(apt){
+    var cf=getCostiFissi(apt);
+    if(cf.totale===0)return;
+    mesiPerAptGraf[apt].forEach(function(mk){
+      if(byMeseGraf[mk])byMeseGraf[mk].costi+=cf.totale;
+    });
+  });
+  var mesiGraf=Object.keys(byMeseGraf).sort();
+
+  var meseLabel=incassiFilterMese==='tutti'?'Tutti i periodi':(function(){var p=incassiFilterMese.split('-');return new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});})();
 
   // Grafico mensile
-  const BAR_W=64,BAR_GAP=24,CHART_H=180,LABEL_H=40,TOP_PAD=30;
-  const maxVal=mesiGraf.reduce((m,k)=>Math.max(m,byMese[k].finale),0)||1;
-  const svgW=Math.max(500,mesiGraf.length*(BAR_W+BAR_GAP)+BAR_GAP);
-  const guides=[.25,.5,.75,1].map(p=>{const y=CHART_H-(p*(CHART_H-TOP_PAD));return `<line x1="0" y1="${y}" x2="${svgW}" y2="${y}" stroke="#EDF4F9" stroke-width="1"/><text x="4" y="${y-3}" font-size="9" fill="#BFCFDA" font-family="DM Sans,Arial,sans-serif">${fmtEur(maxVal*p)}</text>`;}).join('');
-  const bars=mesiGraf.map((mk,i)=>{
-    const v=byMese[mk],x=BAR_GAP+i*(BAR_W+BAR_GAP);
-    const barH=Math.max(4,(v.finale/maxVal)*(CHART_H-TOP_PAD)),y=CHART_H-barH;
-    const[yr,mo]=mk.split('-');
-    const lbl=new Date(+yr,+mo-1,1).toLocaleDateString('it-IT',{month:'short',year:'2-digit'});
-    return `<rect x="${x}" y="${y}" width="${BAR_W}" height="${barH}" rx="6" fill="#0D5A8E" opacity="0.85"/>
-      <text x="${x+BAR_W/2}" y="${y-6}" text-anchor="middle" font-size="11" font-weight="600" fill="#2A7A4F" font-family="DM Sans,Arial,sans-serif">${fmtEur(v.finale)}</text>
-      <text x="${x+BAR_W/2}" y="${CHART_H+18}" text-anchor="middle" font-size="11" fill="#7299B0" font-family="DM Sans,Arial,sans-serif">${lbl}</text>`;
+  var LABEL_OFFSET=60,BAR_W=64,BAR_GAP=24,CHART_H=180,LABEL_H=40,TOP_PAD=30;
+  var maxVal=mesiGraf.reduce(function(m,k){return Math.max(m,byMeseGraf[k].finale-byMeseGraf[k].costi);},0)||1;
+  var svgW=Math.max(500,mesiGraf.length*(BAR_W+BAR_GAP)+BAR_GAP+LABEL_OFFSET);
+  var guides=[.25,.5,.75,1].map(function(p){
+    var y=CHART_H-(p*(CHART_H-TOP_PAD));
+    return '<line x1="'+LABEL_OFFSET+'" y1="'+y+'" x2="'+svgW+'" y2="'+y+'" stroke="#EDF4F9" stroke-width="1"/><text x="'+(LABEL_OFFSET+4)+'" y="'+(y-3)+'" font-size="9" fill="#BFCFDA" font-family="DM Sans,Arial,sans-serif">'+fmtEur(maxVal*p)+'</text>';
   }).join('');
-  const svgGraf=mesiGraf.length===0
-    ?`<div style="padding:32px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun dato.</div>`
-    :`<div class="chart-bars-wrap"><svg viewBox="0 0 ${svgW} ${CHART_H+LABEL_H}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;min-width:${svgW}px;height:auto">${guides}${bars}</svg></div>`;
+  var bars=mesiGraf.map(function(mk,i){
+    var v=byMeseGraf[mk];
+    var finaleNetto=v.finale-v.costi;
+    var x=LABEL_OFFSET+BAR_GAP+i*(BAR_W+BAR_GAP);
+    var barH=Math.max(4,(finaleNetto/maxVal)*(CHART_H-TOP_PAD));
+    var y=CHART_H-barH;
+    var p=mk.split('-');
+    var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'short',year:'2-digit'});
+    return '<rect x="'+x+'" y="'+y+'" width="'+BAR_W+'" height="'+barH+'" rx="6" fill="#0D5A8E" opacity="0.85"/>'
+      +'<text x="'+(x+BAR_W/2)+'" y="'+(y-6)+'" text-anchor="middle" font-size="11" font-weight="600" fill="#2A7A4F" font-family="DM Sans,Arial,sans-serif">'+fmtEur(finaleNetto)+'</text>'
+      +'<text x="'+(x+BAR_W/2)+'" y="'+(CHART_H+18)+'" text-anchor="middle" font-size="11" fill="#7299B0" font-family="DM Sans,Arial,sans-serif">'+lbl+'</text>';
+  }).join('');
+  var svgGraf=mesiGraf.length===0
+    ?'<div style="padding:32px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun dato.</div>'
+    :'<div class="chart-bars-wrap"><svg viewBox="0 0 '+svgW+' '+(CHART_H+LABEL_H)+'" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;min-width:'+svgW+'px;height:auto">'+guides+bars+'</svg></div>';
 
-  // Tabella riepilogo
-  const aptRows=Object.entries(byApt).sort((a,b)=>b[1].finale-a[1].finale).map(([apt,v])=>{
-    const domus=isDomus(apt);
-    const servStr=domus?'— (accordo Elda)':`${fmtEur(v.pulizia)} pul. + ${fmtEur(v.lavanderia)} lav.`;
-    return `<tr>
-      <td style="font-weight:500">${apt}</td>
-      <td style="text-align:center;color:var(--text3)">${v.n}</td>
-      <td class="val-lordo">${fmtEur(v.lordo)}</td>
-      <td class="val-netto">${fmtEur(v.netto)}</td>
-      <td style="font-size:12px;color:var(--amber)">${servStr}</td>
-      <td class="val-finale" style="font-size:15px">${fmtEur(v.finale)}</td>
-    </tr>`;
+  // Tabella riepilogo per appartamento
+  var aptRows=Object.entries(byApt).sort(function(a,b){return b[1].finaleNetto-a[1].finaleNetto;}).map(function(e){
+    var apt=e[0],v=e[1];
+    var domus=isDomus(apt);
+    var servStr=domus?'\u2014 (accordo Elda)':fmtEur(v.pulizia)+' pul. + '+fmtEur(v.lavanderia)+' lav.';
+    var costiStr=v.costiFissiDettaglio||'\u2014';
+    var costiLabel=v.costiFissiNumMesi>1
+      ?costiStr+' <span style="font-size:10px;color:var(--text3)">\u00d7'+v.costiFissiNumMesi+' mesi = '+fmtEur(v.costiFissiTot)+'</span>'
+      :(v.costiFissiTot>0?costiStr:'\u2014');
+    return '<tr>'
+      +'<td style="font-weight:500">'+apt+'</td>'
+      +'<td style="text-align:center;color:var(--text3)">'+v.n+'</td>'
+      +'<td class="val-lordo">'+fmtEur(v.lordo)+'</td>'
+      +'<td class="val-netto">'+fmtEur(v.netto)+'</td>'
+      +'<td style="font-size:11px;color:var(--amber)">'+servStr+'</td>'
+      +'<td style="font-size:11px;color:var(--red)">'+costiLabel+'</td>'
+      +'<td class="val-finale" style="font-size:15px">'+fmtEur(v.finaleNetto)+'</td>'
+      +'</tr>';
   }).join('');
 
-  c.innerHTML=`
-    <div class="incassi-filter-bar">
-      <label>Periodo:</label>
-      <select onchange="incassiFilterMese=this.value;renderIncassi()">
-        <option value="tutti" ${incassiFilterMese==='tutti'?'selected':''}>Tutti i mesi</option>${meseOpts}
-      </select>
-      <label style="margin-left:8px">Appartamento:</label>
-      <select onchange="incassiFilterApt=this.value;renderIncassi()">
-        <option value="tutti" ${incassiFilterApt==='tutti'?'selected':''}>Tutti</option>${aptOpts}
-      </select>
-    </div>
-    <div class="incassi-kpi">
-      <div class="incassi-kpi-card"><div class="incassi-kpi-num">${fmtEur(totLordo)}</div><div class="incassi-kpi-lbl">Totale lordo</div></div>
-      <div class="incassi-kpi-card netto"><div class="incassi-kpi-num">${fmtEur(totNetto)}</div><div class="incassi-kpi-lbl">Totale netto</div></div>
-      <div class="incassi-kpi-card servizi"><div class="incassi-kpi-num">${fmtEur(totServ)}</div><div class="incassi-kpi-lbl">Servizi</div></div>
-      <div class="incassi-kpi-card finale"><div class="incassi-kpi-num">${fmtEur(totFinale)}</div><div class="incassi-kpi-lbl">Incasso finale</div></div>
-    </div>
-    
-    <div class="section-label" style="margin-top:0">Riepilogo per appartamento — ${meseLabel}</div>
-    <table class="incassi-tbl">
-      <thead><tr><th>Appartamento</th><th style="text-align:center">Prenot.</th><th>Lordo</th><th>Netto</th><th>Servizi</th><th>Incasso finale</th></tr></thead>
-      <tbody>${aptRows||'<tr><td colspan="6" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato.</td></tr>'}</tbody>
-      <tfoot><tr><td>Totale</td><td style="text-align:center">${rows.length}</td><td>${fmtEur(totLordo)}</td><td>${fmtEur(totNetto)}</td><td>${fmtEur(totServ)}</td><td>${fmtEur(totFinale)}</td></tr></tfoot>
-    </table>
-    <div class="incassi-chart-section">
-      <div class="incassi-chart-title">📊 Incasso finale per mese${incassiFilterApt!=='tutti'?' · '+incassiFilterApt:''}</div>
-      ${svgGraf}
-    </div>`;
+  c.innerHTML=
+    '<div class="incassi-filter-bar">'
+    +'<label>Periodo:</label>'
+    +'<select onchange="incassiFilterMese=this.value;renderIncassi()">'
+    +'<option value="tutti" '+(incassiFilterMese==='tutti'?'selected':'')+'>Tutti i mesi</option>'+meseOpts
+    +'</select>'
+    +'<label style="margin-left:8px">Appartamento:</label>'
+    +'<select onchange="incassiFilterApt=this.value;renderIncassi()">'
+    +'<option value="tutti" '+(incassiFilterApt==='tutti'?'selected':'')+'>Tutti</option>'+aptOpts
+    +'</select>'
+    +'</div>'
+
+    +'<div class="incassi-kpi">'
+    +'<div class="incassi-kpi-card"><div class="incassi-kpi-num">'+fmtEur(totLordo)+'</div><div class="incassi-kpi-lbl">Totale lordo</div></div>'
+    +'<div class="incassi-kpi-card netto"><div class="incassi-kpi-num">'+fmtEur(totNetto)+'</div><div class="incassi-kpi-lbl">Totale netto</div></div>'
+    +'<div class="incassi-kpi-card servizi"><div class="incassi-kpi-num">'+fmtEur(totServ)+'</div><div class="incassi-kpi-lbl">Servizi pulizie</div></div>'
+    +'<div class="incassi-kpi-card costi"><div class="incassi-kpi-num">'+fmtEur(totCostiFissi)+'</div><div class="incassi-kpi-lbl">Affitti e spese</div></div>'
+    +'<div class="incassi-kpi-card finale"><div class="incassi-kpi-num">'+fmtEur(totFinale)+'</div><div class="incassi-kpi-lbl">Incasso finale</div></div>'
+    +'</div>'
+
+    +'<div style="margin-bottom:18px">'
+    +'<button class="incassi-note-toggle" onclick="toggleIncassiNote()">&#9432; Come vengono calcolati gli importi &#9660;</button>'
+    +'<div id="incassi-note" class="incassi-note-box">'
+    +'<strong style="color:var(--text2)">Domus Pulchra</strong> \u2192 incasso finale = 15% del lordo (accordo Elda, servizi inclusi, indipendente da piattaforma)<br>'
+    +'<strong style="color:var(--text2)">Altre case</strong> \u2192 netto = lordo \u2212 commissione (Booking \u221220%, Airbnb \u221215%, Diretta 0%) \u2192 incasso finale = netto \u2212 pulizia \u2212 lavanderia \u2212 affitti e spese<br>'
+    +'<strong style="color:var(--text2)">Enea</strong>: lavanderia = tariffa/ospite \u00d7 n. ospiti (decurtata dall\'incasso ma esclusa dal compenso Giulia)<br>'
+    +'<strong style="color:var(--text2)">Affitti e spese</strong>: costo fisso mensile per Mare (\u20ac860), Putignani (\u20ac1.855) e Piccinni (\u20ac2.075). Se il filtro \u00e8 su un mese specifico si decurta un mese; se \u00e8 su tutti i mesi si moltiplica per il numero di mesi presenti nei dati'
+    +'</div></div>'
+
+    +'<div class="section-label" style="margin-top:0">Riepilogo per appartamento \u2014 '+meseLabel+'</div>'
+    +'<table class="incassi-tbl">'
+    +'<thead><tr>'
+    +'<th>Appartamento</th>'
+    +'<th style="text-align:center">Prenot.</th>'
+    +'<th>Lordo</th>'
+    +'<th>Netto</th>'
+    +'<th>Servizi pulizie</th>'
+    +'<th>Affitti e spese</th>'
+    +'<th>Incasso finale</th>'
+    +'</tr></thead>'
+    +'<tbody>'+(aptRows||'<tr><td colspan="7" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato.</td></tr>')+'</tbody>'
+    +'<tfoot><tr>'
+    +'<td>Totale</td>'
+    +'<td style="text-align:center">'+rows.length+'</td>'
+    +'<td>'+fmtEur(totLordo)+'</td>'
+    +'<td>'+fmtEur(totNetto)+'</td>'
+    +'<td>'+fmtEur(totServ)+'</td>'
+    +'<td>'+fmtEur(totCostiFissi)+'</td>'
+    +'<td>'+fmtEur(totFinale)+'</td>'
+    +'</tr></tfoot>'
+    +'</table>'
+
+    +'<div class="incassi-chart-section">'
+    +'<div class="incassi-chart-title">&#128202; Incasso finale per mese'+(incassiFilterApt!=='tutti'?' \u00b7 '+incassiFilterApt:'')+'</div>'
+    +svgGraf
+    +'</div>';
 }
 
 // ── PULIZIE ───────────────────────────────────────────────────
-function lettiDaPreparare(aptName,numOspiti){const letti=LETTI_APT[aptName]||[];const n=parseInt(numOspiti)||2;if(n<=2)return letti.slice(0,1);if(n<=4)return letti.slice(0,2);return letti;}
-function toggleAptFilter(apt){if(!window._filterApts)window._filterApts=[];if(apt==='tutti')window._filterApts=[];else{const idx=window._filterApts.indexOf(apt);if(idx===-1)window._filterApts.push(apt);else window._filterApts.splice(idx,1);}renderPulizie();}
+function lettiDaPreparare(aptName,numOspiti){var letti=LETTI_APT[aptName]||[];var n=parseInt(numOspiti)||2;if(n<=2)return letti.slice(0,1);if(n<=4)return letti.slice(0,2);return letti;}
+function toggleAptFilter(apt){if(!window._filterApts)window._filterApts=[];if(apt==='tutti')window._filterApts=[];else{var idx=window._filterApts.indexOf(apt);if(idx===-1)window._filterApts.push(apt);else window._filterApts.splice(idx,1);}renderPulizie();}
 
 function renderPulizie(){
-  const container=document.getElementById('pulizieContent');if(!container)return;
-  const filterMese=document.getElementById('filterMese')?document.getElementById('filterMese').value:'tutti';
-  const filterMode=document.getElementById('filterMode')?document.getElementById('filterMode').value:'tutti';
-  const filterDal=document.getElementById('filterDal')?document.getElementById('filterDal').value:'';
-  const filterAl=document.getElementById('filterAl')?document.getElementById('filterAl').value:'';
-  const filterApts=window._filterApts||[];
-
-  const checkouts=prenotazioni
-    .filter(r=>r['Appartamento']&&r['Check-out']&&r['Nome Ospite'])
-    .map(r=>{
-      const apt=r['Appartamento'],ospiti=parseInt(r['N. Ospiti Adulti'])||2;
-      const coDate=parseDate(r['Check-out']),ciDate=parseDate(r['Check-in']);
-      const ai=getCostiPulizie(apt,ospiti);
-      const{compenso,dettaglio}=getCompenso(apt,ospiti);
-      return{apt,coDate,ciDate,ospiti,persona:ai.persona,phone:ai.phone,pulizia:ai.pulizia,lavanderia:ai.lavanderia,compenso,dettaglio,nomeOspite:r['Nome Ospite']||'—',letti:lettiDaPreparare(apt,ospiti),nextGuest:null,nextGuestOspiti:0,nextCiDate:null,lettiNext:[]};
-    })
-    .filter(r=>r.coDate)
-    .sort((a,b)=>a.coDate-b.coDate);
-
-  checkouts.forEach(co=>{
-    const next=prenotazioni.filter(r=>matchApt(r['Appartamento'],co.apt)&&parseDate(r['Check-in'])>=co.coDate&&r['Nome Ospite']).sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
-    if(next){co.nextGuest=next['Nome Ospite']||'—';co.nextGuestOspiti=parseInt(next['N. Ospiti Adulti'])||2;co.nextCiDate=parseDate(next['Check-in']);co.lettiNext=lettiDaPreparare(co.apt,next['N. Ospiti Adulti']);co.letti=co.lettiNext;}
+  var container=document.getElementById('pulizieContent');if(!container)return;
+  var filterMese=document.getElementById('filterMese')?document.getElementById('filterMese').value:'tutti';
+  var filterMode=document.getElementById('filterMode')?document.getElementById('filterMode').value:'tutti';
+  var filterDal=document.getElementById('filterDal')?document.getElementById('filterDal').value:'';
+  var filterAl=document.getElementById('filterAl')?document.getElementById('filterAl').value:'';
+  var filterApts=window._filterApts||[];
+  var checkouts=prenotazioni.filter(function(r){return r['Appartamento']&&r['Check-out']&&r['Nome Ospite'];}).map(function(r){
+    var apt=r['Appartamento'],ospiti=parseInt(r['N. Ospiti Adulti'])||2;
+    var coDate=parseDate(r['Check-out']);
+    var ai=getCostiPulizie(apt,ospiti);
+    var comp=getCompenso(apt,ospiti);
+    return{apt:apt,coDate:coDate,ospiti:ospiti,persona:ai.persona,phone:ai.phone,pulizia:ai.pulizia,lavanderia:ai.lavanderia,compenso:comp.compenso,dettaglio:comp.dettaglio,nomeOspite:r['Nome Ospite']||'\u2014',letti:lettiDaPreparare(apt,ospiti),nextGuest:null,nextGuestOspiti:0,nextCiDate:null,lettiNext:[]};
+  }).filter(function(r){return r.coDate;}).sort(function(a,b){return a.coDate-b.coDate;});
+  checkouts.forEach(function(co){
+    var next=prenotazioni.filter(function(r){return matchApt(r['Appartamento'],co.apt)&&parseDate(r['Check-in'])>=co.coDate&&r['Nome Ospite'];}).sort(function(a,b){return parseDate(a['Check-in'])-parseDate(b['Check-in']);})[0];
+    if(next){co.nextGuest=next['Nome Ospite']||'\u2014';co.nextGuestOspiti=parseInt(next['N. Ospiti Adulti'])||2;co.nextCiDate=parseDate(next['Check-in']);co.lettiNext=lettiDaPreparare(co.apt,next['N. Ospiti Adulti']);co.letti=co.lettiNext;}
   });
-
-  const mesi=[...new Set(checkouts.map(r=>`${r.coDate.getFullYear()}-${String(r.coDate.getMonth()+1).padStart(2,'0')}`))].sort();
-  const mesiOpts=mesi.map(m=>{const[y,mo]=m.split('-');const lbl=new Date(+y,+mo-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return `<option value="${m}" ${filterMese===m?'selected':''}>${lbl}</option>`;}).join('');
-
-  let filtered;
-  if(filterMode==='mese')filtered=filterMese==='tutti'?checkouts:checkouts.filter(r=>{const[y,m]=filterMese.split('-');return r.coDate.getFullYear()===+y&&r.coDate.getMonth()===+m-1;});
-  else if(filterMode==='range'&&filterDal){const dal=new Date(filterDal),al=filterAl?new Date(filterAl):new Date('2099-12-31');al.setHours(23,59,59);filtered=checkouts.filter(r=>r.coDate>=dal&&r.coDate<=al);}
+  var mesi=Array.from(new Set(checkouts.map(function(r){return r.coDate.getFullYear()+'-'+String(r.coDate.getMonth()+1).padStart(2,'0');}))).sort();
+  var mesiOpts=mesi.map(function(m){var p=m.split('-');var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return '<option value="'+m+'" '+(filterMese===m?'selected':'')+'>'+lbl+'</option>';}).join('');
+  var filtered;
+  if(filterMode==='mese')filtered=filterMese==='tutti'?checkouts:checkouts.filter(function(r){var p=filterMese.split('-');return r.coDate.getFullYear()===+p[0]&&r.coDate.getMonth()===+p[1]-1;});
+  else if(filterMode==='range'&&filterDal){var dal=new Date(filterDal),al=filterAl?new Date(filterAl):new Date('2099-12-31');al.setHours(23,59,59);filtered=checkouts.filter(function(r){return r.coDate>=dal&&r.coDate<=al;});}
   else filtered=checkouts;
-
-  const appsDisp=[...new Set(checkouts.map(r=>r.apt))].sort();
-  window._aptPillNames=['tutti',...appsDisp];
-  const filteredApt=filterApts.length===0?filtered:filtered.filter(r=>filterApts.includes(r.apt));
-  const totComp=filteredApt.reduce((s,r)=>s+r.compenso,0);
-  const totPul=filteredApt.reduce((s,r)=>s+r.pulizia,0);
-  const totLav=filteredApt.reduce((s,r)=>s+(isEnea(r.apt)?0:r.lavanderia),0);
-
-  const dropLbl=filterApts.length===0?'Tutti':filterApts.length===1?filterApts[0]:filterApts.length+' selezionati';
-  const dropItems=window._aptPillNames.map((a,idx)=>{
-    const isSel=a==='tutti'?filterApts.length===0:filterApts.includes(a);
-    const lbl=a==='tutti'?'Tutti gli appartamenti':a;
-    const chk=isSel?`<span style="color:var(--accent);font-size:14px">&#10003;</span>`:`<span style="width:14px;display:inline-block"></span>`;
-    return `<div onclick="toggleAptFilter(window._aptPillNames[${idx}])" style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text);background:${isSel&&a!=='tutti'?'var(--accent-light)':'transparent'};border-bottom:${a==='tutti'?'1px solid var(--border)':'none'}" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='${isSel&&a!=='tutti'?'var(--accent-light)':'transparent'}'">
-      ${chk}<span>${lbl}</span></div>`;
+  var appsDisp=Array.from(new Set(checkouts.map(function(r){return r.apt;}))).sort();
+  window._aptPillNames=['tutti'].concat(appsDisp);
+  var filteredApt=filterApts.length===0?filtered:filtered.filter(function(r){return filterApts.indexOf(r.apt)!==-1;});
+  var totComp=filteredApt.reduce(function(s,r){return s+r.compenso;},0);
+  var totPul=filteredApt.reduce(function(s,r){return s+r.pulizia;},0);
+  var totLav=filteredApt.reduce(function(s,r){return s+(isEnea(r.apt)?0:r.lavanderia);},0);
+  var dropLbl=filterApts.length===0?'Tutti':filterApts.length===1?filterApts[0]:filterApts.length+' selezionati';
+  var dropItems=window._aptPillNames.map(function(a,idx){
+    var isSel=a==='tutti'?filterApts.length===0:filterApts.indexOf(a)!==-1;
+    var lbl=a==='tutti'?'Tutti gli appartamenti':a;
+    var chk=isSel?'<span style="color:var(--accent);font-size:14px">&#10003;</span>':'<span style="width:14px;display:inline-block"></span>';
+    return '<div onclick="toggleAptFilter(window._aptPillNames['+idx+'])" style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text);background:'+(isSel&&a!=='tutti'?'var(--accent-light)':'transparent')+';border-bottom:'+(a==='tutti'?'1px solid var(--border)':'none')+'" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\''+(isSel&&a!=='tutti'?'var(--accent-light)':'transparent')+'\'">'+chk+'<span>'+lbl+'</span></div>';
   }).join('');
-
-  let html=`
-    <div class="filter-bar">
-      <label>Periodo:</label>
-      <select id="filterMode" onchange="renderPulizie()">
-        <option value="tutti" ${filterMode==='tutti'?'selected':''}>Tutti</option>
-        <option value="mese"  ${filterMode==='mese' ?'selected':''}>Per mese</option>
-        <option value="range" ${filterMode==='range'?'selected':''}>Intervallo date</option>
-      </select>
-      ${filterMode==='mese'?`<select id="filterMese" onchange="renderPulizie()"><option value="tutti" ${filterMese==='tutti'?'selected':''}>Tutti i mesi</option>${mesiOpts}</select>`:''}
-      ${filterMode==='range'?`<label style="margin-left:8px">Dal</label><input type="date" id="filterDal" value="${filterDal}" onchange="renderPulizie()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;"><label>al</label><input type="date" id="filterAl" value="${filterAl}" onchange="renderPulizie()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;">${filterDal?`<button onclick="document.getElementById('filterDal').value='';document.getElementById('filterAl').value='';renderPulizie()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit;">&#10005; Reset</button>`:''}`:'' }
-      <label style="margin-left:12px">Appartamento:</label>
-      <div style="position:relative;display:inline-block">
-        <button onclick="toggleAptDropdown()" id="aptDropdownBtn" style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:${filterApts.length>0?'var(--accent)':'var(--surface)'};color:${filterApts.length>0?'#fff':'var(--text)'};cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between">
-          <span>${dropLbl}</span><span style="font-size:10px;opacity:.7">▼</span>
-        </button>
-        <div id="aptDropdownMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:200;min-width:240px;padding:4px 0;max-height:300px;overflow-y:auto">${dropItems}</div>
-      </div>
-      <button class="planning-btn" onclick="openPlanningModal()">📋 Planning</button>
-      <button class="planning-btn" onclick="exportPuliziePDF()" style="margin-left:6px">📄 PDF</button>
-    </div>
-    <div class="riepilogo-box">
-      <div class="riepilogo-item"><div class="riepilogo-num">${filteredApt.length}</div><div class="riepilogo-lbl">interventi</div></div>
-      <div class="riepilogo-item"><div class="riepilogo-num">€${totPul}</div><div class="riepilogo-lbl">pulizie</div></div>
-      <div class="riepilogo-item"><div class="riepilogo-num">€${totLav}</div><div class="riepilogo-lbl">lavanderia addette</div></div>
-      <div class="riepilogo-item"><div class="riepilogo-num">€${totComp}</div><div class="riepilogo-lbl">compenso totale</div></div>
-    </div>`;
-
-  const byPersona={};
-  filteredApt.forEach(r=>{if(!byPersona[r.persona])byPersona[r.persona]=[];byPersona[r.persona].push(r);});
-  for(const[persona,interventi] of Object.entries(byPersona)){
-    const totC=interventi.reduce((s,r)=>s+r.compenso,0);
-    const dot=CLEANER_COLORS[persona]||'#0D5A8E';
-    const fmtD=d=>d?d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}):'—';
-    html+=`<div class="cleaner-section">
-      <div class="cleaner-header">
-        <div class="cleaner-name"><span style="width:12px;height:12px;border-radius:50%;background:${dot};display:inline-block"></span>${persona}</div>
-        <div class="cleaner-totals"><span class="cleaner-badge-pill">${interventi.length} interventi</span><span class="cleaner-badge-pill tot">compenso €${totC}</span></div>
-      </div>
-      <div class="pulizie-table-wrap">
-        <table class="pulizie-table">
-          <thead><tr><th>Check-out</th><th>Appartamento / Ospiti</th><th>Letti</th><th>Prossimo arrivo</th><th>Compenso</th></tr></thead>
-          <tbody>
-            ${interventi.map(r=>`<tr>
-              <td><strong>${fmtD(r.coDate)}</strong></td>
-              <td><div style="font-weight:500">${r.apt}</div><div class="periodo-range">${r.nomeOspite} — ${r.ospiti} ospiti</div></td>
-              <td><div class="letti-pills">${r.letti.map(l=>`<span class="letto-pill">${l}</span>`).join('')}</div></td>
-              <td>${r.nextGuest?`<div style="font-size:13px">${r.nextGuest} — ${r.nextGuestOspiti} ospiti</div><div class="periodo-range">&#8594; ${fmtD(r.nextCiDate)}</div><div class="letti-pills">${r.lettiNext.map(l=>`<span class="letto-pill extra">${l}</span>`).join('')}</div>`:`<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun arrivo previsto</span>`}</td>
-              <td><div style="font-weight:600;color:var(--accent)">€${r.compenso}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${r.dettaglio}</div></td>
-            </tr>`).join('')}
-          </tbody>
-          <tfoot><tr><td colspan="4" style="text-align:right;font-weight:500;font-size:12px;color:var(--text3)">Totale ${persona}</td><td><strong style="color:var(--accent)">€${totC}</strong></td></tr></tfoot>
-        </table>
-      </div>
-    </div>`;
-  }
-  if(!filteredApt.length)html+=`<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;font-style:italic">Nessun check-out trovato.</div>`;
+  var html='<div class="filter-bar"><label>Periodo:</label><select id="filterMode" onchange="renderPulizie()"><option value="tutti" '+(filterMode==='tutti'?'selected':'')+'>Tutti</option><option value="mese" '+(filterMode==='mese'?'selected':'')+'>Per mese</option><option value="range" '+(filterMode==='range'?'selected':'')+'>Intervallo date</option></select>'
+  +(filterMode==='mese'?'<select id="filterMese" onchange="renderPulizie()"><option value="tutti" '+(filterMese==='tutti'?'selected':'')+'>Tutti i mesi</option>'+mesiOpts+'</select>':'')
+  +(filterMode==='range'?'<label style="margin-left:8px">Dal</label><input type="date" id="filterDal" value="'+filterDal+'" onchange="renderPulizie()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;"><label>al</label><input type="date" id="filterAl" value="'+filterAl+'" onchange="renderPulizie()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;">'+(filterDal?'<button onclick="document.getElementById(\'filterDal\').value=\'\';document.getElementById(\'filterAl\').value=\'\';renderPulizie()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit;">&#10005; Reset</button>':''):'')
+  +'<label style="margin-left:12px">Appartamento:</label><div style="position:relative;display:inline-block"><button onclick="toggleAptDropdown()" id="aptDropdownBtn" style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:'+(filterApts.length>0?'var(--accent)':'var(--surface)')+';color:'+(filterApts.length>0?'#fff':'var(--text)')+';cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between"><span>'+dropLbl+'</span><span style="font-size:10px;opacity:.7">\u25bc</span></button><div id="aptDropdownMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:200;min-width:240px;padding:4px 0;max-height:300px;overflow-y:auto">'+dropItems+'</div></div>'
+  +'<button class="planning-btn" onclick="openPlanningModal()">&#128203; Planning</button>'
+  +'<button class="planning-btn" onclick="exportPuliziePDF()" style="margin-left:6px">&#128196; PDF</button></div>'
+  +'<div class="riepilogo-box"><div class="riepilogo-item"><div class="riepilogo-num">'+filteredApt.length+'</div><div class="riepilogo-lbl">interventi</div></div><div class="riepilogo-item"><div class="riepilogo-num">\u20ac'+totPul+'</div><div class="riepilogo-lbl">pulizie</div></div><div class="riepilogo-item"><div class="riepilogo-num">\u20ac'+totLav+'</div><div class="riepilogo-lbl">lavanderia addette</div></div><div class="riepilogo-item"><div class="riepilogo-num">\u20ac'+totComp+'</div><div class="riepilogo-lbl">compenso totale</div></div></div>';
+  var byPersona={};
+  filteredApt.forEach(function(r){if(!byPersona[r.persona])byPersona[r.persona]=[];byPersona[r.persona].push(r);});
+  Object.entries(byPersona).forEach(function(e){
+    var persona=e[0],interventi=e[1];
+    var totC=interventi.reduce(function(s,r){return s+r.compenso;},0);
+    var dot=CLEANER_COLORS[persona]||'#0D5A8E';
+    var fmtD=function(d){return d?d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}):'\u2014';};
+    html+='<div class="cleaner-section"><div class="cleaner-header"><div class="cleaner-name"><span style="width:12px;height:12px;border-radius:50%;background:'+dot+';display:inline-block"></span>'+persona+'</div><div class="cleaner-totals"><span class="cleaner-badge-pill">'+interventi.length+' interventi</span><span class="cleaner-badge-pill tot">compenso \u20ac'+totC+'</span></div></div>'
+    +'<div class="pulizie-table-wrap"><table class="pulizie-table"><thead><tr><th>Check-out</th><th>Appartamento / Ospiti</th><th>Letti</th><th>Prossimo arrivo</th><th>Compenso</th></tr></thead><tbody>'
+    +interventi.map(function(r){return '<tr><td><strong>'+fmtD(r.coDate)+'</strong></td><td><div style="font-weight:500">'+r.apt+'</div><div class="periodo-range">'+r.nomeOspite+' \u2014 '+r.ospiti+' ospiti</div></td><td><div class="letti-pills">'+r.letti.map(function(l){return '<span class="letto-pill">'+l+'</span>';}).join('')+'</div></td><td>'+(r.nextGuest?'<div style="font-size:13px">'+r.nextGuest+' \u2014 '+r.nextGuestOspiti+' ospiti</div><div class="periodo-range">&#8594; '+fmtD(r.nextCiDate)+'</div><div class="letti-pills">'+r.lettiNext.map(function(l){return '<span class="letto-pill extra">'+l+'</span>';}).join('')+'</div>':'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun arrivo previsto</span>')+'</td><td><div style="font-weight:600;color:var(--accent)">\u20ac'+r.compenso+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+r.dettaglio+'</div></td></tr>';}).join('')
+    +'</tbody><tfoot><tr><td colspan="4" style="text-align:right;font-weight:500;font-size:12px;color:var(--text3)">Totale '+persona+'</td><td><strong style="color:var(--accent)">\u20ac'+totC+'</strong></td></tr></tfoot></table></div></div>';
+  });
+  if(!filteredApt.length)html+='<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;font-style:italic">Nessun check-out trovato.</div>';
   container.innerHTML=html;
 }
 
-function toggleAptDropdown(){const menu=document.getElementById('aptDropdownMenu');if(!menu)return;const isOpen=menu.style.display!=='none';menu.style.display=isOpen?'none':'block';if(!isOpen){setTimeout(()=>{document.addEventListener('click',function h(e){if(!e.target.closest('#aptDropdownMenu')&&!e.target.closest('#aptDropdownBtn')){menu.style.display='none';document.removeEventListener('click',h);}});},10);}}
+function toggleAptDropdown(){var menu=document.getElementById('aptDropdownMenu');if(!menu)return;var isOpen=menu.style.display!=='none';menu.style.display=isOpen?'none':'block';if(!isOpen){setTimeout(function(){document.addEventListener('click',function h(e){if(!e.target.closest('#aptDropdownMenu')&&!e.target.closest('#aptDropdownBtn')){menu.style.display='none';document.removeEventListener('click',h);}});},10);}}
 
 function exportPuliziePDF(){
-  const container=document.getElementById('pulizieContent');if(!container)return;
-  const filterApts=window._filterApts||[];
-  const aptLabel=filterApts.length===0?'Tutti gli appartamenti':filterApts.join(', ');
-  const clone=container.cloneNode(true);
-  const fb=clone.querySelector('.filter-bar');if(fb)fb.remove();
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:24px;color:#0D1F2D;}.riepilogo-box{background:#0D5A8E;border-radius:10px;padding:14px 20px;display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px;}.riepilogo-item{text-align:center;}.riepilogo-num{font-size:26px;font-weight:700;color:#fff;line-height:1;}.riepilogo-lbl{font-size:10px;color:rgba(255,255,255,0.65);margin-top:3px;text-transform:uppercase;}.cleaner-section{margin-bottom:28px;}.cleaner-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}.cleaner-name{font-size:17px;font-weight:700;color:#0D1F2D;display:flex;align-items:center;gap:8px;}.cleaner-totals{display:flex;gap:6px;}.cleaner-badge-pill{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;background:#D6EAFA;color:#1A4F7A;}.cleaner-badge-pill.tot{background:#0D5A8E;color:#fff;}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;}th{text-align:left;padding:8px 12px;font-size:10px;font-weight:500;color:#7299B0;text-transform:uppercase;border-bottom:1px solid #D6EAFA;background:#EDF4F9;}td{padding:10px 12px;border-bottom:1px solid #EDF4F9;color:#0D1F2D;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}.letti-pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}.letto-pill{font-size:10px;padding:2px 6px;border-radius:20px;background:#DDF0FB;color:#0D5A8E;}.letto-pill.extra{background:#FDF3E0;color:#A06820;}.periodo-range{font-size:11px;color:#7299B0;margin-top:2px;}.pulizie-table-wrap{overflow:visible;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}tfoot td{font-weight:500;font-size:12px;color:#7299B0;text-align:right;padding:8px 12px;}tfoot strong{color:#0D5A8E;}</style></head><body>
-  <div class="header"><div><h2 style="color:#0D5A8E;margin:0;font-size:20px">🧹 Riepilogo Pulizie</h2><div style="font-size:12px;color:#7299B0;margin-top:4px">${aptLabel}</div></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Visionari 3.0</strong><br>generato il ${new Date().toLocaleDateString('it-IT')}</div></div>
-  ${clone.innerHTML}
-  <div class="footer"><span>Visionari 3.0</span><span>generato il ${new Date().toLocaleDateString('it-IT')}</span></div>
-  <button class="print-btn no-print" onclick="window.print()">🖨️ Stampa / Salva PDF</button></body></html>`;
-  const w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
+  var container=document.getElementById('pulizieContent');if(!container)return;
+  var filterApts=window._filterApts||[];
+  var aptLabel=filterApts.length===0?'Tutti gli appartamenti':filterApts.join(', ');
+  var clone=container.cloneNode(true);
+  var fb=clone.querySelector('.filter-bar');if(fb)fb.remove();
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:24px;color:#0D1F2D;}.riepilogo-box{background:#0D5A8E;border-radius:10px;padding:14px 20px;display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px;}.riepilogo-item{text-align:center;}.riepilogo-num{font-size:26px;font-weight:700;color:#fff;line-height:1;}.riepilogo-lbl{font-size:10px;color:rgba(255,255,255,0.65);margin-top:3px;text-transform:uppercase;}.cleaner-section{margin-bottom:28px;}.cleaner-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}.cleaner-name{font-size:17px;font-weight:700;color:#0D1F2D;display:flex;align-items:center;gap:8px;}.cleaner-totals{display:flex;gap:6px;}.cleaner-badge-pill{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;background:#D6EAFA;color:#1A4F7A;}.cleaner-badge-pill.tot{background:#0D5A8E;color:#fff;}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;}th{text-align:left;padding:8px 12px;font-size:10px;font-weight:500;color:#7299B0;text-transform:uppercase;border-bottom:1px solid #D6EAFA;background:#EDF4F9;}td{padding:10px 12px;border-bottom:1px solid #EDF4F9;color:#0D1F2D;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}.letti-pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}.letto-pill{font-size:10px;padding:2px 6px;border-radius:20px;background:#DDF0FB;color:#0D5A8E;}.letto-pill.extra{background:#FDF3E0;color:#A06820;}.periodo-range{font-size:11px;color:#7299B0;margin-top:2px;}.pulizie-table-wrap{overflow:visible;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}tfoot td{font-weight:500;font-size:12px;color:#7299B0;text-align:right;padding:8px 12px;}tfoot strong{color:#0D5A8E;}</style></head><body>'
+  +'<div class="header"><div><h2 style="color:#0D5A8E;margin:0;font-size:20px">&#129529; Riepilogo Pulizie</h2><div style="font-size:12px;color:#7299B0;margin-top:4px">'+aptLabel+'</div></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Visionari 3.0</strong><br>generato il '+new Date().toLocaleDateString('it-IT')+'</div></div>'
+  +clone.innerHTML
+  +'<div class="footer"><span>Visionari 3.0</span><span>generato il '+new Date().toLocaleDateString('it-IT')+'</span></div>'
+  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
+  var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────
-function getDashDay(){const d=new Date(TODAY);d.setDate(d.getDate()+dashOffset);return d;}
+function getDashDay(){var d=new Date(TODAY);d.setDate(d.getDate()+dashOffset);return d;}
 function renderDashboard(){
-  const c=document.getElementById('dashboardContent');if(!c)return;
-  const day=getDashDay();
-  const ciList=prenotazioni.filter(r=>sameDay(parseDate(r['Check-in']),day)&&r['Nome Ospite']);
-  const coList=prenotazioni.filter(r=>sameDay(parseDate(r['Check-out']),day)&&r['Nome Ospite']);
+  var c=document.getElementById('dashboardContent');if(!c)return;
+  var day=getDashDay();
+  var ciList=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-in']),day)&&r['Nome Ospite'];});
+  var coList=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),day)&&r['Nome Ospite'];});
   function gCard(r,type){
-    const nome=r['Nome Ospite']||'—',apt=r['Appartamento']||'—',osp=r['N. Ospiti Adulti']||'?';
-    const phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
-    const isCI=type==='ci';
-    const msg=isCI?(getPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 👋 Welcome to Bari!`):(getCheckoutPrompt(apt,nome)||`Hello ${nome.split(' ')[0]} 😊 What time are you checking out?`);
-    const cardIdx=`dash_${type}_${pClean}`;waMessages[cardIdx]={msg,phone:pClean};
-    const wa=phone?`<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')">&#128172; ${phone}</button>`:`<button class="dash-wa-btn ${type}" onclick="event.stopPropagation();sendWA('${cardIdx}')" style="opacity:.7;border:1px dashed currentColor;background:transparent">&#128172; Invia a...</button>`;
-    let nottiStr='';if(isCI){const c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);if(c1&&c2){const n=Math.round((c2-c1)/86400000);nottiStr=`<span style="font-size:11px;color:var(--text3);margin-left:auto">${n} nott${n===1?'e':'i'}</span>`;}}
-    return `<div class="dash-card ${type}"><div class="dash-guest-name">${nome}</div><div class="dash-meta" style="display:flex;align-items:center">${osp} ospiti · ${apt}${nottiStr}</div>${wa}</div>`;
+    var nome=r['Nome Ospite']||'\u2014',apt=r['Appartamento']||'\u2014',osp=r['N. Ospiti Adulti']||'?';
+    var phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
+    var isCI=type==='ci';
+    var msg=isCI?(getPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDC4B Welcome to Bari!'):(getCheckoutPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDE0A What time are you checking out?');
+    var cardIdx='dash_'+type+'_'+pClean;waMessages[cardIdx]={msg:msg,phone:pClean};
+    var wa=phone?'<button class="dash-wa-btn '+type+'" onclick="event.stopPropagation();sendWA(\''+cardIdx+'\')">&#128172; '+phone+'</button>':'<button class="dash-wa-btn '+type+'" onclick="event.stopPropagation();sendWA(\''+cardIdx+'\')" style="opacity:.7;border:1px dashed currentColor;background:transparent">&#128172; Invia a...</button>';
+    var nottiStr='';if(isCI){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);if(c1&&c2){var n=Math.round((c2-c1)/86400000);nottiStr='<span style="font-size:11px;color:var(--text3);margin-left:auto">'+n+' nott'+(n===1?'e':'i')+'</span>';}}
+    return '<div class="dash-card '+type+'"><div class="dash-guest-name">'+nome+'</div><div class="dash-meta" style="display:flex;align-items:center">'+osp+' ospiti \u00b7 '+apt+nottiStr+'</div>'+wa+'</div>';
   }
-  c.innerHTML=`
-    <div class="dash-date-hero">
-      <div class="dash-date-day">${day.getDate()}</div>
-      <div class="dash-date-weekday">${day.toLocaleDateString('it-IT',{weekday:'long'})}</div>
-      <div class="dash-date-monthyear">${day.toLocaleDateString('it-IT',{month:'long',year:'numeric'})}</div>
-    </div>
-    <div class="dash-sections">
-      <div><div class="dash-sec-title ci">&#8592; Check-in <span class="dash-count ci">${ciList.length}</span></div>${ciList.length?ciList.map(r=>gCard(r,'ci')).join(''):'<div class="dash-empty">Nessun check-in</div>'}</div>
-      <div><div class="dash-sec-title co">&#8594; Check-out <span class="dash-count co">${coList.length}</span></div>${coList.length?coList.map(r=>gCard(r,'co')).join(''):'<div class="dash-empty">Nessun check-out</div>'}</div>
-    </div>`;
+  c.innerHTML='<div class="dash-date-hero"><div class="dash-date-day">'+day.getDate()+'</div><div class="dash-date-weekday">'+day.toLocaleDateString('it-IT',{weekday:'long'})+'</div><div class="dash-date-monthyear">'+day.toLocaleDateString('it-IT',{month:'long',year:'numeric'})+'</div></div>'
+  +'<div class="dash-sections"><div><div class="dash-sec-title ci">&#8592; Check-in <span class="dash-count ci">'+ciList.length+'</span></div>'+(ciList.length?ciList.map(function(r){return gCard(r,'ci');}).join(''):'<div class="dash-empty">Nessun check-in</div>')+'</div>'
+  +'<div><div class="dash-sec-title co">&#8594; Check-out <span class="dash-count co">'+coList.length+'</span></div>'+(coList.length?coList.map(function(r){return gCard(r,'co');}).join(''):'<div class="dash-empty">Nessun check-out</div>')+'</div></div>';
 }
-function sendWA(key){const item=waMessages[key];if(!item)return;navigator.clipboard.writeText(item.msg).then(()=>setTimeout(()=>window.open(`https://wa.me/${item.phone}`,'_blank'),600)).catch(()=>window.open(`https://wa.me/${item.phone}`,'_blank'));}
-function shareWAMsg(key){const item=waMessages[key];if(!item)return;navigator.clipboard.writeText(item.msg).then(()=>setTimeout(()=>window.open('https://wa.me/','_blank'),600)).catch(()=>window.open('https://wa.me/','_blank'));}
+function sendWA(key){var item=waMessages[key];if(!item)return;navigator.clipboard.writeText(item.msg).then(function(){setTimeout(function(){window.open('https://wa.me/'+item.phone,'_blank');},600);}).catch(function(){window.open('https://wa.me/'+item.phone,'_blank');});}
+function shareWAMsg(key){var item=waMessages[key];if(!item)return;navigator.clipboard.writeText(item.msg).then(function(){setTimeout(function(){window.open('https://wa.me/','_blank');},600);}).catch(function(){window.open('https://wa.me/','_blank');});}
 
-// ── PLANNING MODAL ────────────────────────────────────────────
 function openPlanningModal(){
-  const today=new Date(TODAY),end=new Date(today);end.setDate(end.getDate()+14);
-  const todayStr=today.toISOString().slice(0,10),endStr=end.toISOString().slice(0,10);
-  const persone=[...new Set(prenotazioni.filter(r=>r['Appartamento']).map(r=>getCostiPulizie(r['Appartamento'],2).persona).filter(p=>p&&p!=='—'))].sort();
-  const aptsDisp=[...new Set(prenotazioni.filter(r=>r['Appartamento']).map(r=>r['Appartamento']))].sort();
-  document.getElementById('planningModalSub').innerHTML=`
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--text3);width:70px">📅 Periodo</span>
-        <input type="date" id="planDal" value="${todayStr}" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
-        <span style="font-size:12px;color:var(--text3)">→</span>
-        <input type="date" id="planAl" value="${endStr}" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--text3);width:70px">🏠 Casa</span>
-        <select id="planApt" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px">
-          <option value="tutti">Tutte le case</option>${aptsDisp.map(a=>`<option value="${a}">${a}</option>`).join('')}
-        </select>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--text3);width:70px">👤 Persona</span>
-        <select id="planPersona" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px">
-          <option value="tutti">Tutte le persone</option>${persone.map(p=>`<option value="${p}">${p}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-    <div style="height:1px;background:var(--border);margin:14px 0"></div>`;
+  var today=new Date(TODAY),end=new Date(today);end.setDate(end.getDate()+14);
+  var todayStr=today.toISOString().slice(0,10),endStr=end.toISOString().slice(0,10);
+  var persone=Array.from(new Set(prenotazioni.filter(function(r){return r['Appartamento'];}).map(function(r){return getCostiPulizie(r['Appartamento'],2).persona;}).filter(function(p){return p&&p!=='\u2014';}))).sort();
+  var aptsDisp=Array.from(new Set(prenotazioni.filter(function(r){return r['Appartamento'];}).map(function(r){return r['Appartamento'];}))).sort();
+  document.getElementById('planningModalSub').innerHTML='<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:12px;color:var(--text3);width:70px">&#128197; Periodo</span><input type="date" id="planDal" value="'+todayStr+'" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none"><span style="font-size:12px;color:var(--text3)">\u2192</span><input type="date" id="planAl" value="'+endStr+'" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none"></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:12px;color:var(--text3);width:70px">&#127968; Casa</span><select id="planApt" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px"><option value="tutti">Tutte le case</option>'+aptsDisp.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('')+'</select></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:12px;color:var(--text3);width:70px">&#128100; Persona</span><select id="planPersona" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px"><option value="tutti">Tutte le persone</option>'+persone.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('')+'</select></div></div><div style="height:1px;background:var(--border);margin:14px 0"></div>';
   refreshPlanningRows();
   document.getElementById('planningModal').style.display='flex';
 }
 function refreshPlanningRows(){
-  const dalVal=document.getElementById('planDal')?document.getElementById('planDal').value:'';
-  const alVal=document.getElementById('planAl')?document.getElementById('planAl').value:'';
-  const fApt=document.getElementById('planApt')?document.getElementById('planApt').value:'tutti';
-  const fPer=document.getElementById('planPersona')?document.getElementById('planPersona').value:'tutti';
+  var dalVal=document.getElementById('planDal')?document.getElementById('planDal').value:'';
+  var alVal=document.getElementById('planAl')?document.getElementById('planAl').value:'';
+  var fApt=document.getElementById('planApt')?document.getElementById('planApt').value:'tutti';
+  var fPer=document.getElementById('planPersona')?document.getElementById('planPersona').value:'tutti';
   if(!dalVal)return;
-  const start=new Date(dalVal+'T00:00:00'),end=new Date(alVal+'T23:59:59');
-  const interventi=prenotazioni.filter(r=>r['Appartamento']&&r['Check-out']).map(r=>{
-    const coDate=parseDate(r['Check-out']),apt=r['Appartamento'];
-    const ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);
-    return{apt,coDate,persona:ai.persona,phone:ai.phone};
-  }).filter(r=>{
-    if(!r.coDate||r.coDate<start||r.coDate>end)return false;
-    if(fApt!=='tutti'&&r.apt!==fApt)return false;
-    if(fPer!=='tutti'&&r.persona!==fPer)return false;
-    return true;
-  });
-  const byP={};interventi.forEach(r=>{if(!byP[r.persona])byP[r.persona]=[];byP[r.persona].push(r);});
-  const rows=Object.entries(byP).map(([persona,items])=>{
-    const dot=CLEANER_COLORS[persona]||'#0D5A8E';
-    const phone=items[0]?.phone||'',pClean=phone.replace('+','');
-    const apts=[...new Set(items.map(r=>r.apt))].join(' · ');
-    const btn=pClean?`<button class="pm-btn" onclick="generatePDF('${persona}','${pClean}')">📄 PDF + WA</button>`:`<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF('${persona}','')">📄 PDF</button>`;
-    return `<div class="pm-row"><div class="pm-persona"><span class="pm-dot" style="background:${dot}"></span><div><div class="pm-name">${persona}</div><div class="pm-info">${apts} · ${items.length} interventi</div></div></div>${btn}</div>`;
-  }).join('');
-  document.getElementById('planningModalRows').innerHTML=rows||`<div style="padding:20px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun intervento nel periodo.</div>`;
+  var start=new Date(dalVal+'T00:00:00'),end=new Date(alVal+'T23:59:59');
+  var interventi=prenotazioni.filter(function(r){return r['Appartamento']&&r['Check-out'];}).map(function(r){var coDate=parseDate(r['Check-out']),apt=r['Appartamento'];var ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);return{apt:apt,coDate:coDate,persona:ai.persona,phone:ai.phone};}).filter(function(r){if(!r.coDate||r.coDate<start||r.coDate>end)return false;if(fApt!=='tutti'&&r.apt!==fApt)return false;if(fPer!=='tutti'&&r.persona!==fPer)return false;return true;});
+  var byP={};interventi.forEach(function(r){if(!byP[r.persona])byP[r.persona]=[];byP[r.persona].push(r);});
+  var rows=Object.entries(byP).map(function(e){var persona=e[0],items=e[1];var dot=CLEANER_COLORS[persona]||'#0D5A8E';var phone=items[0]?items[0].phone||'':'',pClean=phone.replace('+','');var apts=Array.from(new Set(items.map(function(r){return r.apt;}))).join(' \u00b7 ');var btn=pClean?'<button class="pm-btn" onclick="generatePDF(\''+persona+'\',\''+pClean+'\')">&#128196; PDF + WA</button>':'<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF(\''+persona+'\',\'\')">&#128196; PDF</button>';return '<div class="pm-row"><div class="pm-persona"><span class="pm-dot" style="background:'+dot+'"></span><div><div class="pm-name">'+persona+'</div><div class="pm-info">'+apts+' \u00b7 '+items.length+' interventi</div></div></div>'+btn+'</div>';}).join('');
+  document.getElementById('planningModalRows').innerHTML=rows||'<div style="padding:20px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun intervento nel periodo.</div>';
 }
 function closePlanningModal(){document.getElementById('planningModal').style.display='none';}
 function generatePDF(persona,phone){
-  const dalVal=document.getElementById('planDal')?document.getElementById('planDal').value:'';
-  const alVal=document.getElementById('planAl')?document.getElementById('planAl').value:'';
-  const fApt=document.getElementById('planApt')?document.getElementById('planApt').value:'tutti';
+  var dalVal=document.getElementById('planDal')?document.getElementById('planDal').value:'';
+  var alVal=document.getElementById('planAl')?document.getElementById('planAl').value:'';
+  var fApt=document.getElementById('planApt')?document.getElementById('planApt').value:'tutti';
   if(!dalVal)return;
-  const start=new Date(dalVal+'T00:00:00'),end=new Date(alVal+'T23:59:59');
-  const fmtDate=d=>d?d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}):'—';
-  const items=prenotazioni.filter(r=>r['Appartamento']&&r['Check-out']).map(r=>{
-    const coDate=parseDate(r['Check-out']),apt=r['Appartamento'];
-    const ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);
-    const aptObj=APTS.find(a=>matchApt(a.name,apt));const maxCap=aptObj?aptObj.cap:4;
-    const nextCI=prenotazioni.filter(nr=>matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate).sort((a,b)=>parseDate(a['Check-in'])-parseDate(b['Check-in']))[0];
-    let arrivoOsp=maxCap,maxCap2=true,arrivoBambini=0;
+  var start=new Date(dalVal+'T00:00:00'),end=new Date(alVal+'T23:59:59');
+  var fmtDate=function(d){return d?d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}):'\u2014';};
+  var items=prenotazioni.filter(function(r){return r['Appartamento']&&r['Check-out'];}).map(function(r){
+    var coDate=parseDate(r['Check-out']),apt=r['Appartamento'];
+    var ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);
+    var aptObj=APTS.find(function(a){return matchApt(a.name,apt);});var maxCap=aptObj?aptObj.cap:4;
+    var nextCI=prenotazioni.filter(function(nr){return matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate;}).sort(function(a,b){return parseDate(a['Check-in'])-parseDate(b['Check-in']);})[0];
+    var arrivoOsp=maxCap,maxCap2=true,arrivoBambini=0;
     if(nextCI){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||maxCap;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}
-    return{apt,coDate,persona:ai.persona,arrivoOsp,arrivoBambini,maxCap2};
-  }).filter(r=>{if(!r.coDate||r.coDate<start||r.coDate>end)return false;if(r.persona!==persona)return false;if(fApt!=='tutti'&&r.apt!==fApt)return false;return true;}).sort((a,b)=>a.coDate-b.coDate);
+    return{apt:apt,coDate:coDate,persona:ai.persona,arrivoOsp:arrivoOsp,arrivoBambini:arrivoBambini,maxCap2:maxCap2};
+  }).filter(function(r){if(!r.coDate||r.coDate<start||r.coDate>end)return false;if(r.persona!==persona)return false;if(fApt!=='tutti'&&r.apt!==fApt)return false;return true;}).sort(function(a,b){return a.coDate-b.coDate;});
   if(!items.length){alert('Nessun intervento trovato.');return;}
-  const tableRows=items.map(r=>{const pc=APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};const totOsp=(r.arrivoOsp||0)+(r.arrivoBambini||0);const arrivoStr=r.maxCap2?`<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;background:#FDF3E0;color:#A06820">Massima capienza</span>`:`<div style="font-size:22px;font-weight:600;color:#0D1F2D;line-height:1">${totOsp}</div><div style="font-size:11px;color:#7299B0;margin-top:2px">${r.arrivoOsp||0} adulti${r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':''}</div>`;return `<tr><td><strong>${fmtDate(r.coDate)}</strong></td><td><span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:${pc.bg};color:${pc.color}">${r.apt}</span></td><td>${arrivoStr}</td></tr>`;}).join('');
-  const dotC={Elda:'#2A7A4F',Dalila:'#8B5E2E',Giulia:'#C4883C'};
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:680px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:middle;}tr:nth-child(even) td{background:#F7FBFD;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>
-  <div class="header"><div><h2><span style="width:12px;height:12px;border-radius:50%;background:${dotC[persona]||'#0D5A8E'};display:inline-block;margin-right:8px;vertical-align:middle"></span>${persona}</h2></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Planning Pulizie</strong><br>${start.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})}<br>${end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})}</div></div>
-  <table><thead><tr><th>Data</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead><tbody>${tableRows}</tbody></table>
-  <div class="footer"><span>Visionari 3.0 · generato il ${new Date().toLocaleDateString('it-IT')}</span><span>${items.length} interventi</span></div>
-  <button class="print-btn no-print" onclick="window.print()">🖨️ Stampa / Salva PDF</button></body></html>`;
-  const w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
-  setTimeout(()=>{if(phone)window.open('https://wa.me/'+phone,'_blank');else window.open('https://wa.me/','_blank');},600);
+  var tableRows=items.map(function(r){var pc=APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};var totOsp=(r.arrivoOsp||0)+(r.arrivoBambini||0);var arrivoStr=r.maxCap2?'<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;background:#FDF3E0;color:#A06820">Massima capienza</span>':'<div style="font-size:22px;font-weight:600;color:#0D1F2D;line-height:1">'+totOsp+'</div><div style="font-size:11px;color:#7299B0;margin-top:2px">'+(r.arrivoOsp||0)+' adulti'+(r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':'')+'</div>';return '<tr><td><strong>'+fmtDate(r.coDate)+'</strong></td><td><span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:'+pc.bg+';color:'+pc.color+'">'+r.apt+'</span></td><td>'+arrivoStr+'</td></tr>';}).join('');
+  var dotC={Elda:'#2A7A4F',Dalila:'#8B5E2E',Giulia:'#C4883C'};
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:680px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:middle;}tr:nth-child(even) td{background:#F7FBFD;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
+  +'<div class="header"><div><h2><span style="width:12px;height:12px;border-radius:50%;background:'+(dotC[persona]||'#0D5A8E')+';display:inline-block;margin-right:8px;vertical-align:middle"></span>'+persona+'</h2></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Planning Pulizie</strong><br>'+start.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'<br>'+end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'</div></div>'
+  +'<table><thead><tr><th>Data</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
+  +'<div class="footer"><span>Visionari 3.0 \u00b7 generato il '+new Date().toLocaleDateString('it-IT')+'</span><span>'+items.length+' interventi</span></div>'
+  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
+  var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
+  setTimeout(function(){if(phone)window.open('https://wa.me/'+phone,'_blank');else window.open('https://wa.me/','_blank');},600);
   closePlanningModal();
 }
 
-// ── TABS + INIT ───────────────────────────────────────────────
 function switchTab(name,btn){
-  document.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.tab-btn').forEach(function(el){el.classList.remove('active');});
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='pulizie')renderPulizie();
@@ -1058,25 +1005,25 @@ function switchTab(name,btn){
   if(name==='dashboard')renderDashboard();
   if(name==='incassi')renderIncassi();
 }
-let lastLoad=0;
+var lastLoad=0;
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible'){
-    const isLogged=sessionStorage.getItem(SESSION_KEY)==='1';
+    var isLogged=sessionStorage.getItem(SESSION_KEY)==='1';
     if(isLogged&&(Date.now()-lastLoad)/60000>5){loadAllData();lastLoad=Date.now();}
   }
 });
-window.addEventListener('DOMContentLoaded',()=>{
+window.addEventListener('DOMContentLoaded',function(){
   lastLoad=Date.now();
-  const pk=document.getElementById('datePicker');
-  if(pk){const now=new Date();pk.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;}
+  var pk=document.getElementById('datePicker');
+  if(pk){var now=new Date();pk.value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');}
 });
 updateDates();
 document.addEventListener('click',function(e){
-  const btn=e.target.closest('.wa-btn');if(!btn)return;
+  var btn=e.target.closest('.wa-btn');if(!btn)return;
   e.stopPropagation();e.preventDefault();
-  const key=btn.getAttribute('data-key');if(!key)return;
-  const item=waMessages[key];if(!item||!item.phone)return;
-  navigator.clipboard.writeText(item.msg).then(()=>setTimeout(()=>window.open('https://wa.me/'+item.phone,'_blank'),600)).catch(()=>window.open('https://wa.me/'+item.phone,'_blank'));
+  var key=btn.getAttribute('data-key');if(!key)return;
+  var item=waMessages[key];if(!item||!item.phone)return;
+  navigator.clipboard.writeText(item.msg).then(function(){setTimeout(function(){window.open('https://wa.me/'+item.phone,'_blank');},600);}).catch(function(){window.open('https://wa.me/'+item.phone,'_blank');});
 });
 </script>
 </div>
