@@ -491,7 +491,8 @@ function calcIncasso(r){
   else if(piatt.indexOf('airbnb')!==-1)commRate=0.15;
   var netto2=lordo*(1-commRate);
   var cp=getCostiPulizie(apt,ospiti);
-  var finale=netto2-cp.totServizi;
+  var finaleBase=netto2-cp.totServizi;
+  var finale=isEnea(apt)?finaleBase*0.50:finaleBase;
   return{lordo:lordo,netto:netto2,pulizia:cp.pulizia,lavanderia:cp.lavanderia,servizi:cp.totServizi,finale:finale};
 }
 
