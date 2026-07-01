@@ -769,9 +769,7 @@ function renderIncassi(){
     var domus=isDomus(apt);
     var servStr=domus?'\u2014 (accordo Elda)':fmtEur(v.pulizia)+' pul. + '+fmtEur(v.lavanderia)+' lav.';
     var costiStr=v.costiFissiDettaglio||'\u2014';
-    var costiLabel=v.costiFissiNumMesi>1
-      ?costiStr+' <span style="font-size:10px;color:var(--text3)">\u00d7'+v.costiFissiNumMesi+' mesi = '+fmtEur(v.costiFissiTot)+'</span>'
-      :(v.costiFissiTot>0?costiStr:'\u2014');
+var costiLabel=v.costiFissiTot>0?fmtEur(v.costiFissiTot):'\u2014';
     return '<tr>'
       +'<td style="font-weight:500">'+apt+'</td>'
       +'<td style="text-align:center;color:var(--text3)">'+v.n+'</td>'
