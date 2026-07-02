@@ -491,8 +491,7 @@ function calcIncasso(r){
   else if(piatt.indexOf('airbnb')!==-1)commRate=0.15;
   var netto2=lordo*(1-commRate);
   var cp=getCostiPulizie(apt,ospiti);
-  var finaleBase=netto2-cp.totServizi;
-  var finale=isEnea(apt)?finaleBase*0.50:finaleBase;
+  var finale=netto2-cp.totServizi;
   return{lordo:lordo,netto:netto2,pulizia:cp.pulizia,lavanderia:cp.lavanderia,servizi:cp.totServizi,finale:finale};
 }
 
@@ -701,13 +700,14 @@ function renderIncassi(){
 
   // Applica costi fissi mensili per appartamento
   var totCostiFissi=0;
-  Object.keys(byApt).forEach(function(apt){
+ Object.keys(byApt).forEach(function(apt){
     var numMesi=mesiPerApt[apt]?mesiPerApt[apt].size:1;
     var cf=getCostiFissi(apt);
     byApt[apt].costiFissiTot=cf.totale*numMesi;
     byApt[apt].costiFissiDettaglio=cf.dettaglio;
     byApt[apt].costiFissiNumMesi=numMesi;
-    byApt[apt].finaleNetto=byApt[apt].finale-byApt[apt].costiFissiTot;
+    var baseNetto=byApt[apt].finale-byApt[apt].costiFissiTot;
+    byApt[apt].finaleNetto=isEnea(apt)?baseNetto*0.50:baseNetto;
     totCostiFissi+=byApt[apt].costiFissiTot;
   });
 
