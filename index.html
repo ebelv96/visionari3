@@ -249,10 +249,10 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 .nl-day-head .nl-dow{display:block;text-transform:uppercase;font-size:9px;}
 .nl-day-head .nl-num{display:block;font-size:12px;font-weight:500;color:var(--text);}
 .nl-cell{width:34px;height:34px;border:1px solid var(--surface);cursor:default;}
-.nl-cell.free{background:var(--green-light);cursor:pointer;}
-.nl-cell.free:hover{background:var(--green);}
-.nl-cell.busy{background:var(--red-light);opacity:.45;}
-.nl-cell.free.highlight{background:var(--green);box-shadow:inset 0 0 0 2px #145C2A;}
+.nl-cell.free{background:var(--green);cursor:pointer;}
+.nl-cell.free:hover{background:#145C2A;}
+.nl-cell.busy{background:var(--red);opacity:.85;}
+.nl-cell.free.highlight{background:#145C2A;box-shadow:inset 0 0 0 2px #fff;}
 .nl-legend{display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--text3);align-items:center;flex-wrap:wrap;}
 .nl-legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle;}
 .nl-info-box{background:var(--accent);color:#fff;border-radius:var(--radius-sm);padding:10px 16px;font-size:12px;margin-bottom:14px;display:none;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;}
@@ -442,7 +442,8 @@ let approved={};
 const waMessages={};
 const TODAY=new Date();TODAY.setHours(0,0,0,0);
 let offset=0,dashOffset=0;
-let nlOffset=0,nlFilterApts=[],nlMinConsec=0;
+var NL_TODAY_YM=(new Date()).getFullYear()+'-'+String((new Date()).getMonth()+1).padStart(2,'0');
+let nlMonth=NL_TODAY_YM,nlFilterApts=[],nlMinConsec=0;
 
 function parseCSV(text){
   const lines=text.trim().split('\n');
@@ -691,8 +692,7 @@ function nlToggleAptDropdown(){
   menu.style.display=isOpen?'none':'block';
   if(!isOpen){setTimeout(function(){document.addEventListener('click',function h(e){if(!e.target.closest('#nlAptDropdownMenu')&&!e.target.closest('#nlAptDropdownBtn')){menu.style.display='none';document.removeEventListener('click',h);}});},10);}
 }
-function nlChangeRange(n){nlOffset+=n;renderNottiLibere();}
-function nlResetRange(){nlOffset=0;renderNottiLibere();}
+function nlSetMonth(val){nlMonth=val;renderNottiLibere();}
 function nlShowInfo(aptName,dateStr){
   var p=dateStr.split('-').map(Number);
   var startD=new Date(p[0],p[1]-1,p[2]);
@@ -719,10 +719,11 @@ function nlCopyInfo(btn){
 }
 function renderNottiLibere(){
   var container=document.getElementById('nottiLibereContent');if(!container)return;
-  var RANGE_LEN=30;
-  var start=new Date(TODAY);start.setDate(start.getDate()+nlOffset);
+  var mp=nlMonth.split('-').map(Number);
+  var monthYear=mp[0],monthIdx=mp[1]-1;
+  var daysInMonth=new Date(monthYear,monthIdx+1,0).getDate();
   var days=[];
-  for(var i=0;i<RANGE_LEN;i++){var d=new Date(start);d.setDate(d.getDate()+i);days.push(d);}
+  for(var i=0;i<daysInMonth;i++){days.push(new Date(monthYear,monthIdx,i+1));}
 
   var aptsDisp=APTS.filter(function(a){return nlFilterApts.length===0||nlFilterApts.indexOf(a.name)!==-1;});
 
@@ -770,7 +771,14 @@ function renderNottiLibere(){
     return '<tr><td class="nl-apt-col"><span class="apt-dot '+apt.dot+'"></span>'+apt.name+'</td>'+cells+'</tr>';
   }).join('');
 
-  var rangeLbl=start.toLocaleDateString('it-IT',{day:'numeric',month:'short'})+' \u2192 '+days[days.length-1].toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'});
+  var monthOpts='';
+  for(var mo=-1;mo<12;mo++){
+    var md=new Date(TODAY.getFullYear(),TODAY.getMonth()+mo,1);
+    var mv=md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0');
+    var mlbl=md.toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+    mlbl=mlbl.charAt(0).toUpperCase()+mlbl.slice(1);
+    monthOpts+='<option value="'+mv+'" '+(nlMonth===mv?'selected':'')+'>'+mlbl+'</option>';
+  }
 
   var nlAptNames=['tutti'].concat(APTS.map(function(a){return a.name;}));
   window._nlAptNames=nlAptNames;
@@ -788,10 +796,8 @@ function renderNottiLibere(){
   container.innerHTML=
     '<div class="nl-info-box" id="nlInfoBox"></div>'
     +'<div class="nl-filter-bar">'
-    +'<button class="nl-nav-btn" onclick="nlChangeRange(-30)">&#8249; 30gg</button>'
-    +'<span class="nl-range-label">'+rangeLbl+'</span>'
-    +'<button class="nl-nav-btn" onclick="nlChangeRange(30)">30gg &#8250;</button>'
-    +(nlOffset!==0?'<button class="nl-nav-btn" onclick="nlResetRange()">Oggi</button>':'')
+    +'<label style="font-size:12px;color:var(--text3)">Mese:</label>'
+    +'<select onchange="nlSetMonth(this.value)" style="font-size:13px;font-weight:500;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;outline:none">'+monthOpts+'</select>'
     +'<label style="margin-left:12px;font-size:12px;color:var(--text3)">Appartamento:</label>'
     +'<div style="position:relative;display:inline-block"><button onclick="nlToggleAptDropdown()" id="nlAptDropdownBtn" style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:'+(nlFilterApts.length>0?'var(--accent)':'var(--surface)')+';color:'+(nlFilterApts.length>0?'#fff':'var(--text)')+';cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between"><span>'+dropLblNl+'</span><span style="font-size:10px;opacity:.7">\u25bc</span></button><div id="nlAptDropdownMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:200;min-width:240px;padding:4px 0;max-height:300px;overflow-y:auto">'+dropItemsNl+'</div></div>'
     +'<label style="margin-left:12px;font-size:12px;color:var(--text3)">Min. notti consec.:</label>'
@@ -803,7 +809,7 @@ function renderNottiLibere(){
     +'</select>'
     +'</div>'
     +'<div class="nl-grid-wrap"><table class="nl-grid"><thead><tr><th class="nl-apt-col" style="background:var(--bg)"></th>'+dayHeads+'</tr></thead><tbody>'+(rows||'')+'</tbody></table></div>'
-    +'<div class="nl-legend"><span><span class="nl-legend-dot" style="background:var(--green-light)"></span>Libera</span><span><span class="nl-legend-dot" style="background:var(--red-light);opacity:.6"></span>Prenotata</span>'+(nlMinConsec>0?'<span><span class="nl-legend-dot" style="background:var(--green)"></span>\u2265'+nlMinConsec+' notti consecutive</span>':'')+'</div>';
+    +'<div class="nl-legend"><span><span class="nl-legend-dot" style="background:var(--green)"></span>Libera</span><span><span class="nl-legend-dot" style="background:var(--red)"></span>Prenotata</span>'+(nlMinConsec>0?'<span><span class="nl-legend-dot" style="background:#145C2A;box-shadow:inset 0 0 0 2px #fff"></span>\u2265'+nlMinConsec+' notti consecutive</span>':'')+'</div>';
 }
 
 // ── INCASSI ───────────────────────────────────────────────────
