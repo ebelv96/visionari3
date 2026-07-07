@@ -257,6 +257,15 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 .nl-legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle;}
 .nl-info-box{background:var(--accent);color:#fff;border-radius:var(--radius-sm);padding:10px 16px;font-size:12px;margin-bottom:14px;display:none;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;}
 .nl-info-copy{background:rgba(255,255,255,0.18);border:none;color:#fff;padding:5px 12px;border-radius:16px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;}
+.nl-occ-section{margin-top:22px;}
+.nl-occ-avg-box{background:var(--accent);border-radius:var(--radius);padding:14px 20px;display:flex;align-items:baseline;gap:12px;margin-bottom:16px;}
+.nl-occ-avg-num{font-family:'DM Serif Display',serif;font-size:28px;color:#fff;line-height:1;}
+.nl-occ-avg-lbl{font-size:12px;color:rgba(255,255,255,0.75);}
+.nl-occ-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:12px;}
+.nl-occ-label{min-width:170px;flex-shrink:0;color:var(--text);font-weight:500;display:flex;align-items:center;}
+.nl-occ-bar-wrap{flex:1;height:10px;background:var(--surface2);border-radius:6px;overflow:hidden;}
+.nl-occ-bar-fill{height:100%;background:var(--accent);border-radius:6px;}
+.nl-occ-pct{min-width:38px;text-align:right;color:var(--text2);font-weight:500;flex-shrink:0;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 .apt-card{animation:fadeUp .3s ease both;}
 @media(max-width:650px){.dash-sections{grid-template-columns:1fr;}}
@@ -274,6 +283,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   .nl-cell{width:28px;height:32px;}
   .nl-apt-col{min-width:120px;font-size:11px;padding:6px 8px!important;}
   .nl-day-head{min-width:28px;}
+  .nl-occ-label{min-width:120px;font-size:11px;}
 }
 </style>
 </head>
@@ -752,6 +762,15 @@ function renderNottiLibere(){
     });
   }
 
+  var occStats=aptsDisp.map(function(apt){
+    var arr=freeMap[apt.name];
+    var freeCount=arr.reduce(function(s,v){return s+(v?1:0);},0);
+    var occCount=arr.length-freeCount;
+    var pct=arr.length?Math.round((occCount/arr.length)*100):0;
+    return{apt:apt,pct:pct,occCount:occCount,totNotti:arr.length};
+  });
+  var occAvg=occStats.length?Math.round(occStats.reduce(function(s,o){return s+o.pct;},0)/occStats.length):0;
+
   var dayHeads=days.map(function(d){
     var isWeekend=d.getDay()===0||d.getDay()===6;
     var dow=d.toLocaleDateString('it-IT',{weekday:'short'}).replace('.','');
@@ -772,11 +791,13 @@ function renderNottiLibere(){
   }).join('');
 
   var monthOpts='';
+  var selectedMonthLbl='';
   for(var mo=-1;mo<12;mo++){
     var md=new Date(TODAY.getFullYear(),TODAY.getMonth()+mo,1);
     var mv=md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0');
     var mlbl=md.toLocaleDateString('it-IT',{month:'long',year:'numeric'});
     mlbl=mlbl.charAt(0).toUpperCase()+mlbl.slice(1);
+    if(nlMonth===mv)selectedMonthLbl=mlbl;
     monthOpts+='<option value="'+mv+'" '+(nlMonth===mv?'selected':'')+'>'+mlbl+'</option>';
   }
 
@@ -809,7 +830,15 @@ function renderNottiLibere(){
     +'</select>'
     +'</div>'
     +'<div class="nl-grid-wrap"><table class="nl-grid"><thead><tr><th class="nl-apt-col" style="background:var(--bg)"></th>'+dayHeads+'</tr></thead><tbody>'+(rows||'')+'</tbody></table></div>'
-    +'<div class="nl-legend"><span><span class="nl-legend-dot" style="background:var(--green)"></span>Libera</span><span><span class="nl-legend-dot" style="background:var(--red)"></span>Prenotata</span>'+(nlMinConsec>0?'<span><span class="nl-legend-dot" style="background:#145C2A;box-shadow:inset 0 0 0 2px #fff"></span>\u2265'+nlMinConsec+' notti consecutive</span>':'')+'</div>';
+    +'<div class="nl-legend"><span><span class="nl-legend-dot" style="background:var(--green)"></span>Libera</span><span><span class="nl-legend-dot" style="background:var(--red)"></span>Prenotata</span>'+(nlMinConsec>0?'<span><span class="nl-legend-dot" style="background:#145C2A;box-shadow:inset 0 0 0 2px #fff"></span>\u2265'+nlMinConsec+' notti consecutive</span>':'')+'</div>'
+    +'<div class="nl-occ-section">'
+    +'<div class="nl-occ-avg-box"><div class="nl-occ-avg-num">'+occAvg+'%</div><div class="nl-occ-avg-lbl">occupazione media \u2014 '+selectedMonthLbl+'</div></div>'
+    +occStats.map(function(o){
+      return '<div class="nl-occ-row"><span class="nl-occ-label"><span class="apt-dot '+o.apt.dot+'"></span>'+o.apt.name+'</span>'
+        +'<div class="nl-occ-bar-wrap"><div class="nl-occ-bar-fill" style="width:'+o.pct+'%"></div></div>'
+        +'<span class="nl-occ-pct">'+o.pct+'%</span></div>';
+    }).join('')
+    +'</div>';
 }
 
 // ── INCASSI ───────────────────────────────────────────────────
