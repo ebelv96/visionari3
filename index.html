@@ -266,6 +266,31 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 .nl-occ-bar-wrap{flex:1;height:10px;background:var(--surface2);border-radius:6px;overflow:hidden;}
 .nl-occ-bar-fill{height:100%;background:var(--accent);border-radius:6px;}
 .nl-occ-pct{min-width:38px;text-align:right;color:var(--text2);font-weight:500;flex-shrink:0;}
+.bi-wrap{max-width:640px;}
+.bi-week-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.bi-week-strip{display:flex;gap:4px;margin-bottom:16px;}
+.bi-day-cell{flex:1;text-align:center;padding:8px 2px;border-radius:var(--radius-sm);cursor:pointer;background:transparent;transition:background .15s;}
+.bi-day-cell:hover{background:var(--surface2);}
+.bi-day-cell.selected{background:var(--accent-light);}
+.bi-day-cell.past{opacity:.4;}
+.bi-day-dow{font-size:11px;color:var(--text3);}
+.bi-day-num{font-size:15px;font-weight:400;color:var(--text);margin:2px 0;}
+.bi-day-cell.selected .bi-day-dow{font-size:13px;font-weight:500;color:var(--accent);}
+.bi-day-cell.selected .bi-day-num{font-size:19px;font-weight:500;color:var(--accent);}
+.bi-day-meta{font-size:10px;color:var(--text3);}
+.bi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;}
+.bi-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px;}
+.bi-card-apt{font-size:15px;font-weight:500;color:var(--text);}
+.bi-card-meta{font-size:12px;color:var(--text3);margin-top:2px;}
+.bi-card-sets{border-top:1px solid var(--border);padding-top:8px;font-size:13px;color:var(--text);}
+.bi-card-sets .muted{color:var(--text3);}
+.bi-empty{padding:20px 16px;text-align:center;font-size:13px;color:var(--text3);font-style:italic;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+.bi-consegna-note{background:var(--accent-light);color:var(--accent);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;margin-bottom:14px;}
+.bi-order-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-top:16px;}
+.bi-order-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;}
+.bi-order-row.tot{border-top:1px solid var(--border);margin-top:6px;padding-top:10px;font-weight:500;}
+.bi-order-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+.bi-inviato-box{display:flex;align-items:center;gap:10px;font-size:13px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;margin-top:10px;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 .apt-card{animation:fadeUp .3s ease both;}
 @media(max-width:650px){.dash-sections{grid-template-columns:1fr;}}
@@ -317,6 +342,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   <button class="tab-btn" onclick="switchTab('appartamenti',this)">🏠 Appartamenti</button>
   <button class="tab-btn" onclick="switchTab('todo',this)">✅ To-do</button>
   <button class="tab-btn" onclick="switchTab('pulizie',this)">🧹 Pulizie</button>
+  <button class="tab-btn" onclick="switchTab('biancheria',this)">🧺 Biancheria</button>
   <button class="tab-btn" onclick="switchTab('nottiLibere',this)">🗓️ Notti Libere</button>
   <button class="tab-btn" onclick="switchTab('incassi',this)">💰 Incassi</button>
   <button class="tab-btn" onclick="switchTab('acquisti',this)">🛒 Acquisti</button>
@@ -328,6 +354,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   <div id="tab-appartamenti" class="tab-pane"><div class="apt-grid" id="aptGrid"></div></div>
   <div id="tab-todo"         class="tab-pane"><div id="todoContent"></div></div>
   <div id="tab-pulizie"      class="tab-pane"><div id="pulizieContent"></div></div>
+  <div id="tab-biancheria"   class="tab-pane"><div class="bi-wrap" id="biancheriaContent"></div></div>
   <div id="tab-nottiLibere"  class="tab-pane"><div class="nl-wrap" id="nottiLibereContent"></div></div>
   <div id="tab-incassi" class="tab-pane"><div class="incassi-wrap" id="incassiContent"></div></div>
   <div id="tab-acquisti"     class="tab-pane">
@@ -455,6 +482,18 @@ let offset=0,dashOffset=0;
 var NL_TODAY_YM=(new Date()).getFullYear()+'-'+String((new Date()).getMonth()+1).padStart(2,'0');
 let nlMonth=NL_TODAY_YM,nlFilterApts=[],nlMinConsec=0;
 
+// ── BIANCHERIA — config ────────────────────────────────────────
+// Appartamenti gestiti dal servizio lavanderia e capienza in letti matrimoniali (per calcolo set extra col letto singolo)
+const BI_APTS=['Enea Luxury \u2013 Putignani','Enea Luxury \u2013 Piccinni'];
+const BI_MAX_MAT={'Enea Luxury \u2013 Putignani':4,'Enea Luxury \u2013 Piccinni':2};
+// Dopo aver creato la tab "OrdiniBiancheria" nel Google Sheet (colonne: Settimana | Inviato | DataInvio),
+// incolla qui il suo GID (visibile nell'URL del foglio quando la selezioni)
+GIDS.biancheria='';
+// Dopo aver distribuito lo script Apps Script come Web App, incolla qui l'URL di distribuzione
+const BIANCHERIA_API_URL='';
+let biWeekStart=null,biSelectedDate=null,biFilterApts=[];
+let biOrdiniStatus={},biPlanningCache={};
+
 function parseCSV(text){
   const lines=text.trim().split('\n');
   if(lines.length<2)return[];
@@ -545,10 +584,24 @@ async function loadAllData(){
       var json=JSON.parse(t2.replace(/^[^(]+\(/,'').replace(/\);\s*$/,''));
       promptMessaggi=(json.table.rows||[]).slice(2).map(function(row){return{apt:(row.c[0]&&row.c[0].v)?row.c[0].v.toString().trim():'',msg:(row.c[1]&&row.c[1].v)?row.c[1].v.toString().trim():'',msgCO:(row.c[2]&&row.c[2].v)?row.c[2].v.toString().trim():''};}).filter(function(r){return r.apt&&r.apt!=='Appartamento';});
     }catch(e){promptMessaggi=[];}
+    await loadBiancheriaStatus();
     renderAll();
   }catch(e){
     document.getElementById('aptGrid').innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--red);font-size:13px;"><strong>Errore caricamento.</strong><br><br>'+e.message+'<br><br><button onclick="loadAllData()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:inherit;font-size:13px;">Riprova</button></div>';
   }
+}
+async function loadBiancheriaStatus(){
+  biOrdiniStatus={};
+  if(!GIDS.biancheria)return;
+  try{
+    var rows=await fetchSheetSkipTitle(GIDS.biancheria);
+    rows.forEach(function(r){
+      var k=(r['Settimana']||'').trim();
+      if(!k)return;
+      var v=(r['Inviato']||'').toString().trim().toLowerCase();
+      biOrdiniStatus[k]=(v==='true'||v==='s\u00ec'||v==='si');
+    });
+  }catch(e){console.error('Errore caricamento stato biancheria',e);}
 }
 function getPrompt(aptName,nomeOspite){
   var found=promptMessaggi.find(function(p){return matchApt(p.apt,aptName);});
@@ -570,7 +623,7 @@ function updateDates(){
 function pickDate(val){if(!val)return;var p=val.split('-').map(Number);offset=Math.round((new Date(p[0],p[1]-1,p[2])-TODAY)/86400000);dashOffset=offset;updateDates();renderAll();}
 function changeDay(n){offset+=n;dashOffset=offset;updateDates();renderAll();}
 function resetDay(){offset=0;dashOffset=0;updateDates();renderAll();}
-function renderAll(){renderKPI();renderDashboard();renderApts();renderTodo();renderAcquisti();renderTasse();renderPricing();renderIncassi();renderNottiLibere();}
+function renderAll(){renderKPI();renderDashboard();renderApts();renderTodo();renderAcquisti();renderTasse();renderPricing();renderIncassi();renderNottiLibere();renderBiancheria();}
 
 function renderKPI(){
   var day=getDay();
@@ -870,7 +923,6 @@ function renderIncassi(){
   var totNetto=rows.reduce(function(s,x){return s+x.netto;},0);
   var totServ=rows.reduce(function(s,x){return s+x.servizi;},0);
 
-  // Mesi presenti per appartamento (per costi fissi mensili)
   var mesiPerApt={};
   rows.forEach(function(x){
     var apt=x.r['Appartamento']||'';
@@ -880,7 +932,6 @@ function renderIncassi(){
     mesiPerApt[apt].add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
   });
 
-  // Aggregato per appartamento
   var byApt={};
   rows.forEach(function(x){
     var apt=x.r['Appartamento']||'\u2014';
@@ -890,9 +941,8 @@ function renderIncassi(){
     byApt[apt].servizi+=x.servizi;byApt[apt].finale+=x.finale;byApt[apt].n+=1;
   });
 
-  // Applica costi fissi mensili per appartamento
   var totCostiFissi=0;
- Object.keys(byApt).forEach(function(apt){
+  Object.keys(byApt).forEach(function(apt){
     var numMesi=mesiPerApt[apt]?mesiPerApt[apt].size:1;
     var cf=getCostiFissi(apt);
     byApt[apt].costiFissiTot=cf.totale*numMesi;
@@ -905,7 +955,6 @@ function renderIncassi(){
 
   var totFinale=Object.values(byApt).reduce(function(s,v){return s+v.finaleNetto;},0);
 
-  // Grafico — sempre tutti i mesi, filtra solo per appartamento
   var rowsGraf=incassiFilterApt==='tutti'
     ?prenoValide.map(function(r){var ci=calcIncasso(r);return{r:r,finale:ci.finale,lordo:ci.lordo};})
     :prenoValide.filter(function(r){return matchApt(r['Appartamento'],incassiFilterApt);}).map(function(r){var ci=calcIncasso(r);return{r:r,finale:ci.finale,lordo:ci.lordo};});
@@ -932,7 +981,6 @@ function renderIncassi(){
 
   var meseLabel=incassiFilterMese==='tutti'?'Tutti i periodi':(function(){var p=incassiFilterMese.split('-');return new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});})();
 
-  // Grafico mensile
   var LABEL_OFFSET=60,BAR_W=64,BAR_GAP=24,CHART_H=180,LABEL_H=40,TOP_PAD=30;
   var maxVal=mesiGraf.reduce(function(m,k){return Math.max(m,byMeseGraf[k].finale-byMeseGraf[k].costi);},0)||1;
   var svgW=Math.max(500,mesiGraf.length*(BAR_W+BAR_GAP)+BAR_GAP+LABEL_OFFSET);
@@ -956,13 +1004,12 @@ function renderIncassi(){
     ?'<div style="padding:32px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun dato.</div>'
     :'<div class="chart-bars-wrap"><svg viewBox="0 0 '+svgW+' '+(CHART_H+LABEL_H)+'" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;min-width:'+svgW+'px;height:auto">'+guides+bars+'</svg></div>';
 
-  // Tabella riepilogo per appartamento
   var aptRows=Object.entries(byApt).sort(function(a,b){return b[1].finaleNetto-a[1].finaleNetto;}).map(function(e){
     var apt=e[0],v=e[1];
     var domus=isDomus(apt);
     var servStr=domus?'\u2014 (accordo Elda)':fmtEur(v.pulizia)+' pul. + '+fmtEur(v.lavanderia)+' lav.';
     var costiStr=v.costiFissiDettaglio||'\u2014';
-var costiLabel=v.costiFissiTot>0?fmtEur(v.costiFissiTot):'\u2014';
+    var costiLabel=v.costiFissiTot>0?fmtEur(v.costiFissiTot):'\u2014';
     return '<tr>'
       +'<td style="font-weight:500">'+apt+'</td>'
       +'<td style="text-align:center;color:var(--text3)">'+v.n+'</td>'
@@ -1186,6 +1233,226 @@ function generatePDF(persona,phone){
   closePlanningModal();
 }
 
+// ── BIANCHERIA ────────────────────────────────────────────────
+function biMonday(d){var x=new Date(d);var day=x.getDay();var diff=(day===0?-6:1-day);x.setDate(x.getDate()+diff);x.setHours(0,0,0,0);return x;}
+function biDateKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function biGuestsForDay(aptName,d){
+  var sum=0;
+  prenotazioni.forEach(function(r){
+    if(matchApt(r['Appartamento'],aptName)&&sameDay(parseDate(r['Check-in']),d)){
+      var ad=parseInt(r['N. Ospiti Adulti'])||0;
+      var mi=parseInt(r['N. Ospiti Minori'])||0;
+      sum+=ad+mi;
+    }
+  });
+  return sum;
+}
+function biSetsForGuests(aptName,guests){
+  if(!guests)return{matrimoniali:0,singolo:0};
+  var maxMat=BI_MAX_MAT[aptName]||0;
+  var matCap=maxMat*2;
+  var matrimoniali=Math.min(Math.ceil(guests/2),maxMat);
+  var extra=guests-matCap;
+  var singolo=extra>0?1:0;
+  return{matrimoniali:matrimoniali,singolo:singolo};
+}
+function biPiecesLabel(sets){
+  var parts=[];
+  if(sets.matrimoniali>0)parts.push(sets.matrimoniali+' set matrimoniale'+(sets.matrimoniali>1?'i':''));
+  if(sets.singolo>0)parts.push(sets.singolo+' set singolo');
+  return parts.length?parts.join(' + '):'\u2014';
+}
+function biPiecesDetail(sets){
+  var lenz=sets.matrimoniali+sets.singolo;
+  if(!lenz)return '';
+  var asciug=sets.matrimoniali*2+sets.singolo*1;
+  return lenz+' lenzuola sotto \u00b7 '+lenz+' sopra \u00b7 '+asciug+' set asciugamani \u00b7 '+lenz+' tappetin'+(lenz===1?'o':'i');
+}
+function biConsegnaDate(checkinDate){
+  var dow=checkinDate.getDay();
+  var d=new Date(checkinDate);
+  if(dow===6)d.setDate(d.getDate()-1);
+  else if(dow===0)d.setDate(d.getDate()-2);
+  return d;
+}
+function biToggleApt(apt){
+  if(apt==='tutti')biFilterApts=[];
+  else{var idx=biFilterApts.indexOf(apt);if(idx===-1)biFilterApts.push(apt);else biFilterApts.splice(idx,1);}
+  renderBiancheria();
+}
+function biToggleAptDropdown(){
+  var menu=document.getElementById('biAptDropdownMenu');if(!menu)return;
+  var isOpen=menu.style.display!=='none';
+  menu.style.display=isOpen?'none':'block';
+  if(!isOpen){setTimeout(function(){document.addEventListener('click',function h(e){if(!e.target.closest('#biAptDropdownMenu')&&!e.target.closest('#biAptDropdownBtn')){menu.style.display='none';document.removeEventListener('click',h);}});},10);}
+}
+function biPrevWeek(){biWeekStart.setDate(biWeekStart.getDate()-7);renderBiancheria();}
+function biNextWeek(){biWeekStart.setDate(biWeekStart.getDate()+7);renderBiancheria();}
+function biResetWeek(){biWeekStart=biMonday(new Date(TODAY));biSelectedDate=new Date(TODAY);renderBiancheria();}
+function biSelectDay(dateStr){
+  var p=dateStr.split('-').map(Number);
+  biSelectedDate=new Date(p[0],p[1]-1,p[2]);
+  var mon=biMonday(biSelectedDate);
+  if(!biWeekStart||mon.getTime()!==biWeekStart.getTime())biWeekStart=mon;
+  renderBiancheria();
+}
+
+function renderBiancheria(){
+  var container=document.getElementById('biancheriaContent');if(!container)return;
+  if(!biWeekStart)biWeekStart=biMonday(new Date(TODAY));
+  if(!biSelectedDate)biSelectedDate=new Date(TODAY);
+
+  var aptsDisp=BI_APTS.filter(function(a){return biFilterApts.length===0||biFilterApts.indexOf(a)!==-1;});
+
+  var days=[];
+  for(var i=0;i<7;i++){var d=new Date(biWeekStart);d.setDate(d.getDate()+i);days.push(d);}
+
+  var biAptNames=['tutti'].concat(BI_APTS);
+  window._biAptNames=biAptNames;
+  var dropLbl=biFilterApts.length===0?'Tutti gli appartamenti':biFilterApts.length===1?biFilterApts[0]:biFilterApts.length+' selezionati';
+  var dropItems=biAptNames.map(function(a,idx){
+    var isSel=a==='tutti'?biFilterApts.length===0:biFilterApts.indexOf(a)!==-1;
+    var lbl=a==='tutti'?'Tutti gli appartamenti':a;
+    var chk=isSel?'<span style="color:var(--accent);font-size:14px">&#10003;</span>':'<span style="width:14px;display:inline-block"></span>';
+    var bg=isSel&&a!=='tutti'?'var(--accent-light)':'transparent';
+    return '<div onclick="biToggleApt(window._biAptNames['+idx+'])" style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text);background:'+bg+';border-bottom:'+(a==='tutti'?'1px solid var(--border)':'none')+'" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\''+bg+'\'">'+chk+'<span>'+lbl+'</span></div>';
+  }).join('');
+
+  var stripHtml=days.map(function(d,i){
+    var isSel=sameDay(d,biSelectedDate);
+    var isPast=d<TODAY&&!sameDay(d,TODAY);
+    var guests=0;
+    aptsDisp.forEach(function(a){guests+=biGuestsForDay(a,d);});
+    var dow=d.toLocaleDateString('it-IT',{weekday:'short'}).replace('.','');
+    var dateStr=biDateKey(d);
+    return '<div class="bi-day-cell'+(isSel?' selected':'')+(isPast?' past':'')+'" onclick="biSelectDay(\''+dateStr+'\')">'
+      +'<div class="bi-day-dow">'+dow+'</div>'
+      +'<div class="bi-day-num">'+d.getDate()+'</div>'
+      +'<div class="bi-day-meta">'+(guests?guests+' osp':'\u2014')+'</div>'
+      +'</div>';
+  }).join('');
+
+  var selRows=[];
+  aptsDisp.forEach(function(apt){
+    var guests=biGuestsForDay(apt,biSelectedDate);
+    if(guests>0){
+      var sets=biSetsForGuests(apt,guests);
+      selRows.push({apt:apt,guests:guests,sets:sets});
+    }
+  });
+  var detailHtml=selRows.length?selRows.map(function(r){
+    return '<div class="bi-card"><div class="bi-card-top"><div><div class="bi-card-apt">'+r.apt+'</div><div class="bi-card-meta">Check-in '+biSelectedDate.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})+' \u00b7 '+r.guests+' ospiti</div></div></div>'
+      +'<div class="bi-card-sets">'+biPiecesLabel(r.sets)+' <span class="muted">('+biPiecesDetail(r.sets)+')</span></div></div>';
+  }).join(''):'<div class="bi-empty">Nessun check-in questo giorno.</div>';
+
+  var isFridaySel=biSelectedDate.getDay()===5;
+  var weekLbl=days[0].toLocaleDateString('it-IT',{day:'numeric',month:'short'})+' \u2013 '+days[6].toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+
+  var orderHtml='';
+  if(isFridaySel){
+    var weekKey=biDateKey(biSelectedDate);
+    var already=biPlanningCache[weekKey];
+    orderHtml='<div style="margin-top:18px">'
+      +'<button class="planning-btn" style="margin-left:0" onclick="biGeneraPlanning(\''+weekKey+'\')">&#128197; Genera planning settimana successiva</button>'
+      +'<div id="biOrderResult">'+(already?biRenderOrderBox(weekKey):'')+'</div>'
+      +'</div>';
+  }
+
+  container.innerHTML=
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">'
+    +'<label style="font-size:12px;color:var(--text3)">Appartamento:</label>'
+    +'<div style="position:relative;display:inline-block"><button onclick="biToggleAptDropdown()" id="biAptDropdownBtn" style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:'+(biFilterApts.length>0?'var(--accent)':'var(--surface)')+';color:'+(biFilterApts.length>0?'#fff':'var(--text)')+';cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:170px;justify-content:space-between"><span>'+dropLbl+'</span><span style="font-size:10px;opacity:.7">\u25bc</span></button><div id="biAptDropdownMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:200;min-width:240px;padding:4px 0">'+dropItems+'</div></div>'
+    +'</div>'
+    +'<div class="bi-week-nav"><button class="nl-nav-btn" onclick="biPrevWeek()">&#8249;</button><span class="nl-range-label">'+weekLbl+'</span><button class="nl-nav-btn" onclick="biNextWeek()">&#8250;</button><button class="nl-nav-btn" onclick="biResetWeek()" style="margin-left:auto">oggi</button></div>'
+    +'<div class="bi-week-strip">'+stripHtml+'</div>'
+    +detailHtml
+    +orderHtml;
+}
+
+function biGeneraPlanning(weekKey){
+  var p=weekKey.split('-').map(Number);
+  var friDate=new Date(p[0],p[1]-1,p[2]);
+  var endDate=new Date(friDate);endDate.setDate(endDate.getDate()+7);
+  var aptsDisp=BI_APTS.filter(function(a){return biFilterApts.length===0||biFilterApts.indexOf(a)!==-1;});
+  var byConsegna={};
+  var byApt={};
+  aptsDisp.forEach(function(a){byApt[a]={matrimoniali:0,singolo:0};});
+  var scan=new Date(friDate);
+  while(scan<=endDate){
+    (function(scanDate){
+      aptsDisp.forEach(function(apt){
+        var guests=biGuestsForDay(apt,scanDate);
+        if(guests>0){
+          var sets=biSetsForGuests(apt,guests);
+          var cons=biConsegnaDate(scanDate);
+          var ck=biDateKey(cons);
+          if(!byConsegna[ck])byConsegna[ck]={date:new Date(cons),matrimoniali:0,singolo:0,bundlesWeekend:false};
+          byConsegna[ck].matrimoniali+=sets.matrimoniali;
+          byConsegna[ck].singolo+=sets.singolo;
+          if(scanDate.getDay()===6||scanDate.getDay()===0)byConsegna[ck].bundlesWeekend=true;
+          byApt[apt].matrimoniali+=sets.matrimoniali;
+          byApt[apt].singolo+=sets.singolo;
+        }
+      });
+    })(new Date(scan));
+    scan.setDate(scan.getDate()+1);
+  }
+  var consegneList=Object.keys(byConsegna).sort().map(function(k){return byConsegna[k];});
+  var totMat=consegneList.reduce(function(s,c){return s+c.matrimoniali;},0);
+  var totSing=consegneList.reduce(function(s,c){return s+c.singolo;},0);
+  biPlanningCache[weekKey]={consegne:consegneList,byApt:byApt,totMat:totMat,totSing:totSing,friDate:friDate,endDate:endDate};
+  var target=document.getElementById('biOrderResult');
+  if(target)target.innerHTML=biRenderOrderBox(weekKey);
+}
+
+function biRenderOrderBox(weekKey){
+  var plan=biPlanningCache[weekKey];
+  if(!plan)return '';
+  var inviato=!!biOrdiniStatus[weekKey];
+  var rows=plan.consegne.map(function(c){
+    var lbl=c.date.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})+(c.bundlesWeekend?' <span class="muted" style="font-size:11px">(incl. sab/dom)</span>':'');
+    var setsStr=biPiecesLabel({matrimoniali:c.matrimoniali,singolo:c.singolo});
+    return '<div class="bi-order-row"><span>'+lbl+'</span><span>'+setsStr+'</span></div>';
+  }).join('');
+  var totStr=biPiecesLabel({matrimoniali:plan.totMat,singolo:plan.totSing});
+  return '<div class="bi-order-box">'
+    +'<div style="font-size:12px;color:var(--text3);font-weight:500;margin-bottom:8px">Giorni di consegna</div>'
+    +(rows||'<div style="font-size:13px;color:var(--text3);font-style:italic">Nessun check-in nella settimana successiva.</div>')
+    +'<div class="bi-order-row tot"><span>Totale settimana</span><span>'+totStr+'</span></div>'
+    +'</div>'
+    +'<div class="bi-order-actions"><button class="planning-btn" style="margin-left:0" onclick="biExportPDF(\''+weekKey+'\')">&#128196; Scarica PDF</button></div>'
+    +'<label class="bi-inviato-box"><input type="checkbox" '+(inviato?'checked':'')+' onchange="biToggleInviato(\''+weekKey+'\',this.checked)" style="width:17px;height:17px">Inviato</label>';
+}
+
+function biToggleInviato(weekKey,checked){
+  biOrdiniStatus[weekKey]=checked;
+  if(!BIANCHERIA_API_URL){
+    console.warn('BIANCHERIA_API_URL non configurato: lo stato "Inviato" non verr\u00e0 salvato nel foglio, solo in locale per questa sessione.');
+    return;
+  }
+  fetch(BIANCHERIA_API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({settimana:weekKey,inviato:checked})
+  }).catch(function(e){console.error('Errore salvataggio stato biancheria',e);});
+}
+
+function biExportPDF(weekKey){
+  var plan=biPlanningCache[weekKey];if(!plan)return;
+  var rows=plan.consegne.map(function(c){
+    var lbl=c.date.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})+(c.bundlesWeekend?' (include sabato e domenica)':'');
+    var det=biPiecesDetail({matrimoniali:c.matrimoniali,singolo:c.singolo});
+    return '<tr><td>'+lbl+'</td><td>'+biPiecesLabel({matrimoniali:c.matrimoniali,singolo:c.singolo})+'</td><td style="font-size:11px;color:#7299B0">'+det+'</td></tr>';
+  }).join('');
+  var totStr=biPiecesLabel({matrimoniali:plan.totMat,singolo:plan.totSing});
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:680px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}tfoot td{font-weight:700;background:#0D5A8E;color:#fff;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
+  +'<div class="header"><div><h2>&#129530; Ordine biancheria</h2><div style="font-size:12px;color:#7299B0">Settimana '+plan.friDate.toLocaleDateString('it-IT',{day:'numeric',month:'long'})+' \u2013 '+plan.endDate.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'</div></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Visionari 3.0</strong><br>generato il '+new Date().toLocaleDateString('it-IT')+'</div></div>'
+  +'<table><thead><tr><th>Giorno di consegna</th><th>Set</th><th>Dettaglio pezzi</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="2">Totale settimana</td><td>'+totStr+'</td></tr></tfoot></table>'
+  +'<div class="footer"><span>Visionari 3.0</span><span>generato il '+new Date().toLocaleDateString('it-IT')+'</span></div>'
+  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
+  var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
+}
+
 function switchTab(name,btn){
   document.querySelectorAll('.tab-pane').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.tab-btn').forEach(function(el){el.classList.remove('active');});
@@ -1196,6 +1463,7 @@ function switchTab(name,btn){
   if(name==='todo')renderTodo();
   if(name==='dashboard')renderDashboard();
   if(name==='incassi')renderIncassi();
+  if(name==='biancheria')renderBiancheria();
 }
 var lastLoad=0;
 document.addEventListener('visibilitychange',function(){
