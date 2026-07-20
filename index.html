@@ -1260,7 +1260,7 @@ function biSetsForGuests(aptName,guests){
 }
 function biPiecesLabel(sets){
   var parts=[];
-  if(sets.matrimoniali>0)parts.push(sets.matrimoniali+' set matrimoniale'+(sets.matrimoniali>1?'i':''));
+  if(sets.matrimoniali>0)parts.push(sets.matrimoniali+' set matrimonial'+(sets.matrimoniali>1?'i':'e'));
   if(sets.singolo>0)parts.push(sets.singolo+' set singolo');
   return parts.length?parts.join(' + '):'\u2014';
 }
