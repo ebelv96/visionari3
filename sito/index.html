@@ -43,7 +43,13 @@
       <img src="images/logo.png" alt="Casa dei Visionari" style="height:40px; width:auto; object-fit:contain;">
     </span>
     <div class="hidden md:flex gap-12 text-[13px] font-bold uppercase tracking-widest">
-      <a href="#photogallery" class="hover:text-argilla transition-colors">PHOTOGALLERY</a>
+      <div class="relative">
+        <button type="button" onclick="togglePhotoMenu(event)" class="hover:text-argilla transition-colors uppercase tracking-widest font-bold text-[13px]">PHOTOGALLERY</button>
+        <div id="photogallery-menu" class="hidden absolute left-0 mt-4 bg-crema py-2 min-w-[190px] shadow-lg" style="text-shadow:none;">
+          <a href="#gallery-madonnella" onclick="closePhotoMenu()" class="block px-5 py-3 text-[11px] uppercase tracking-widest text-fumo hover:bg-argilla/10 transition-colors">Madonnella</a>
+          <a href="#gallery-mare" onclick="closePhotoMenu()" class="block px-5 py-3 text-[11px] uppercase tracking-widest text-fumo hover:bg-argilla/10 transition-colors">Mare</a>
+        </div>
+      </div>
       <a href="#filosofia" class="hover:text-argilla transition-colors"></a>
       <a href="#contatti" class="hover:text-argilla transition-colors">Contatti</a>
     </div>
@@ -74,7 +80,7 @@
 
       <article class="space-y-8 group">
         <div class="overflow-hidden">
-          <img src="images/property-bianca.jpg" alt="Camera minimalista con pareti in calce e vista sul mare" width="1200" height="1500" loading="lazy" class="w-full aspect-[4/5] object-cover transition-transform duration-700 group-hover:scale-105">
+          <img src="images/mad.jpeg" alt="Casa dei Visionari - Madonnella" width="1200" height="1500" loading="lazy" class="w-full aspect-[4/5] object-cover transition-transform duration-700 group-hover:scale-105">
         </div>
         <div class="space-y-4">
           <div class="flex justify-between items-end border-b border-fumo/10 pb-4">
@@ -107,18 +113,18 @@
     </div>
   </section>
 
-  <section id="photogallery" class="py-20">
-    <div class="max-w-xs mx-auto px-6 text-center mb-10">
-      <label class="block text-[10px] uppercase tracking-[0.3em] text-argilla mb-3">Scegli la dimora</label>
-      <select id="gallery-select" class="w-full border border-fumo/25 bg-transparent px-4 py-3 text-xs uppercase tracking-widest font-sans text-fumo" onchange="switchGallery(this.value)">
-        <option value="madonnella">Casa dei Visionari - Madonnella</option>
-        <option value="mare">Casa dei Visionari - Mare</option>
-      </select>
+  <section id="gallery-madonnella" class="relative w-full h-[70vh] md:h-[85vh] overflow-hidden crossfade-slider" style="background:#1c1a18;">
+    <div class="absolute top-8 left-0 w-full text-center z-10" style="text-shadow:0 1px 8px rgba(0,0,0,0.6);">
+      <span class="text-[10px] uppercase tracking-[0.3em] text-sale/80">Casa dei Visionari &middot; Madonnella</span>
     </div>
-    <div class="relative w-full h-[70vh] md:h-[85vh] overflow-hidden" id="gallery-slider" style="background:#1c1a18;">
-      <img data-group="madonnella" src="images/property-bianca.jpg" class="gallery-slide absolute inset-0 w-full h-full object-cover" style="opacity:1;">
-      <img data-group="mare" src="images/property-blu.jpg" class="gallery-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
+    <img src="images/mad.jpeg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:1;">
+  </section>
+
+  <section id="gallery-mare" class="relative w-full h-[70vh] md:h-[85vh] overflow-hidden crossfade-slider" style="background:#1c1a18;">
+    <div class="absolute top-8 left-0 w-full text-center z-10" style="text-shadow:0 1px 8px rgba(0,0,0,0.6);">
+      <span class="text-[10px] uppercase tracking-[0.3em] text-sale/80">Casa dei Visionari &middot; Mare</span>
     </div>
+    <img src="images/property-blu.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:1;">
   </section>
 
   <section id="filosofia" class="bg-mare/10 pt-32 pb-20 mt-20">
@@ -127,7 +133,7 @@
       <p class="text-3xl md:text-5xl font-display leading-tight italic text-fumo">&ldquo;Crediamo nel lusso del tempo, nel suono del vento tra le persiane e nell'odore del mare fuori&rdquo;</p>
     </div>
   </section>
-  <section class="relative w-full h-[70vh] md:h-[85vh] overflow-hidden" id="filosofia-slider" style="background:#1c1a18;">
+  <section class="relative w-full h-[70vh] md:h-[85vh] overflow-hidden crossfade-slider" id="filosofia-slider" style="background:#1c1a18;">
     <img src="images/foto-10.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:1;">
     <img src="images/foto-03.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
     <img src="images/foto-04.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
@@ -172,72 +178,37 @@
 
 <script>
 (function () {
-  var slider = document.getElementById('filosofia-slider');
-  if (!slider) { return; }
-  var slides = slider.getElementsByClassName('slider-slide');
-  var current = 0;
-  function nextSlide() {
-    var next = (current + 1) % slides.length;
-    slides[current].style.opacity = '0';
-    slides[next].style.opacity = '1';
-    current = next;
-  }
-  slides[0].style.transition = 'opacity 1.8s ease';
-  for (var i = 1; i < slides.length; i++) {
-    slides[i].style.transition = 'opacity 1.8s ease';
-  }
-  setInterval(nextSlide, 4500);
-})();
-</script>
-
-<script>
-(function () {
-  var slider = document.getElementById('gallery-slider');
-  if (!slider) { return; }
-  var allSlides = slider.getElementsByClassName('gallery-slide');
-  var activeGroup = 'madonnella';
-  var current = 0;
-  var timer = null;
-
-  function getGroupSlides(group) {
-    var result = [];
-    for (var i = 0; i < allSlides.length; i++) {
-      if (allSlides[i].getAttribute('data-group') === group) { result.push(allSlides[i]); }
-    }
-    return result;
-  }
-
-  function showGroup(group) {
-    for (var i = 0; i < allSlides.length; i++) {
-      allSlides[i].style.transition = 'none';
-      allSlides[i].style.opacity = (allSlides[i].getAttribute('data-group') === group) ? '1' : '0';
-    }
-    void slider.offsetWidth;
-    for (var j = 0; j < allSlides.length; j++) {
-      allSlides[j].style.transition = 'opacity 1.8s ease';
-    }
-  }
-
-  function cycle() {
-    var slides = getGroupSlides(activeGroup);
+  function initSlider(container) {
+    var slides = container.getElementsByClassName('slider-slide');
     if (slides.length < 2) { return; }
-    var next = (current + 1) % slides.length;
-    slides[current].style.opacity = '0';
-    slides[next].style.opacity = '1';
-    current = next;
+    var current = 0;
+    for (var i = 0; i < slides.length; i++) {
+      slides[i].style.transition = 'opacity 1.8s ease';
+    }
+    setInterval(function () {
+      var next = (current + 1) % slides.length;
+      slides[current].style.opacity = '0';
+      slides[next].style.opacity = '1';
+      current = next;
+    }, 4500);
   }
-
-  window.switchGallery = function (group) {
-    activeGroup = group;
-    current = 0;
-    showGroup(group);
-    if (timer) { clearInterval(timer); }
-    timer = setInterval(cycle, 4500);
-  };
-
-  showGroup(activeGroup);
-  timer = setInterval(cycle, 4500);
+  var containers = document.getElementsByClassName('crossfade-slider');
+  for (var c = 0; c < containers.length; c++) {
+    initSlider(containers[c]);
+  }
 })();
+
+function togglePhotoMenu(evt) {
+  if (evt) { evt.stopPropagation(); }
+  var menu = document.getElementById('photogallery-menu');
+  menu.classList.toggle('hidden');
+}
+function closePhotoMenu() {
+  document.getElementById('photogallery-menu').classList.add('hidden');
+}
+document.addEventListener('click', function () {
+  closePhotoMenu();
+});
 </script>
 
 </body>
