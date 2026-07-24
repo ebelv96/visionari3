@@ -43,7 +43,7 @@
       <img src="images/logo.png" alt="Casa dei Visionari" style="height:40px; width:auto; object-fit:contain;">
     </span>
     <div class="hidden md:flex gap-12 text-[13px] font-bold uppercase tracking-widest">
-      <a href="#dimore" class="hover:text-argilla transition-colors">PHOTOGALLERY</a>
+      <a href="#photogallery" class="hover:text-argilla transition-colors">PHOTOGALLERY</a>
       <a href="#filosofia" class="hover:text-argilla transition-colors"></a>
       <a href="#contatti" class="hover:text-argilla transition-colors">Contatti</a>
     </div>
@@ -99,6 +99,20 @@
         </div>
       </article>
 
+    </div>
+  </section>
+
+  <section id="photogallery" class="py-20">
+    <div class="max-w-xs mx-auto px-6 text-center mb-10">
+      <label class="block text-[10px] uppercase tracking-[0.3em] text-argilla mb-3">Scegli la dimora</label>
+      <select id="gallery-select" class="w-full border border-fumo/25 bg-transparent px-4 py-3 text-xs uppercase tracking-widest font-sans text-fumo" onchange="switchGallery(this.value)">
+        <option value="madonnella">Casa dei Visionari - Madonnella</option>
+        <option value="mare">Casa dei Visionari - Mare</option>
+      </select>
+    </div>
+    <div class="relative w-full h-[70vh] md:h-[85vh] overflow-hidden" id="gallery-slider" style="background:#1c1a18;">
+      <img data-group="madonnella" src="images/property-bianca.jpg" class="gallery-slide absolute inset-0 w-full h-full object-cover" style="opacity:1;">
+      <img data-group="mare" src="images/property-blu.jpg" class="gallery-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
     </div>
   </section>
 
@@ -168,6 +182,56 @@
     slides[i].style.transition = 'opacity 1.8s ease';
   }
   setInterval(nextSlide, 4500);
+})();
+</script>
+
+<script>
+(function () {
+  var slider = document.getElementById('gallery-slider');
+  if (!slider) { return; }
+  var allSlides = slider.getElementsByClassName('gallery-slide');
+  var activeGroup = 'madonnella';
+  var current = 0;
+  var timer = null;
+
+  function getGroupSlides(group) {
+    var result = [];
+    for (var i = 0; i < allSlides.length; i++) {
+      if (allSlides[i].getAttribute('data-group') === group) { result.push(allSlides[i]); }
+    }
+    return result;
+  }
+
+  function showGroup(group) {
+    for (var i = 0; i < allSlides.length; i++) {
+      allSlides[i].style.transition = 'none';
+      allSlides[i].style.opacity = (allSlides[i].getAttribute('data-group') === group) ? '1' : '0';
+    }
+    void slider.offsetWidth;
+    for (var j = 0; j < allSlides.length; j++) {
+      allSlides[j].style.transition = 'opacity 1.8s ease';
+    }
+  }
+
+  function cycle() {
+    var slides = getGroupSlides(activeGroup);
+    if (slides.length < 2) { return; }
+    var next = (current + 1) % slides.length;
+    slides[current].style.opacity = '0';
+    slides[next].style.opacity = '1';
+    current = next;
+  }
+
+  window.switchGallery = function (group) {
+    activeGroup = group;
+    current = 0;
+    showGroup(group);
+    if (timer) { clearInterval(timer); }
+    timer = setInterval(cycle, 4500);
+  };
+
+  showGroup(activeGroup);
+  timer = setInterval(cycle, 4500);
 })();
 </script>
 
