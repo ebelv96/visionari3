@@ -323,16 +323,25 @@ function prenotaParseDate(s) {
 }
 
 function prenotaLoadBookings() {
-  fetch(PRENOTA_CSV_URL).then(function (resp) { return resp.text(); }).then(function (text) {
+  fetch(PRENOTA_CSV_URL).then(function (resp) {
+    console.log('[Prenota] fetch status:', resp.status);
+    return resp.text();
+  }).then(function (text) {
+    console.log('[Prenota] CSV length:', text.length);
+    console.log('[Prenota] CSV first 300 chars:', text.substring(0, 300));
     var rows = prenotaParseCSV(text);
-    if (rows.length < 2) { prenotaRenderCalendar(); return; }
+    console.log('[Prenota] parsed rows:', rows.length);
+    if (rows.length < 2) { console.log('[Prenota] STOP: meno di 2 righe, nessun dato utile.'); prenotaRenderCalendar(); return; }
     var headers = rows[0];
+    console.log('[Prenota] headers:', headers);
     var idxApt = prenotaFindHeader(headers, ['appartamento', 'struttura', 'alloggio', 'apartment', 'unit', 'immobile']);
     var idxIn = prenotaFindHeader(headers, ['check-in', 'checkin', 'arrivo', 'data inizio', 'dal']);
     var idxOut = prenotaFindHeader(headers, ['check-out', 'checkout', 'partenza', 'data fine', 'al']);
     var idxStato = prenotaFindHeader(headers, ['stato', 'status']);
-    if (idxApt === -1 || idxIn === -1 || idxOut === -1) { prenotaRenderCalendar(); return; }
+    console.log('[Prenota] idxApt:', idxApt, 'idxIn:', idxIn, 'idxOut:', idxOut, 'idxStato:', idxStato);
+    if (idxApt === -1 || idxIn === -1 || idxOut === -1) { console.log('[Prenota] STOP: colonna non trovata.'); prenotaRenderCalendar(); return; }
     var r;
+    var pushedCount = 0;
     for (r = 1; r < rows.length; r++) {
       var row = rows[r];
       if (!row[idxApt]) { continue; }
@@ -353,11 +362,13 @@ function prenotaLoadBookings() {
         for (n = 0; n < kws.length; n++) {
           if (aptNorm.indexOf(kws[n]) !== -1) { matched = true; break; }
         }
-        if (matched) { prenotaBookings[key].push({ checkin: checkin, checkout: checkout }); }
+        if (matched) { prenotaBookings[key].push({ checkin: checkin, checkout: checkout }); pushedCount++; }
       }
     }
+    console.log('[Prenota] prenotazioni totali caricate:', pushedCount);
+    console.log('[Prenota] madonnella:', prenotaBookings.madonnella.length, 'mare:', prenotaBookings.mare.length);
     prenotaRenderCalendar();
-  }).catch(function () { prenotaRenderCalendar(); });
+  }).catch(function (err) { console.error('[Prenota] ERRORE fetch:', err); prenotaRenderCalendar(); });
 }
 
 function prenotaIsOccupied(unit, year, month, day) {
