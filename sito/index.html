@@ -39,11 +39,8 @@
 <body class="min-h-screen bg-crema text-fumo font-sans selection:bg-argilla/20">
 
   <nav class="fixed top-0 w-full z-50 flex justify-between items-center px-6 md:px-10 py-6 text-sale" style="text-shadow:0 1px 6px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.5);">
-    <span class="flex items-center gap-3">
-      <span style="display:inline-block; width:44px; height:34px; overflow:hidden; border-radius:4px;">
-        <img src="images/logo.jpg" alt="Casa dei Visionari" style="width:100%; height:154%; object-fit:cover; object-position:top;">
-      </span>
-      <span class="text-3xl tracking-[0.2em] font-display italic font-semibold">Casa dei Visionari</span>
+    <span class="flex items-center">
+      <img src="images/logo.jpg" alt="Casa dei Visionari" style="height:40px; width:auto; object-fit:contain;">
     </span>
     <div class="hidden md:flex gap-12 text-[13px] font-bold uppercase tracking-widest">
       <a href="#dimore" class="hover:text-argilla transition-colors">PHOTOGALLERY</a>
@@ -113,16 +110,14 @@
     <div class="max-w-4xl mx-auto px-6 md:px-10 text-center">
       <h2 class="text-[10px] uppercase tracking-[0.4em] mb-12 text-mare">CASA DEI VISIONARI</h2>
       <p class="text-3xl md:text-5xl font-display leading-tight italic text-fumo">&ldquo;Crediamo nel lusso del tempo, nel suono del vento tra le persiane e nell'odore del mare fuori&rdquo;</p>
-      <div class="mt-16 -mx-6 md:mx-0">
-        <div class="flex gap-4 overflow-x-auto pb-4 px-6 md:px-0" style="scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;">
-          <img src="images/foto-10.jpg" loading="lazy" class="h-64 md:h-80 w-auto flex-none object-cover rounded-sm" style="scroll-snap-align:start;">
-          <img src="images/foto-03.jpg" loading="lazy" class="h-64 md:h-80 w-auto flex-none object-cover rounded-sm" style="scroll-snap-align:start;">
-          <img src="images/foto-04.jpg" loading="lazy" class="h-64 md:h-80 w-auto flex-none object-cover rounded-sm" style="scroll-snap-align:start;">
-          <img src="images/foto-07.jpg" loading="lazy" class="h-64 md:h-80 w-auto flex-none object-cover rounded-sm" style="scroll-snap-align:start;">
-          <img src="images/foto-09.jpg" loading="lazy" class="h-64 md:h-80 w-auto flex-none object-cover rounded-sm" style="scroll-snap-align:start;">
-          <img src="images/foto-08.jpg" loading="lazy" class="h-64 md:h-80 w-auto flex-none object-cover rounded-sm" style="scroll-snap-align:start;">
-        </div>
-      </div>
+    </div>
+    <div class="mt-16 relative w-full h-[70vh] md:h-[85vh] overflow-hidden" id="filosofia-slider">
+      <img src="images/foto-10.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:1;">
+      <img src="images/foto-03.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
+      <img src="images/foto-04.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
+      <img src="images/foto-07.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
+      <img src="images/foto-09.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
+      <img src="images/foto-08.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
     </div>
   </section>
 
@@ -159,6 +154,26 @@
       </div>
     </div>
   </footer>
+
+<script>
+(function () {
+  var slider = document.getElementById('filosofia-slider');
+  if (!slider) { return; }
+  var slides = slider.getElementsByClassName('slider-slide');
+  var current = 0;
+  function nextSlide() {
+    var next = (current + 1) % slides.length;
+    slides[current].style.opacity = '0';
+    slides[next].style.opacity = '1';
+    current = next;
+  }
+  slides[0].style.transition = 'opacity 1.8s ease';
+  for (var i = 1; i < slides.length; i++) {
+    slides[i].style.transition = 'opacity 1.8s ease';
+  }
+  setInterval(nextSlide, 4500);
+})();
+</script>
 
 </body>
 </html>
