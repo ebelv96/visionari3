@@ -46,8 +46,8 @@
       <div class="relative">
         <button type="button" onclick="togglePhotoMenu(event)" class="hover:text-argilla transition-colors uppercase tracking-widest font-bold text-[13px]">PHOTOGALLERY</button>
         <div id="photogallery-menu" class="hidden absolute left-0 mt-4 bg-crema py-2 min-w-[190px] shadow-lg" style="text-shadow:none;">
-          <a href="javascript:void(0)" onclick="showGallery('gallery-madonnella')" class="block px-5 py-3 text-[11px] uppercase tracking-widest text-fumo hover:bg-argilla/10 transition-colors">Madonnella</a>
-          <a href="javascript:void(0)" onclick="showGallery('gallery-mare')" class="block px-5 py-3 text-[11px] uppercase tracking-widest text-fumo hover:bg-argilla/10 transition-colors">Mare</a>
+          <a href="gallery-madonnella.html" target="_blank" rel="noopener" class="block px-5 py-3 text-[11px] uppercase tracking-widest text-fumo hover:bg-argilla/10 transition-colors">Madonnella</a>
+          <a href="gallery-mare.html" target="_blank" rel="noopener" class="block px-5 py-3 text-[11px] uppercase tracking-widest text-fumo hover:bg-argilla/10 transition-colors">Mare</a>
         </div>
       </div>
       <a href="#filosofia" class="hover:text-argilla transition-colors"></a>
@@ -113,53 +113,44 @@
     </div>
   </section>
 
-  <section id="gallery-madonnella" class="hidden relative w-full h-[70vh] md:h-[85vh] overflow-hidden crossfade-slider" style="background:#1c1a18;">
-    <div class="absolute top-8 left-0 w-full text-center z-10" style="text-shadow:0 1px 8px rgba(0,0,0,0.6);">
-      <span class="text-[10px] uppercase tracking-[0.3em] text-sale/80">Casa dei Visionari &middot; Madonnella</span>
+  <section id="prenota" class="py-32 px-6 md:px-10 bg-mare/5">
+    <div class="max-w-sm mx-auto text-center mb-10">
+      <span class="text-[10px] uppercase tracking-[0.4em] text-argilla">Verifica la disponibilit&agrave;</span>
+      <h2 class="mt-4 text-3xl md:text-4xl font-display italic text-fumo">Prenota il tuo soggiorno</h2>
+      <div class="mt-8 text-left">
+        <label class="block text-[10px] uppercase tracking-[0.3em] text-argilla mb-3">Scegli la dimora</label>
+        <select id="prenota-select" class="w-full border border-fumo/25 bg-transparent px-4 py-3 text-xs uppercase tracking-widest font-sans text-fumo" onchange="prenotaSwitch(this.value)">
+          <option value="madonnella">Casa dei Visionari - Madonnella</option>
+          <option value="mare">Casa dei Visionari - Mare</option>
+        </select>
+      </div>
     </div>
-    <img src="images/mad.jpeg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:1;">
+
+    <div class="max-w-sm mx-auto">
+      <div class="flex items-center justify-between mb-4">
+        <button type="button" onclick="prenotaCalShift(-1)" class="border border-fumo/25 rounded-full w-8 h-8 text-fumo hover:bg-fumo hover:text-sale transition-colors">&#8249;</button>
+        <div id="prenota-month-label" class="text-xs uppercase tracking-widest text-fumo"></div>
+        <button type="button" onclick="prenotaCalShift(1)" class="border border-fumo/25 rounded-full w-8 h-8 text-fumo hover:bg-fumo hover:text-sale transition-colors">&#8250;</button>
+      </div>
+      <div id="prenota-dow-row" class="grid grid-cols-7 gap-1 mb-1"></div>
+      <div id="prenota-cal-grid" class="grid grid-cols-7 gap-1"></div>
+      <div class="flex justify-center gap-6 mt-6 text-[10px] uppercase tracking-widest text-fumo/60">
+        <span class="inline-flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:#7c9a6e;"></span>Libero</span>
+        <span class="inline-flex items-center gap-2"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:rgba(62,59,57,0.12);"></span>Non disponibile</span>
+      </div>
+    </div>
   </section>
 
-  <section id="gallery-mare" class="hidden relative w-full h-[70vh] md:h-[85vh] overflow-hidden crossfade-slider" style="background:#1c1a18;">
-    <div class="absolute top-8 left-0 w-full text-center z-10" style="text-shadow:0 1px 8px rgba(0,0,0,0.6);">
-      <span class="text-[10px] uppercase tracking-[0.3em] text-sale/80">Casa dei Visionari &middot; Mare</span>
+  <div id="prenota-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-6" style="background:rgba(20,18,16,0.6);" onclick="prenotaCloseModal(event)">
+    <div class="bg-crema max-w-xs w-full p-8 text-center" onclick="event.stopPropagation()">
+      <p class="text-sm text-fumo/70 mb-2">Richiedi disponibilit&agrave; per</p>
+      <p id="prenota-modal-unit" class="text-xs uppercase tracking-widest text-argilla mb-1"></p>
+      <p id="prenota-modal-date" class="text-2xl font-display italic mb-6 text-fumo"></p>
+      <a id="prenota-modal-whatsapp" href="#" target="_blank" rel="noopener" class="block mb-3 border border-fumo px-5 py-3 text-[11px] uppercase tracking-widest text-fumo hover:bg-fumo hover:text-sale transition-colors">Scrivi su WhatsApp</a>
+      <a id="prenota-modal-email" href="#" class="block border border-fumo px-5 py-3 text-[11px] uppercase tracking-widest text-fumo hover:bg-fumo hover:text-sale transition-colors">Invia una mail</a>
+      <button type="button" onclick="prenotaCloseModal()" class="mt-6 text-[10px] uppercase tracking-widest text-fumo/50">Chiudi</button>
     </div>
-    <img src="images/pane e pomodoro/VG-078-VN2_1275.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:1;">
-    <img src="images/pane e pomodoro/VG-002-VN1_8334-HDR.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-003-VN1_8337-HDR-E.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-018-VN2_1220.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-028-VN2_1230.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-029-VN2_1231.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-032-VN2_1235.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-033-VN2_1236.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-036-VN1_8352-HDR.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-038-VN1_8358-HDR-E.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-043-VN1_8367.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-044-VN1_8373-HDR.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-047-VN2_1240.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-048-VN2_1241.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-050-VN2_1243.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-053-VN2_1246.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-066-VN2_1260.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-081-VN2_1285.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-083-VN2_1287.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-087-VN2_1291.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-091-VN2_1295.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-092-VN2_1296.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-094-VN2_1298.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-095-VN2_1299.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-096-VN1_8385.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-097-VN1_8388.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-103-VN2_1304.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-105-VN2_1306.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-109-VN2_1310.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-117-VN1_8400-HDR.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-119-VN1_8406-HDR.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-121-VN2_1318.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-122-VN2_1319.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-142-VN2_1342.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-    <img src="images/pane e pomodoro/VG-155-VN2_1355.jpg" class="slider-slide absolute inset-0 w-full h-full object-cover" style="opacity:0;">
-  </section>
+  </div>
 
   <section id="filosofia" class="bg-mare/10 pt-32 pb-20 mt-20">
     <div class="max-w-4xl mx-auto px-6 md:px-10 text-center">
@@ -183,9 +174,9 @@
       <p class="mt-6 text-sm text-fumo/70 max-w-md mx-auto leading-relaxed">Raccontaci le date e i tuoi desideri. Ti risponderemo con una proposta cucita sul tuo tempo.</p>
       <a href="mailto:casadeivisionari@gmail.com" class="mt-10 inline-block text-2xl md:text-3xl font-display italic border-b border-fumo/30 pb-1 hover:border-fumo transition-colors">casadeivisionari@gmail.com</a>
     </div>
-    <a href="tel:+393331234567"
+    <a href="https://wa.me/393407687874" target="_blank" rel="noopener"
    class="mt-4 block w-fit mx-auto text-lg md:text-xl font-display italic border-b border-fumo/30 pb-1 hover:border-fumo transition-colors">
-    +39 3340 768 7874
+    +39 340 768 7874
 </a>
   </section>
 
@@ -244,20 +235,229 @@ function togglePhotoMenu(evt) {
 function closePhotoMenu() {
   document.getElementById('photogallery-menu').classList.add('hidden');
 }
-function showGallery(id) {
-  var ids = ['gallery-madonnella', 'gallery-mare'];
-  for (var i = 0; i < ids.length; i++) {
-    var el = document.getElementById(ids[i]);
-    if (!el) { continue; }
-    if (ids[i] === id) { el.classList.remove('hidden'); } else { el.classList.add('hidden'); }
-  }
-  closePhotoMenu();
-  var target = document.getElementById(id);
-  if (target) { target.scrollIntoView({ behavior: 'smooth' }); }
-}
 document.addEventListener('click', function () {
   closePhotoMenu();
 });
+</script>
+
+<script>
+
+var PRENOTA_SHEET_ID = '1njE_JQ-m_rzdAOR-OWDeI7NfCq2sn0LZe2Ia_A-xjRc';
+var PRENOTA_GID = '1940746485';
+var PRENOTA_CSV_URL = 'https://docs.google.com/spreadsheets/d/' + PRENOTA_SHEET_ID + '/export?format=csv&gid=' + PRENOTA_GID;
+var PRENOTA_WHATSAPP_NUMBER = '393407687874';
+var PRENOTA_EMAIL = 'casadeivisionari@gmail.com';
+
+var PRENOTA_UNIT_NAMES = {
+  madonnella: { label: 'Casa dei Visionari - Madonnella', keywords: ['madonnella'] },
+  mare: { label: 'Casa dei Visionari - Mare', keywords: ['visionari mare', 'casa dei visionari mare', 'mare'] }
+};
+
+var PRENOTA_MONTH_NAMES = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+var PRENOTA_DOW = ['L','M','M','G','V','S','D'];
+
+var prenotaState = { unit: 'madonnella', year: (new Date()).getFullYear(), month: (new Date()).getMonth() };
+var prenotaBookings = { madonnella: [], mare: [] };
+
+function prenotaNormalize(s) {
+  return s.toLowerCase().replace(/[\u00e0\u00e1\u00e2]/g,'a').replace(/[\u00e8\u00e9\u00ea]/g,'e').replace(/[\u00ec\u00ed\u00ee]/g,'i').replace(/[\u00f2\u00f3\u00f4]/g,'o').replace(/[\u00f9\u00fa\u00fb]/g,'u').replace(/\s+/g,' ').replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');
+}
+
+function prenotaFindHeader(headers, keywords) {
+  var i, k;
+  for (i = 0; i < headers.length; i++) {
+    var h = prenotaNormalize(headers[i]);
+    for (k = 0; k < keywords.length; k++) {
+      if (h.indexOf(keywords[k]) !== -1) { return i; }
+    }
+  }
+  return -1;
+}
+
+function prenotaParseCSVLine(line) {
+  var result = [];
+  var cur = '';
+  var inQuotes = false;
+  var i;
+  for (i = 0; i < line.length; i++) {
+    var c = line.charAt(i);
+    if (inQuotes) {
+      if (c === '"') {
+        if (line.charAt(i + 1) === '"') { cur += '"'; i++; } else { inQuotes = false; }
+      } else { cur += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { result.push(cur); cur = ''; }
+      else { cur += c; }
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+function prenotaParseCSV(text) {
+  var rows = [];
+  var lines = text.split(/\r\n|\n/);
+  var i;
+  for (i = 0; i < lines.length; i++) {
+    if (lines[i].length === 0) { continue; }
+    rows.push(prenotaParseCSVLine(lines[i]));
+  }
+  return rows;
+}
+
+function prenotaParseDate(s) {
+  if (!s) { return null; }
+  s = s.replace(/^\s+|\s+$/g, '');
+  var m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if (m) {
+    var day = parseInt(m[1], 10);
+    var month = parseInt(m[2], 10) - 1;
+    var year = parseInt(m[3], 10);
+    if (year < 100) { year += 2000; }
+    return new Date(year, month, day);
+  }
+  var m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m2) { return new Date(parseInt(m2[1],10), parseInt(m2[2],10) - 1, parseInt(m2[3],10)); }
+  return null;
+}
+
+function prenotaLoadBookings() {
+  fetch(PRENOTA_CSV_URL).then(function (resp) { return resp.text(); }).then(function (text) {
+    var rows = prenotaParseCSV(text);
+    if (rows.length < 2) { prenotaRenderCalendar(); return; }
+    var headers = rows[0];
+    var idxApt = prenotaFindHeader(headers, ['appartamento', 'struttura', 'alloggio', 'apartment', 'unit', 'immobile']);
+    var idxIn = prenotaFindHeader(headers, ['check-in', 'checkin', 'arrivo', 'data inizio', 'dal']);
+    var idxOut = prenotaFindHeader(headers, ['check-out', 'checkout', 'partenza', 'data fine', 'al']);
+    if (idxApt === -1 || idxIn === -1 || idxOut === -1) { prenotaRenderCalendar(); return; }
+    var r;
+    for (r = 1; r < rows.length; r++) {
+      var row = rows[r];
+      if (!row[idxApt]) { continue; }
+      var aptNorm = prenotaNormalize(row[idxApt]);
+      var checkin = prenotaParseDate(row[idxIn]);
+      var checkout = prenotaParseDate(row[idxOut]);
+      if (!checkin || !checkout) { continue; }
+      var key;
+      for (key in PRENOTA_UNIT_NAMES) {
+        if (!PRENOTA_UNIT_NAMES.hasOwnProperty(key)) { continue; }
+        var kws = PRENOTA_UNIT_NAMES[key].keywords;
+        var matched = false;
+        var n;
+        for (n = 0; n < kws.length; n++) {
+          if (aptNorm.indexOf(kws[n]) !== -1) { matched = true; break; }
+        }
+        if (matched) { prenotaBookings[key].push({ checkin: checkin, checkout: checkout }); }
+      }
+    }
+    prenotaRenderCalendar();
+  }).catch(function () { prenotaRenderCalendar(); });
+}
+
+function prenotaIsOccupied(unit, year, month, day) {
+  var bookings = prenotaBookings[unit] || [];
+  var d = new Date(year, month, day);
+  var i;
+  for (i = 0; i < bookings.length; i++) {
+    if (d >= bookings[i].checkin && d < bookings[i].checkout) { return true; }
+  }
+  return false;
+}
+
+function prenotaRenderCalendar() {
+  var monthLabel = document.getElementById('prenota-month-label');
+  var dowRow = document.getElementById('prenota-dow-row');
+  var grid = document.getElementById('prenota-cal-grid');
+  if (!grid) { return; }
+  monthLabel.textContent = PRENOTA_MONTH_NAMES[prenotaState.month] + ' ' + prenotaState.year;
+  dowRow.innerHTML = '';
+  var d;
+  for (d = 0; d < 7; d++) {
+    var dowCell = document.createElement('div');
+    dowCell.className = 'text-center text-[9px] uppercase tracking-widest text-fumo/40';
+    dowCell.textContent = PRENOTA_DOW[d];
+    dowRow.appendChild(dowCell);
+  }
+  grid.innerHTML = '';
+  var firstOfMonth = new Date(prenotaState.year, prenotaState.month, 1);
+  var startOffset = (firstOfMonth.getDay() + 6) % 7;
+  var daysInMonth = new Date(prenotaState.year, prenotaState.month + 1, 0).getDate();
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  var i;
+  for (i = 0; i < startOffset; i++) {
+    var empty = document.createElement('div');
+    grid.appendChild(empty);
+  }
+  for (i = 1; i <= daysInMonth; i++) {
+    var cell = document.createElement('button');
+    cell.type = 'button';
+    var cellDate = new Date(prenotaState.year, prenotaState.month, i);
+    var occupied = prenotaIsOccupied(prenotaState.unit, prenotaState.year, prenotaState.month, i);
+    var isPast = cellDate < today;
+    cell.textContent = i;
+    cell.className = 'aspect-square rounded-sm text-[11px] flex items-center justify-center';
+    if (isPast) {
+      cell.style.background = 'transparent';
+      cell.style.color = 'rgba(62,59,57,0.3)';
+      cell.disabled = true;
+    } else if (occupied) {
+      cell.style.background = 'rgba(62,59,57,0.12)';
+      cell.style.color = 'rgba(62,59,57,0.5)';
+      cell.disabled = true;
+    } else {
+      cell.style.background = '#7c9a6e';
+      cell.style.color = '#ffffff';
+      cell.style.cursor = 'pointer';
+      (function (dateForClick) {
+        cell.onclick = function () { prenotaOpenModal(dateForClick); };
+      })(cellDate);
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function prenotaSwitch(unit) {
+  prenotaState.unit = unit;
+  prenotaRenderCalendar();
+}
+
+function prenotaCalShift(delta) {
+  var newMonth = prenotaState.month + delta;
+  var newYear = prenotaState.year;
+  if (newMonth < 0) { newMonth = 11; newYear -= 1; }
+  if (newMonth > 11) { newMonth = 0; newYear += 1; }
+  prenotaState.month = newMonth;
+  prenotaState.year = newYear;
+  prenotaRenderCalendar();
+}
+
+function prenotaFormatDate(d) {
+  var days = ['Domenica','Luned&#236;','Marted&#236;','Mercoled&#236;','Gioved&#236;','Venerd&#236;','Sabato'];
+  var dd = d.getDate();
+  var mm = PRENOTA_MONTH_NAMES[d.getMonth()];
+  return dd + ' ' + mm + ' ' + d.getFullYear();
+}
+
+function prenotaOpenModal(date) {
+  var unitLabel = PRENOTA_UNIT_NAMES[prenotaState.unit].label;
+  var dateLabel = prenotaFormatDate(date);
+  document.getElementById('prenota-modal-unit').textContent = unitLabel;
+  document.getElementById('prenota-modal-date').textContent = dateLabel;
+  var msg = 'Ciao! Vorrei chiedere la disponibilita per ' + unitLabel + ' a partire dal ' + dateLabel + '.';
+  document.getElementById('prenota-modal-whatsapp').href = 'https://wa.me/' + PRENOTA_WHATSAPP_NUMBER + '?text=' + encodeURIComponent(msg);
+  document.getElementById('prenota-modal-email').href = 'mailto:' + PRENOTA_EMAIL + '?subject=' + encodeURIComponent('Richiesta disponibilita - ' + unitLabel) + '&body=' + encodeURIComponent(msg);
+  document.getElementById('prenota-modal').classList.remove('hidden');
+}
+
+function prenotaCloseModal(evt) {
+  if (evt && evt.target !== document.getElementById('prenota-modal')) { return; }
+  document.getElementById('prenota-modal').classList.add('hidden');
+}
+
+prenotaLoadBookings();
+
 </script>
 
 </body>
