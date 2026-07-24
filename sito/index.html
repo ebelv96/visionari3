@@ -330,11 +330,16 @@ function prenotaLoadBookings() {
     var idxApt = prenotaFindHeader(headers, ['appartamento', 'struttura', 'alloggio', 'apartment', 'unit', 'immobile']);
     var idxIn = prenotaFindHeader(headers, ['check-in', 'checkin', 'arrivo', 'data inizio', 'dal']);
     var idxOut = prenotaFindHeader(headers, ['check-out', 'checkout', 'partenza', 'data fine', 'al']);
+    var idxStato = prenotaFindHeader(headers, ['stato', 'status']);
     if (idxApt === -1 || idxIn === -1 || idxOut === -1) { prenotaRenderCalendar(); return; }
     var r;
     for (r = 1; r < rows.length; r++) {
       var row = rows[r];
       if (!row[idxApt]) { continue; }
+      if (idxStato !== -1 && row[idxStato]) {
+        var statoNorm = prenotaNormalize(row[idxStato]);
+        if (statoNorm.indexOf('cancellat') !== -1 || statoNorm.indexOf('rifiutat') !== -1 || statoNorm.indexOf('annullat') !== -1 || statoNorm.indexOf('declined') !== -1 || statoNorm.indexOf('cancelled') !== -1) { continue; }
+      }
       var aptNorm = prenotaNormalize(row[idxApt]);
       var checkin = prenotaParseDate(row[idxIn]);
       var checkout = prenotaParseDate(row[idxOut]);
