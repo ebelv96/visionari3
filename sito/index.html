@@ -53,8 +53,21 @@
       <a href="#filosofia" class="hover:text-argilla transition-colors"></a>
       <a href="#contatti" class="hover:text-argilla transition-colors">Contatti</a>
     </div>
-    <a href="#prenota" class="border border-sale/50 px-5 py-2 text-[13px] font-bold uppercase tracking-widest hover:bg-sale hover:text-fumo transition-all">Prenota</a>
+    <a href="#prenota" class="border border-sale/50 px-4 py-2 text-[12px] md:text-[13px] font-bold uppercase tracking-widest hover:bg-sale hover:text-fumo transition-all">Prenota</a>
+    <button type="button" onclick="toggleMobileMenu(event)" class="md:hidden ml-4 text-sale text-2xl leading-none" aria-label="Menu">&#9776;</button>
   </nav>
+
+  <div id="mobile-menu" class="hidden md:hidden fixed top-0 left-0 w-full z-40 bg-crema pt-24 pb-8 px-6 shadow-lg">
+    <div class="flex flex-col gap-1 text-fumo">
+      <div class="py-3 border-b border-fumo/10">
+        <div class="text-[11px] uppercase tracking-widest font-bold mb-2">Photogallery</div>
+        <a href="gallery-madonnella.html" target="_blank" rel="noopener" class="block py-2 pl-3 text-[13px] uppercase tracking-widest">Madonnella</a>
+        <a href="gallery-mare.html" target="_blank" rel="noopener" class="block py-2 pl-3 text-[13px] uppercase tracking-widest">Mare</a>
+      </div>
+      <a href="#contatti" onclick="closeMobileMenu()" class="py-3 border-b border-fumo/10 text-[13px] uppercase tracking-widest font-bold">Contatti</a>
+      <a href="#prenota" onclick="closeMobileMenu()" class="py-3 text-[13px] uppercase tracking-widest font-bold">Prenota</a>
+    </div>
+  </div>
 
   <section class="relative h-screen flex flex-col justify-center items-center px-6">
     <div class="absolute inset-0 z-0 overflow-hidden">
@@ -238,6 +251,13 @@ function closePhotoMenu() {
 document.addEventListener('click', function () {
   closePhotoMenu();
 });
+function toggleMobileMenu(evt) {
+  if (evt) { evt.stopPropagation(); }
+  document.getElementById('mobile-menu').classList.toggle('hidden');
+}
+function closeMobileMenu() {
+  document.getElementById('mobile-menu').classList.add('hidden');
+}
 </script>
 
 <script>
