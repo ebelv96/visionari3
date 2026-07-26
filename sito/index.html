@@ -71,11 +71,24 @@
 
   <section class="relative h-screen flex flex-col justify-center items-center px-6">
     <div class="absolute inset-0 z-0 overflow-hidden">
-      <video autoplay muted loop playsinline poster="images/mare onde.jpg" class="w-full h-full object-cover">
-        <source src="images/hero-onde-vintage.mp4" type="video/mp4">
+      <video autoplay muted loop playsinline poster="images/mare onde.jpg" id="hero-video" class="w-full h-full object-cover">
+        <source src="images/hero-onde-vintage-audio.mp4" type="video/mp4">
       </video>
       <div class="absolute inset-0" style="background:radial-gradient(ellipse at center, rgba(20,18,16,0.15) 0%, rgba(20,18,16,0.45) 65%, rgba(20,18,16,0.6) 100%);"></div>
     </div>
+
+    <button type="button" id="sound-toggle" onclick="toggleHeroSound()" class="absolute bottom-8 right-8 z-20 w-11 h-11 rounded-full flex items-center justify-center text-sale" style="background:rgba(255,255,255,0.14); backdrop-filter:blur(4px);">
+      <svg id="sound-icon-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M11 5 6 9H2v6h4l5 4V5z"></path>
+        <line x1="23" y1="9" x2="17" y2="15"></line>
+        <line x1="17" y1="9" x2="23" y2="15"></line>
+      </svg>
+      <svg id="sound-icon-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden">
+        <path d="M11 5 6 9H2v6h4l5 4V5z"></path>
+        <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+        <path d="M18.5 5.5a9 9 0 0 1 0 13"></path>
+      </svg>
+    </button>
 
 
 
@@ -264,6 +277,20 @@ function toggleMobileMenu(evt) {
 }
 function closeMobileMenu() {
   document.getElementById('mobile-menu').classList.add('hidden');
+}
+function toggleHeroSound() {
+  var video = document.getElementById('hero-video');
+  var iconOff = document.getElementById('sound-icon-off');
+  var iconOn = document.getElementById('sound-icon-on');
+  if (!video) { return; }
+  video.muted = !video.muted;
+  if (video.muted) {
+    iconOff.classList.remove('hidden');
+    iconOn.classList.add('hidden');
+  } else {
+    iconOff.classList.add('hidden');
+    iconOn.classList.remove('hidden');
+  }
 }
 </script>
 
