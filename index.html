@@ -1388,9 +1388,12 @@ function biGeneraPlanning(weekKey){
           var sets=biSetsForGuests(apt,guests);
           var cons=biConsegnaDate(scanDate);
           var ck=biDateKey(cons);
-          if(!byConsegna[ck])byConsegna[ck]={date:new Date(cons),matrimoniali:0,singolo:0,bundlesWeekend:false};
+          if(!byConsegna[ck])byConsegna[ck]={date:new Date(cons),matrimoniali:0,singolo:0,bundlesWeekend:false,byApt:{}};
           byConsegna[ck].matrimoniali+=sets.matrimoniali;
           byConsegna[ck].singolo+=sets.singolo;
+          if(!byConsegna[ck].byApt[apt])byConsegna[ck].byApt[apt]={matrimoniali:0,singolo:0};
+          byConsegna[ck].byApt[apt].matrimoniali+=sets.matrimoniali;
+          byConsegna[ck].byApt[apt].singolo+=sets.singolo;
           if(scanDate.getDay()===6||scanDate.getDay()===0)byConsegna[ck].bundlesWeekend=true;
           byApt[apt].matrimoniali+=sets.matrimoniali;
           byApt[apt].singolo+=sets.singolo;
@@ -1407,6 +1410,17 @@ function biGeneraPlanning(weekKey){
   if(target)target.innerHTML=biRenderOrderBox(weekKey);
 }
 
+function biConsegnaAptLines(c,htmlMode){
+  var apts=Object.keys(c.byApt);
+  if(apts.length<2)return '';
+  return apts.map(function(apt){
+    var s=c.byApt[apt];
+    var setsStr=biPiecesLabel(s);
+    var prezzo=biPrezzoSets(s);
+    if(htmlMode)return '<div style="padding-left:14px;font-size:12px;color:var(--text3)">'+apt+': '+setsStr+' ('+fmtEur(prezzo)+')</div>';
+    return '<div style="padding-left:16px;font-size:11px;color:#7299B0">'+apt+': '+setsStr+' ('+fmtEur(prezzo)+')</div>';
+  }).join('');
+}
 function biRenderOrderBox(weekKey){
   var plan=biPlanningCache[weekKey];
   if(!plan)return '';
@@ -1415,7 +1429,7 @@ function biRenderOrderBox(weekKey){
     var lbl=c.date.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})+(c.bundlesWeekend?' <span class="muted" style="font-size:11px">(incl. sab/dom)</span>':'');
     var setsStr=biPiecesLabel({matrimoniali:c.matrimoniali,singolo:c.singolo});
     var prezzo=biPrezzoSets({matrimoniali:c.matrimoniali,singolo:c.singolo});
-    return '<div class="bi-order-row"><span>'+lbl+'</span><span>'+setsStr+' <span class="muted">('+fmtEur(prezzo)+')</span></span></div>';
+    return '<div class="bi-order-row"><span>'+lbl+'</span><span>'+setsStr+' <span class="muted">('+fmtEur(prezzo)+')</span></span></div>'+biConsegnaAptLines(c,true);
   }).join('');
   var totStr=biPiecesLabel({matrimoniali:plan.totMat,singolo:plan.totSing});
   var totPrezzo=biPrezzoSets({matrimoniali:plan.totMat,singolo:plan.totSing});
@@ -1447,7 +1461,8 @@ function biExportPDF(weekKey){
     var lbl=c.date.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})+(c.bundlesWeekend?' (include sabato e domenica)':'');
     var det=biPiecesDetail({matrimoniali:c.matrimoniali,singolo:c.singolo});
     var prezzo=biPrezzoSets({matrimoniali:c.matrimoniali,singolo:c.singolo});
-    return '<tr><td>'+lbl+'</td><td>'+biPiecesLabel({matrimoniali:c.matrimoniali,singolo:c.singolo})+'</td><td style="font-size:11px;color:#7299B0">'+det+'</td><td>'+fmtEur(prezzo)+'</td></tr>';
+    var aptLines=biConsegnaAptLines(c,false);
+    return '<tr><td>'+lbl+aptLines+'</td><td>'+biPiecesLabel({matrimoniali:c.matrimoniali,singolo:c.singolo})+'</td><td style="font-size:11px;color:#7299B0">'+det+'</td><td>'+fmtEur(prezzo)+'</td></tr>';
   }).join('');
   var totStr=biPiecesLabel({matrimoniali:plan.totMat,singolo:plan.totSing});
   var totPrezzo=biPrezzoSets({matrimoniali:plan.totMat,singolo:plan.totSing});
