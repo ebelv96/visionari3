@@ -1412,7 +1412,7 @@ function biGeneraPlanning(weekKey){
 
 function biConsegnaAptLines(c,htmlMode){
   var apts=Object.keys(c.byApt);
-  if(apts.length<2)return '';
+  if(apts.length<1)return '';
   return apts.map(function(apt){
     var s=c.byApt[apt];
     var setsStr=biPiecesLabel(s);
