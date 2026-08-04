@@ -715,7 +715,8 @@ function renderIncassi(){
     byApt[apt].servizi+=x.servizi;byApt[apt].finale+=x.finale;byApt[apt].n+=1;
   });
 
-  // Applica costi fissi mensili per appartamento
+  // Applica costi fissi mensili, poi 50% se Enea
+  // Formula Enea: (netto − servizi − costi fissi) × 50%
   var totCostiFissi=0;
   Object.keys(byApt).forEach(function(apt){
     var numMesi=mesiPerApt[apt]?mesiPerApt[apt].size:1;
@@ -723,7 +724,8 @@ function renderIncassi(){
     byApt[apt].costiFissiTot=cf.totale*numMesi;
     byApt[apt].costiFissiDettaglio=cf.dettaglio;
     byApt[apt].costiFissiNumMesi=numMesi;
-    byApt[apt].finaleNetto=byApt[apt].finale-byApt[apt].costiFissiTot;
+    var baseNetto=byApt[apt].finale-byApt[apt].costiFissiTot;
+    byApt[apt].finaleNetto=isEnea(apt)?baseNetto*0.50:baseNetto;
     totCostiFissi+=byApt[apt].costiFissiTot;
   });
 
@@ -745,12 +747,28 @@ function renderIncassi(){
     if(!byMeseGraf[mk])byMeseGraf[mk]={finale:0,costi:0};
     byMeseGraf[mk].finale+=x.finale;
   });
+  // Per il grafico: accumula finale e costi fissi per apt/mese, poi applica 50% Enea
+  var finaleMeseApt={};
   Object.keys(mesiPerAptGraf).forEach(function(apt){
     var cf=getCostiFissi(apt);
-    if(cf.totale===0)return;
     mesiPerAptGraf[apt].forEach(function(mk){
-      if(byMeseGraf[mk])byMeseGraf[mk].costi+=cf.totale;
+      if(!finaleMeseApt[mk])finaleMeseApt[mk]=0;
+      // finale grezzo per quell'apt in quel mese
+      var finaleAptMese=0;
+      rowsGraf.forEach(function(x){
+        var a=x.r['Appartamento']||'';
+        var d=parseDate(x.r['Check-in']);if(!d)return;
+        var m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+        if(matchApt(a,apt)&&m===mk)finaleAptMese+=x.finale;
+      });
+      var base=finaleAptMese-cf.totale;
+      var netto=isEnea(apt)?base*0.50:base;
+      finaleMeseApt[mk]+=netto;
     });
+  });
+  // Sovrascrivi byMeseGraf.finale con i valori corretti
+  Object.keys(finaleMeseApt).forEach(function(mk){
+    if(byMeseGraf[mk])byMeseGraf[mk].finale=finaleMeseApt[mk];
   });
   var mesiGraf=Object.keys(byMeseGraf).sort();
 
@@ -758,7 +776,7 @@ function renderIncassi(){
 
   // Grafico mensile
   var LABEL_OFFSET=60,BAR_W=64,BAR_GAP=24,CHART_H=180,LABEL_H=40,TOP_PAD=30;
-  var maxVal=mesiGraf.reduce(function(m,k){return Math.max(m,byMeseGraf[k].finale-byMeseGraf[k].costi);},0)||1;
+  var maxVal=mesiGraf.reduce(function(m,k){return Math.max(m,byMeseGraf[k].finale);},0)||1;
   var svgW=Math.max(500,mesiGraf.length*(BAR_W+BAR_GAP)+BAR_GAP+LABEL_OFFSET);
   var guides=[.25,.5,.75,1].map(function(p){
     var y=CHART_H-(p*(CHART_H-TOP_PAD));
@@ -766,7 +784,7 @@ function renderIncassi(){
   }).join('');
   var bars=mesiGraf.map(function(mk,i){
     var v=byMeseGraf[mk];
-    var finaleNetto=v.finale-v.costi;
+    var finaleNetto=v.finale;
     var x=LABEL_OFFSET+BAR_GAP+i*(BAR_W+BAR_GAP);
     var barH=Math.max(4,(finaleNetto/maxVal)*(CHART_H-TOP_PAD));
     var y=CHART_H-barH;
@@ -785,10 +803,7 @@ function renderIncassi(){
     var apt=e[0],v=e[1];
     var domus=isDomus(apt);
     var servStr=domus?'\u2014 (accordo Elda)':fmtEur(v.pulizia)+' pul. + '+fmtEur(v.lavanderia)+' lav.';
-    var costiStr=v.costiFissiDettaglio||'\u2014';
-    var costiLabel=v.costiFissiNumMesi>1
-      ?costiStr+' <span style="font-size:10px;color:var(--text3)">\u00d7'+v.costiFissiNumMesi+' mesi = '+fmtEur(v.costiFissiTot)+'</span>'
-      :(v.costiFissiTot>0?costiStr:'\u2014');
+    var costiLabel=v.costiFissiTot>0?fmtEur(v.costiFissiTot):'\u2014';
     return '<tr>'
       +'<td style="font-weight:500">'+apt+'</td>'
       +'<td style="text-align:center;color:var(--text3)">'+v.n+'</td>'
