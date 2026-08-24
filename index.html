@@ -673,8 +673,8 @@ function renderTodo(){
     var msg=getPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDC4B Welcome!';
     var wKey='ci_wa_'+i;waMessages[wKey]={msg:msg,phone:pClean};
     var key='ci_'+i;var done=!!todoDone[key];
-    var noteRec=findNoteFor(apt,today);
-    var noteHtml=noteRec?'<div class="tc-note">&#128221; '+noteRec.testo+'</div>':'';
+    var noteRecs=findNotesFor(apt,today);
+    var noteHtml=noteRecs.length?noteRecs.map(function(n){return '<div class="tc-note">&#128221; '+n.testo+'</div>';}).join(''):'';
     html+='<div class="todo-card ci '+(done?'done':'')+'" onclick="toggleTodoKey(\''+key+'\',this)"><div class="tc-top"><div class="tc-check">'+(done?'&#10003;':'')+'</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">'+nome+'</span><span class="tc-apt">'+apt+'</span><span class="tc-tag tc-tag-ci">check-in '+fmtS(parseDate(r['Check-in']))+'</span></div><div class="tc-row2">'+(phone?'<button class="tc-wa ci wa-btn" data-key="'+wKey+'">&#128172; '+phone+'</button>':'<span class="tc-meta">N/D</span>')+'<span class="tc-meta">'+osp+' ospiti</span></div>'+noteHtml+'</div></div></div>';
   });
   html+='</div>';
@@ -1237,8 +1237,8 @@ async function loadNoteData(){
     }).filter(function(n){return n.apt&&n.checkinDate&&n.testo;});
   }catch(e){console.error('Errore caricamento note',e);}
 }
-function findNoteFor(aptName,dateObj){
-  return notes.find(function(n){return matchApt(n.apt,aptName)&&n.checkinDate&&sameDay(n.checkinDate,dateObj);});
+function findNotesFor(aptName,dateObj){
+  return notes.filter(function(n){return matchApt(n.apt,aptName)&&n.checkinDate&&sameDay(n.checkinDate,dateObj);});
 }
 function noteSetApt(v){noteFilterApt=v;renderNote();}
 function noteSetData(v){noteFilterData=v;renderNote();}
