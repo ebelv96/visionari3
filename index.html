@@ -116,7 +116,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .tc-wa.pul{background:var(--accent-light);color:var(--accent);}
 .wa-btn-share{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:6px 14px;border-radius:20px;border:1px dashed var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;min-height:36px;}
 .todo-empty{padding:24px 16px;text-align:center;font-size:13px;color:var(--text3);font-style:italic;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
-.acquisti-list{display:flex;flex-direction:column;gap:6px;max-width:680px;}
 .acq-item{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;}
 .acq-item:hover{background:var(--surface2);}
 .acq-item.bought{opacity:.4;}
@@ -127,15 +126,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .acq-apt{font-size:10px;color:var(--text3);padding:2px 8px;background:var(--surface2);border-radius:20px;}
 .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
 .wa-btn{display:flex;align-items:center;gap:7px;font-size:12px;padding:9px 16px;border-radius:20px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(43,77,58,0.2);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;}
-.tasse-wrap{max-width:760px;}
 .params-bar{background:var(--blue-light);border:1px solid rgba(42,75,124,0.15);border-radius:var(--radius-sm);padding:10px 16px;display:flex;gap:24px;flex-wrap:wrap;font-size:12px;color:var(--blue);margin-bottom:16px;}
 .params-bar span{font-weight:500;}
-table.tasse-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);}
-table.tasse-tbl th{text-align:left;padding:10px 14px;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--bg);}
-table.tasse-tbl td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);}
-table.tasse-tbl tr:last-child td{border-bottom:none;}
-table.tasse-tbl tr:nth-child(even) td{background:rgba(0,0,0,.015);}
-.tasse-total-row td{font-weight:500;background:var(--accent)!important;color:#fff!important;border-top:2px solid var(--accent);}
 .incassata-yes{color:var(--accent);font-weight:500;}.incassata-no{color:var(--red);}
 .pricing-wrap{max-width:860px;}
 table.pricing-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);margin-bottom:20px;}
@@ -317,8 +309,8 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   .apt-grid{grid-template-columns:1fr;}
   .pulizie-table{min-width:580px;}
   .cleaner-header{flex-direction:column;align-items:flex-start;}
-  .tasse-wrap,.pricing-wrap,.incassi-wrap{overflow-x:auto;}
-  table.tasse-tbl,table.pricing-tbl,table.incassi-tbl{min-width:600px;font-size:11px;}
+  .pricing-wrap,.incassi-wrap{overflow-x:auto;}
+  table.pricing-tbl,table.incassi-tbl{min-width:600px;font-size:11px;}
   .incassi-kpi{grid-template-columns:1fr 1fr;}.incassi-kpi-num{font-size:18px;}
   .nl-cell{width:28px;height:32px;}
   .nl-apt-col{min-width:120px;font-size:11px;padding:6px 8px!important;}
@@ -361,8 +353,6 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   <button class="tab-btn" onclick="switchTab('biancheria',this)">🧺 Biancheria</button>
   <button class="tab-btn" onclick="switchTab('nottiLibere',this)">🗓️ Notti Libere</button>
   <button class="tab-btn" onclick="switchTab('incassi',this)">💰 Incassi</button>
-  <button class="tab-btn" onclick="switchTab('acquisti',this)">🛒 Acquisti</button>
-  <button class="tab-btn" onclick="switchTab('tasse',this)">💶 Tasse</button>
   <button class="tab-btn" onclick="switchTab('pricing',this)">📈 Pricing</button>
 </div>
 <div class="content">
@@ -374,25 +364,6 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   <div id="tab-biancheria"   class="tab-pane"><div class="bi-wrap" id="biancheriaContent"></div></div>
   <div id="tab-nottiLibere"  class="tab-pane"><div class="nl-wrap" id="nottiLibereContent"></div></div>
   <div id="tab-incassi" class="tab-pane"><div class="incassi-wrap" id="incassiContent"></div></div>
-  <div id="tab-acquisti"     class="tab-pane">
-    <div class="acquisti-list" id="acquistiList"></div>
-    <div class="action-row"><button class="wa-btn">&#128203; Lista spesa completa</button></div>
-  </div>
-  <div id="tab-tasse" class="tab-pane">
-    <div class="tasse-wrap">
-      <div class="params-bar">
-        <div>Tariffa: <span>€2 / persona / notte</span></div>
-        <div>Max notti tassabili: <span>4</span></div>
-        <div>Esenzione: <span>under 14 anni</span></div>
-        <div>Versamento: <span>trimestrale · PayTourist</span></div>
-      </div>
-      <table class="tasse-tbl">
-        <thead><tr><th>Appartamento</th><th>Ospite</th><th>Adulti</th><th>Notti tax.</th><th>Tassa (€)</th><th>Incassata</th></tr></thead>
-        <tbody id="tasseBody"></tbody>
-        <tfoot><tr class="tasse-total-row"><td colspan="4"><strong>Totale periodo</strong></td><td id="tasseTotal"></td><td></td></tr></tfoot>
-      </table>
-    </div>
-  </div>
   <div id="tab-pricing" class="tab-pane">
     <div class="pricing-wrap">
       <div class="section-label">Suggerimenti prezzi — prossimi 14 giorni</div>
@@ -418,7 +389,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 </div>
 <script>
 const SHEET_ID='1njE_JQ-m_rzdAOR-OWDeI7NfCq2sn0LZe2Ia_A-xjRc';
-const GIDS={prenotazioni:'1940746485',addette:'1820111522',inventario:'658069847',tasse:'1162299491',prompt:'955795025'};
+const GIDS={prenotazioni:'1940746485',addette:'1820111522',prompt:'955795025'};
 function sheetURL(gid){return 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=csv&gid='+gid;}
 async function fetchSheetSkipTitle(gid){
   const res=await fetch(sheetURL(gid));
@@ -492,9 +463,8 @@ const APT_PILL_COLORS={
 };
 const DOMUS_APTS=['Domus Pulchra (grande)','Domus Pulchra (piccolo)','Dimora Italia'];
 
-let prenotazioni=[],addetteSheet=[],inventario=[],tasse=[],promptMessaggi=[];
+let prenotazioni=[],addetteSheet=[],promptMessaggi=[];
 let todoDone=JSON.parse(localStorage.getItem('v3_todo')||'{}');
-let acquistoDone=JSON.parse(localStorage.getItem('v3_acquisti')||'{}');
 let approved={};
 const waMessages={};
 const TODAY=new Date();TODAY.setHours(0,0,0,0);
@@ -598,8 +568,8 @@ function showLoading(msg){document.getElementById('aptGrid').innerHTML='<div sty
 async function loadAllData(){
   showLoading('Caricamento dati\u2026');
   try{
-    var res=await Promise.all([fetchSheetSkipTitle(GIDS.prenotazioni),fetchSheetSkipTitle(GIDS.addette),fetchSheetSkipTitle(GIDS.inventario),fetchSheetSkipTitle(GIDS.tasse)]);
-    prenotazioni=res[0];addetteSheet=res[1];inventario=res[2];tasse=res[3];
+    var res=await Promise.all([fetchSheetSkipTitle(GIDS.prenotazioni),fetchSheetSkipTitle(GIDS.addette)]);
+    prenotazioni=res[0];addetteSheet=res[1];
     try{
       var vizUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&gid='+GIDS.prompt;
       var r2=await fetch(vizUrl);var t2=await r2.text();
@@ -646,15 +616,14 @@ function updateDates(){
 function pickDate(val){if(!val)return;var p=val.split('-').map(Number);offset=Math.round((new Date(p[0],p[1]-1,p[2])-TODAY)/86400000);dashOffset=offset;updateDates();renderAll();}
 function changeDay(n){offset+=n;dashOffset=offset;updateDates();renderAll();}
 function resetDay(){offset=0;dashOffset=0;updateDates();renderAll();}
-function renderAll(){renderKPI();renderDashboard();renderApts();renderTodo();renderAcquisti();renderTasse();renderPricing();renderIncassi();renderNottiLibere();renderBiancheria();renderNote();}
+function renderAll(){renderKPI();renderDashboard();renderApts();renderTodo();renderPricing();renderIncassi();renderNottiLibere();renderBiancheria();renderNote();}
 
 function renderKPI(){
   var day=getDay();
   var ci=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-in']),day);}).length;
   var co=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),day);}).length;
   var fr=APTS.filter(function(apt){return !prenotazioni.some(function(r){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;});}).length;
-  var tx=tasse.filter(function(r){return r['Incassata?']==='No'||r['Incassata?']==='no';}).reduce(function(s,r){return s+parseEur(r['Tassa Dovuta (\u20ac)']);},0);
-  document.getElementById('kpiBar').innerHTML='<div class="kpi-item"><div class="kpi-num green">'+ci+'</div><div class="kpi-lbl">&#8592; check-in</div></div><div class="kpi-item"><div class="kpi-num red">'+co+'</div><div class="kpi-lbl">&#8594; check-out</div></div><div class="kpi-item"><div class="kpi-num '+(fr>0?'warn':'')+'">'+fr+'</div><div class="kpi-lbl">liberi</div></div><div class="kpi-item"><div class="kpi-num good">\u20ac'+tx.toFixed(0)+'</div><div class="kpi-lbl">tasse</div></div>';
+  document.getElementById('kpiBar').innerHTML='<div class="kpi-item"><div class="kpi-num green">'+ci+'</div><div class="kpi-lbl">&#8592; check-in</div></div><div class="kpi-item"><div class="kpi-num red">'+co+'</div><div class="kpi-lbl">&#8594; check-out</div></div><div class="kpi-item"><div class="kpi-num '+(fr>0?'warn':'')+'">'+fr+'</div><div class="kpi-lbl">liberi</div></div>';
 }
 
 const STATUS_LABEL={turnover:'Turnover',checkin:'Check-in',checkout:'Check-out',occupied:'Occupato',free:'Libero'};
@@ -683,9 +652,8 @@ function renderApts(){
       else rows+=aptRow('&#9679;','Stato','<span class="muted">Ospiti presenti</span>');
     }
     if(status==='free')rows+=aptRow('&#9675;','Stato','<span class="muted">Nessuna prenotazione</span>');
-    var tassaRec=tasse.find(function(r){return matchApt(r['Appartamento'],apt.name)&&(sameDay(parseDate(r['Check-in']),day)||sameDay(parseDate(r['Check-out']),day));});
     var badge=status==='turnover'?'<span class="status-badge s-turnover" style="font-weight:700;box-shadow:0 0 0 2px rgba(42,75,122,0.3)">&#9650; TURNOVER</span>':'<span class="status-badge '+STATUS_CLASS[status]+'">'+STATUS_LABEL[status]+'</span>';
-    return '<div class="apt-card '+apt.cls+'" style="animation-delay:'+(idx*.05)+'s'+(status==='turnover'?';box-shadow:0 4px 20px rgba(42,75,122,0.15);border-color:rgba(42,75,122,0.3)':'')+'">'+'<div class="apt-card-top"><div><div class="apt-name"><span class="apt-dot '+apt.dot+'"></span>'+apt.name+'</div><div class="apt-sub">'+apt.sub+'</div></div>'+badge+'</div>'+'<div class="apt-body">'+(rows||'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun evento oggi</span>')+'</div>'+'<div class="apt-footer"><span>&#9775; '+ai.persona+'</span><span>tassa: '+(tassaRec?'\u20ac'+tassaRec['Tassa Dovuta (\u20ac)']:'\u2014')+'</span></div></div>';
+    return '<div class="apt-card '+apt.cls+'" style="animation-delay:'+(idx*.05)+'s'+(status==='turnover'?';box-shadow:0 4px 20px rgba(42,75,122,0.15);border-color:rgba(42,75,122,0.3)':'')+'">'+'<div class="apt-card-top"><div><div class="apt-name"><span class="apt-dot '+apt.dot+'"></span>'+apt.name+'</div><div class="apt-sub">'+apt.sub+'</div></div>'+badge+'</div>'+'<div class="apt-body">'+(rows||'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun evento oggi</span>')+'</div>'+'<div class="apt-footer"><span>&#9775; '+ai.persona+'</span></div></div>';
   }).join('');
 }
 function aptRow(icon,lbl,val){return '<div class="apt-row"><span class="apt-row-icon">'+icon+'</span><span class="apt-row-lbl">'+lbl+'</span><span class="apt-row-val">'+val+'</span></div>';}
@@ -740,24 +708,6 @@ function renderTodo(){
   document.getElementById('todoContent').innerHTML=html;
 }
 function toggleTodoKey(key,el){todoDone[key]=!todoDone[key];localStorage.setItem('v3_todo',JSON.stringify(todoDone));el.classList.toggle('done');el.querySelector('.tc-check').innerHTML=todoDone[key]?'&#10003;':'';}
-
-function renderAcquisti(){
-  var items=inventario.filter(function(r){return(r['Da Acquistare?']||'').indexOf('ACQUISTARE')!==-1;});
-  if(!items.length){document.getElementById('acquistiList').innerHTML='<div style="padding:20px;color:var(--text3);font-size:13px;font-style:italic;">Nessun articolo.</div>';return;}
-  document.getElementById('acquistiList').innerHTML=items.map(function(a,i){var done=!!acquistoDone[i];return '<div class="acq-item '+(done?'bought':'')+'" onclick="toggleAcq('+i+',this)"><div class="acq-check">'+(done?'&#10003;':'')+'</div><span class="acq-name">'+(a['Articolo']||'\u2014')+'</span><span class="acq-apt">'+(a['Appartamento']||'')+'</span></div>';}).join('');
-}
-function toggleAcq(id,el){acquistoDone[id]=!acquistoDone[id];localStorage.setItem('v3_acquisti',JSON.stringify(acquistoDone));el.classList.toggle('bought');el.querySelector('.acq-check').innerHTML=acquistoDone[id]?'&#10003;':'';}
-
-function renderTasse(){
-  var total=0;
-  var rows=tasse.filter(function(r){return r['Nome Ospite']&&r['Nome Ospite'].trim();}).map(function(r){
-    var val=parseEur(r['Tassa Dovuta (\u20ac)']);total+=val;
-    var paid=(r['Incassata?']||'').toLowerCase()==='s\u00ec'||(r['Incassata?']||'').toLowerCase()==='si';
-    return '<tr><td>'+(r['Appartamento']||'\u2014')+'</td><td>'+(r['Nome Ospite']||'\u2014')+'</td><td>'+(r['Adulti']||r['N. Ospiti Adulti']||'\u2014')+'</td><td>'+(r['Notti tassabili']||'\u2014')+'</td><td><strong>\u20ac'+val.toFixed(2)+'</strong></td><td class="'+(paid?'incassata-yes':'incassata-no')+'">'+(paid?'&#10003; s\u00ec':'&#9675; no')+'</td></tr>';
-  }).join('');
-  document.getElementById('tasseBody').innerHTML=rows||'<tr><td colspan="6" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato.</td></tr>';
-  document.getElementById('tasseTotal').innerHTML='<strong>\u20ac'+total.toFixed(2)+'</strong>';
-}
 
 function renderPricing(){
   document.getElementById('pricingBody').innerHTML=APTS.map(function(apt){var ok=!!approved[apt.name];return '<tr><td>'+apt.name+'</td><td>\u2014</td><td>\u2014</td><td style="color:var(--text3)">aggiorna nel Sheet</td><td style="font-size:11px;color:var(--text3)">vedi tab Pricing</td><td><button class="approv-btn '+(ok?'approved':'')+'" onclick="toggleApprove(\''+apt.name+'\',this)">'+(ok?'&#10003; ok':'Approva')+'</button></td></tr>';}).join('');
@@ -1266,7 +1216,7 @@ function generatePDF(persona,phone){
 // Nome Ospite | Nota | Data inserimento), incolla qui il suo GID.
 GIDS.note='';
 // Dopo aver distribuito lo script Apps Script (doPost) come Web App, incolla qui l'URL di distribuzione
-const NOTE_API_URL='https://script.google.com/macros/s/AKfycbzvYopBz_SK9hJybLykI_0LvFhIZL0P32sibep28Q84xrHxBd7THxrk94ulS0r32DE/exec';
+const NOTE_API_URL='';
 let notes=[];
 let noteFilterApt='tutti',noteFilterData='';
 
