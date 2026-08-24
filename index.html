@@ -399,6 +399,14 @@ async function fetchSheetSkipTitle(gid){
   if(lines.length<3)return[];
   return parseCSV(lines.slice(1).join('\n'));
 }
+// Per fogli SENZA riga decorativa di titolo (es. la tab "Note", creata da Apps Script
+// con le intestazioni vere gi\u00e0 in riga 1): qui non si salta nessuna riga.
+async function fetchSheetDirect(gid){
+  const res=await fetch(sheetURL(gid));
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const text=await res.text();
+  return parseCSV(text);
+}
 
 // ── COSTI FISSI MENSILI ───────────────────────────────────────
 const COSTI_FISSI={
@@ -1223,7 +1231,7 @@ let noteFilterApt='tutti',noteFilterData='';
 async function loadNoteData(){
   if(!GIDS.note)return;
   try{
-    var rows=await fetchSheetSkipTitle(GIDS.note);
+    var rows=await fetchSheetDirect(GIDS.note);
     notes=rows.map(function(r){
       return{
         apt:(r['Appartamento']||'').trim(),
