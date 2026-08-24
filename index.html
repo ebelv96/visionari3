@@ -1221,7 +1221,6 @@ let notes=[];
 let noteFilterApt='tutti',noteFilterData='';
 
 async function loadNoteData(){
-  notes=[];
   if(!GIDS.note)return;
   try{
     var rows=await fetchSheetSkipTitle(GIDS.note);
@@ -1235,7 +1234,7 @@ async function loadNoteData(){
         inserita:(r['Data inserimento']||'').trim()
       };
     }).filter(function(n){return n.apt&&n.checkinDate&&n.testo;});
-  }catch(e){console.error('Errore caricamento note',e);}
+  }catch(e){console.error('Errore caricamento note, mantengo i dati gi\u00e0 in memoria',e);}
 }
 function findNotesFor(aptName,dateObj){
   return notes.filter(function(n){return matchApt(n.apt,aptName)&&n.checkinDate&&sameDay(n.checkinDate,dateObj);});
