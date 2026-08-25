@@ -23,13 +23,137 @@
 .login-box input:focus{border-color:#0D5A8E;}
 .login-box button{width:100%;padding:13px;background:#0D5A8E;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;}
 .login-error{font-size:12px;color:#8B2E2E;margin-top:12px;display:none;}
+.biometric-btn{display:none;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:#0D5A8E;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:14px;}
+.biometric-divider{display:none;text-align:center;font-size:11px;color:#7299B0;margin:2px 0 14px;}
+.biometric-enroll{display:none;text-align:left;}
+.biometric-enroll .be-title{font-size:14px;color:#0D1F2D;font-weight:500;margin-bottom:6px;}
+.biometric-enroll .be-sub{font-size:12px;color:#7299B0;margin-bottom:16px;line-height:1.5;font-weight:300;}
+.biometric-enroll .be-actions{display:flex;gap:8px;}
+.be-btn-primary{flex:1;padding:10px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.be-btn-secondary{flex:1;padding:10px;background:transparent;color:#7299B0;border:1px solid rgba(10,60,100,0.18);border-radius:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.biometric-remove{display:none;margin-top:14px;text-align:center;}
+.biometric-remove a{font-size:11px;color:#7299B0;text-decoration:underline;cursor:pointer;}
 </style>
 <script>
 const HASH='5ac75c5f60bc57d633fc08fba7faa37d0a071b8c9ddb5d2213f7316636cf37e8';
 const SESSION_KEY='v3_auth';
+const WEBAUTHN_CRED_KEY='v3_webauthn_cred_id';
+
 async function sha256(msg){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
-async function tryLogin(){const pwd=document.getElementById('pwd').value;const hash=await sha256(pwd);if(hash===HASH){sessionStorage.setItem(SESSION_KEY,'1');document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';if(typeof loadAllData==='function')loadAllData();}else{document.getElementById('login-error').style.display='block';document.getElementById('pwd').value='';document.getElementById('pwd').focus();}}
-function checkSession(){if(sessionStorage.getItem(SESSION_KEY)==='1'){document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';if(typeof loadAllData==='function')loadAllData();}}
+
+// ── Helper per WebAuthn (Face ID / impronta / Windows Hello) ──────────────
+function waB64urlEncode(buf){
+  var bytes=new Uint8Array(buf);var str='';
+  for(var i=0;i<bytes.byteLength;i++)str+=String.fromCharCode(bytes[i]);
+  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function waB64urlDecode(str){
+  str=str.replace(/-/g,'+').replace(/_/g,'/');
+  while(str.length%4)str+='=';
+  var bin=atob(str);var bytes=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  return bytes.buffer;
+}
+function waRandomBytes(len){var arr=new Uint8Array(len);crypto.getRandomValues(arr);return arr;}
+function isWebAuthnSupported(){return !!(window.PublicKeyCredential&&navigator.credentials&&navigator.credentials.create&&navigator.credentials.get);}
+async function isPlatformAuthenticatorAvailable(){
+  if(!isWebAuthnSupported()||!window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable)return false;
+  try{return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();}catch(e){return false;}
+}
+function isWebAuthnEnrolled(){return !!localStorage.getItem(WEBAUTHN_CRED_KEY);}
+
+function enterApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  if(typeof loadAllData==='function')loadAllData();
+}
+
+async function tryLogin(){
+  var pwd=document.getElementById('pwd').value;
+  var hash=await sha256(pwd);
+  if(hash===HASH){
+    sessionStorage.setItem(SESSION_KEY,'1');
+    if(isWebAuthnSupported()&&!isWebAuthnEnrolled()&&await isPlatformAuthenticatorAvailable()){
+      showEnrollPrompt();
+    }else{
+      enterApp();
+    }
+  }else{
+    document.getElementById('login-error').style.display='block';
+    document.getElementById('pwd').value='';
+    document.getElementById('pwd').focus();
+  }
+}
+
+function showEnrollPrompt(){
+  document.getElementById('pwd').style.display='none';
+  document.getElementById('loginSubmitBtn').style.display='none';
+  document.getElementById('loginSubtitle').textContent='Accesso riuscito';
+  document.getElementById('biometricEnrollPrompt').style.display='block';
+}
+function dismissEnrollPrompt(){enterApp();}
+
+async function enrollWebAuthn(){
+  try{
+    var cred=await navigator.credentials.create({
+      publicKey:{
+        challenge:waRandomBytes(32),
+        rp:{name:'Visionari 3.0'},
+        user:{id:waRandomBytes(16),name:'team-visionari',displayName:'Team Visionari'},
+        pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+        authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'preferred',userVerification:'required'},
+        timeout:60000,
+        attestation:'none'
+      }
+    });
+    if(cred)localStorage.setItem(WEBAUTHN_CRED_KEY,waB64urlEncode(cred.rawId));
+  }catch(e){
+    console.warn('Attivazione Face ID/impronta non riuscita:',e);
+  }
+  enterApp();
+}
+
+async function loginWithWebAuthn(silent){
+  var credId=localStorage.getItem(WEBAUTHN_CRED_KEY);
+  if(!credId)return false;
+  try{
+    var assertion=await navigator.credentials.get({
+      publicKey:{
+        challenge:waRandomBytes(32),
+        allowCredentials:[{id:waB64urlDecode(credId),type:'public-key',transports:['internal']}],
+        userVerification:'required',
+        timeout:60000
+      }
+    });
+    if(assertion){sessionStorage.setItem(SESSION_KEY,'1');enterApp();return true;}
+  }catch(e){
+    if(!silent)console.warn('Sblocco biometrico non riuscito:',e);
+  }
+  return false;
+}
+
+function removeWebAuthnEnrollment(){
+  localStorage.removeItem(WEBAUTHN_CRED_KEY);
+  document.getElementById('biometricBtn').style.display='none';
+  document.getElementById('biometricDivider').style.display='none';
+  document.getElementById('biometricRemoveLink').style.display='none';
+  document.getElementById('pwd').focus();
+}
+
+async function setupLoginScreen(){
+  if(!isWebAuthnEnrolled()||!isWebAuthnSupported())return;
+  var available=await isPlatformAuthenticatorAvailable();
+  if(!available)return;
+  document.getElementById('biometricBtn').style.display='flex';
+  document.getElementById('biometricDivider').style.display='block';
+  document.getElementById('biometricRemoveLink').style.display='block';
+  loginWithWebAuthn(true); // tentativo automatico e silenzioso all'apertura
+}
+
+function checkSession(){
+  if(sessionStorage.getItem(SESSION_KEY)==='1'){enterApp();return;}
+  setupLoginScreen();
+}
 window.addEventListener('DOMContentLoaded',checkSession);
 </script>
 <style>
@@ -331,10 +455,27 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 <div id="login-screen">
   <div class="login-box">
     <h1>Visionari 3.0</h1>
-    <p>Inserisci la password per accedere</p>
+    <p id="loginSubtitle">Inserisci la password per accedere</p>
+
+    <button id="biometricBtn" class="biometric-btn" onclick="loginWithWebAuthn(false)">&#128065; Sblocca con Face ID / impronta</button>
+    <div id="biometricDivider" class="biometric-divider">oppure</div>
+
     <input type="password" id="pwd" placeholder="Password" onkeydown="if(event.key==='Enter')tryLogin()" autofocus>
-    <button onclick="tryLogin()">Accedi</button>
+    <button id="loginSubmitBtn" onclick="tryLogin()">Accedi</button>
     <div class="login-error" id="login-error">Password errata. Riprova.</div>
+
+    <div id="biometricEnrollPrompt" class="biometric-enroll">
+      <div class="be-title">Attiva lo sblocco rapido su questo dispositivo?</div>
+      <div class="be-sub">La prossima volta potrai entrare con Face ID o l'impronta, senza digitare la password. Lo sblocco è legato a questo dispositivo.</div>
+      <div class="be-actions">
+        <button class="be-btn-primary" onclick="enrollWebAuthn()">Attiva</button>
+        <button class="be-btn-secondary" onclick="dismissEnrollPrompt()">Non ora</button>
+      </div>
+    </div>
+
+    <div id="biometricRemoveLink" class="biometric-remove">
+      <a onclick="removeWebAuthnEnrollment()">Non riconosce? Rimuovi e usa la password</a>
+    </div>
   </div>
 </div>
 <div id="app" style="display:none">
