@@ -1328,22 +1328,38 @@ function generatePDF(persona,phone){
   var fApt=document.getElementById('planApt')?document.getElementById('planApt').value:'tutti';
   if(!dalVal)return;
   var start=new Date(dalVal+'T00:00:00'),end=new Date(alVal+'T23:59:59');
-  var fmtDate=function(d){return d?d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}):'\u2014';};
+  var fmtDateFull=function(d){return d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'}):'\u2014';};
   var items=prenotazioni.filter(function(r){return r['Appartamento']&&r['Check-out'];}).map(function(r){
     var coDate=parseDate(r['Check-out']),apt=r['Appartamento'];
     var ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);
     var aptObj=APTS.find(function(a){return matchApt(a.name,apt);});var maxCap=aptObj?aptObj.cap:4;
     var nextCI=prenotazioni.filter(function(nr){return matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate;}).sort(function(a,b){return parseDate(a['Check-in'])-parseDate(b['Check-in']);})[0];
-    var arrivoOsp=maxCap,maxCap2=true,arrivoBambini=0;
-    if(nextCI){arrivoOsp=parseInt(nextCI['N. Ospiti Adulti'])||maxCap;arrivoBambini=parseInt(nextCI['N. Ospiti Minori'])||0;maxCap2=false;}
-    return{apt:apt,coDate:coDate,persona:ai.persona,arrivoOsp:arrivoOsp,arrivoBambini:arrivoBambini,maxCap2:maxCap2};
+    var hasNext=!!nextCI;
+    return{
+      apt:apt,coDate:coDate,persona:ai.persona,hasNext:hasNext,
+      nomeOspite:hasNext?(nextCI['Nome Ospite']||'\u2014'):'',
+      ciDate:hasNext?parseDate(nextCI['Check-in']):coDate,
+      coDateNext:hasNext?parseDate(nextCI['Check-out']):null,
+      arrivoOsp:hasNext?(parseInt(nextCI['N. Ospiti Adulti'])||maxCap):maxCap,
+      arrivoBambini:hasNext?(parseInt(nextCI['N. Ospiti Minori'])||0):0
+    };
   }).filter(function(r){if(!r.coDate||r.coDate<start||r.coDate>end)return false;if(r.persona!==persona)return false;if(fApt!=='tutti'&&r.apt!==fApt)return false;return true;}).sort(function(a,b){return a.coDate-b.coDate;});
   if(!items.length){alert('Nessun intervento trovato.');return;}
-  var tableRows=items.map(function(r){var pc=APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};var totOsp=(r.arrivoOsp||0)+(r.arrivoBambini||0);var arrivoStr=r.maxCap2?'<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;background:#FDF3E0;color:#A06820">Massima capienza</span>':'<div style="font-size:22px;font-weight:600;color:#0D1F2D;line-height:1">'+totOsp+'</div><div style="font-size:11px;color:#7299B0;margin-top:2px">'+(r.arrivoOsp||0)+' adulti'+(r.arrivoBambini>0?' + '+r.arrivoBambini+' bimbi':'')+'</div>';return '<tr><td><strong>'+fmtDate(r.coDate)+'</strong></td><td><span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:'+pc.bg+';color:'+pc.color+'">'+r.apt+'</span></td><td>'+arrivoStr+'</td></tr>';}).join('');
+  var tableRows=items.map(function(r){
+    var pc=APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};
+    var personeStr=r.hasNext?(r.arrivoOsp+' adult'+(r.arrivoOsp===1?'o':'i')+(r.arrivoBambini>0?', '+r.arrivoBambini+' bambin'+(r.arrivoBambini>1?'i':'o'):'')):('fino a '+r.arrivoOsp+' persone (max capienza)');
+    var nomeStr=r.hasNext?('<strong>'+r.nomeOspite+'</strong>'):'<strong style="color:#A06820">Nessun arrivo previsto</strong>';
+    return '<tr>'
+      +'<td>'+nomeStr+'<div style="font-size:11px;color:#7299B0;margin-top:2px">'+personeStr+'</div></td>'
+      +'<td>'+fmtDateFull(r.ciDate)+'</td>'
+      +'<td>'+(r.hasNext?fmtDateFull(r.coDateNext):'\u2014')+'</td>'
+      +'<td><span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:'+pc.bg+';color:'+pc.color+'">'+r.apt+'</span></td>'
+      +'</tr>';
+  }).join('');
   var dotC={Elda:'#2A7A4F',Dalila:'#8B5E2E',Giulia:'#C4883C'};
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:680px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:middle;}tr:nth-child(even) td{background:#F7FBFD;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:760px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
   +'<div class="header"><div><h2><span style="width:12px;height:12px;border-radius:50%;background:'+(dotC[persona]||'#0D5A8E')+';display:inline-block;margin-right:8px;vertical-align:middle"></span>'+persona+'</h2></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Planning Pulizie</strong><br>'+start.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'<br>'+end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'</div></div>'
-  +'<table><thead><tr><th>Data</th><th>Appartamento</th><th>Ospiti in arrivo</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
+  +'<table><thead><tr><th>Ospite</th><th>Check-in</th><th>Check-out</th><th>Appartamento</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
   +'<div class="footer"><span>Visionari 3.0 \u00b7 generato il '+new Date().toLocaleDateString('it-IT')+'</span><span>'+items.length+' interventi</span></div>'
   +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
   var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
