@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Visionari 3.0</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0D5A8E">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Visionari">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -1695,6 +1702,16 @@ document.addEventListener('click',function(e){
   var item=waMessages[key];if(!item||!item.phone)return;
   navigator.clipboard.writeText(item.msg).then(function(){setTimeout(function(){window.open('https://wa.me/'+item.phone,'_blank');},600);}).catch(function(){window.open('https://wa.me/'+item.phone,'_blank');});
 });
+
+// Service worker: rende l'app installabile e apre la shell (HTML/icone) all'istante
+// anche a connessione lenta. Non interferisce con il caricamento dei dati da Google Sheet.
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('service-worker.js').catch(function(e){
+      console.warn('Service worker non registrato:',e);
+    });
+  });
+}
 </script>
 </div>
 </body>
