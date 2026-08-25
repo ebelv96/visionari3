@@ -17,6 +17,15 @@ jobs:
       - name: Verifica se è l'orario giusto per questa stagione
         id: check
         run: |
+          # Il controllo dell'orario serve SOLO per capire quale dei due
+          # cron (inverno/estate) è quello "giusto" da eseguire davvero.
+          # Sui lanci manuali (workflow_dispatch) non ha senso: si esegue
+          # sempre, a qualunque ora tu lo lanci.
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Lancio manuale: eseguo sempre."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           ROME_HOUR=$(TZ=Europe/Rome date +%H)
           echo "Ora attuale a Roma: $ROME_HOUR"
           if [ "$ROME_HOUR" = "05" ]; then
