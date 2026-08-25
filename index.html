@@ -218,35 +218,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .apt-row-val{color:var(--text);flex:1;}
 .apt-row-val.muted{color:var(--text3);font-style:italic;}
 .apt-footer{padding:8px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:11px;color:var(--text3);background:var(--bg);}
-.todo-section{margin-bottom:2rem;}
-.todo-section-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
-.todo-section-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);}
-.todo-section-count{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;}
-.count-ci{background:var(--green-light);color:var(--green);}
-.count-co{background:var(--red-light);color:var(--red);}
-.count-pul{background:var(--accent-light);color:var(--accent);}
-.todo-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:opacity .2s,background .15s;user-select:none;}
-.todo-card:hover{background:var(--surface2);}
-.todo-card.done{opacity:.38;}
-.todo-card.done .tc-name{text-decoration:line-through;}
-.todo-card.ci{border-left:3px solid var(--green);}
-.todo-card.co{border-left:3px solid var(--red);}
-.tc-top{display:flex;align-items:flex-start;gap:12px;}
-.tc-check{width:20px;height:20px;flex-shrink:0;margin-top:1px;border:1.5px solid var(--border-strong);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;}
-.todo-card.done .tc-check{background:var(--accent);border-color:var(--accent);}
-.tc-body{flex:1;display:flex;flex-direction:column;gap:6px;}
-.tc-row1,.tc-row2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.tc-name{font-size:15px;font-weight:500;color:var(--text);}
-.tc-apt{font-size:11px;padding:2px 9px;border-radius:20px;background:var(--surface2);color:var(--text3);}
-.tc-tag{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;}
-.tc-tag-ci{background:var(--blue-light);color:var(--blue);}
-.tc-tag-co{background:var(--amber-light);color:var(--amber);}
-.tc-meta{font-size:11px;color:var(--text3);}
-.tc-wa{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:6px 14px;border-radius:20px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(13,90,142,0.2);text-decoration:none;min-height:36px;}
-.tc-wa.ci{background:var(--green-light);color:var(--green);}
-.tc-wa.co{background:var(--red-light);color:var(--red);}
-.tc-wa.pul{background:var(--accent-light);color:var(--accent);}
-.wa-btn-share{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:6px 14px;border-radius:20px;border:1px dashed var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;min-height:36px;}
 .todo-empty{padding:24px 16px;text-align:center;font-size:13px;color:var(--text3);font-style:italic;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
 .acq-item{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;}
 .acq-item:hover{background:var(--surface2);}
@@ -489,7 +460,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
     <button onclick="changeDay(-1)">&#8249;</button>
     <span id="dayLabel"></span>
     <button onclick="changeDay(1)">&#8250;</button>
-    <div class="date-picker-wrap"><input type="date" id="datePicker" onchange="pickDate(this.value)"></div>
+    <div class="date-picker-wrap"><input type="date" id="datePicker" autocomplete="off" onchange="pickDate(this.value)"></div>
     <button class="today-btn" onclick="resetDay()">oggi</button>
   </div>
 </div>
@@ -497,7 +468,6 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 <div class="tabs-wrap">
   <button class="tab-btn active" onclick="switchTab('dashboard',this)">📋 Dashboard</button>
   <button class="tab-btn" onclick="switchTab('appartamenti',this)">🏠 Appartamenti</button>
-  <button class="tab-btn" onclick="switchTab('todo',this)">✅ To-do</button>
   <button class="tab-btn" onclick="switchTab('note',this)">📝 Note</button>
   <button class="tab-btn" onclick="switchTab('pulizie',this)">🧹 Pulizie</button>
   <button class="tab-btn" onclick="switchTab('biancheria',this)">🧺 Biancheria</button>
@@ -509,7 +479,6 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 <div class="content">
   <div id="tab-dashboard"    class="tab-pane active"><div id="dashboardContent"></div></div>
   <div id="tab-appartamenti" class="tab-pane"><div class="apt-grid" id="aptGrid"></div></div>
-  <div id="tab-todo"         class="tab-pane"><div id="todoContent"></div></div>
   <div id="tab-note"         class="tab-pane"><div class="note-wrap" id="noteContent"></div></div>
   <div id="tab-pulizie"      class="tab-pane"><div id="pulizieContent"></div></div>
   <div id="tab-biancheria"   class="tab-pane"><div class="bi-wrap" id="biancheriaContent"></div></div>
@@ -623,10 +592,9 @@ const APT_PILL_COLORS={
 const DOMUS_APTS=['Domus Pulchra (grande)','Domus Pulchra (piccolo)','Dimora Italia'];
 
 let prenotazioni=[],addetteSheet=[],promptMessaggi=[];
-let todoDone=JSON.parse(localStorage.getItem('v3_todo')||'{}');
 let approved={};
 const waMessages={};
-const TODAY=new Date();TODAY.setHours(0,0,0,0);
+let TODAY=new Date();TODAY.setHours(0,0,0,0);
 let offset=0,dashOffset=0;
 var NL_TODAY_YM=(new Date()).getFullYear()+'-'+String((new Date()).getMonth()+1).padStart(2,'0');
 let nlMonth=NL_TODAY_YM,nlFilterApts=[],nlMinConsec=0;
@@ -741,7 +709,13 @@ function loadCache(){
     prenotazioni=data.prenotazioni||[];
     addetteSheet=data.addetteSheet||[];
     promptMessaggi=data.promptMessaggi||[];
-    notes=data.notes||[];
+    // JSON.stringify/parse trasforma checkinDate (un oggetto Date) in una stringa:
+    // qui lo ricostruiamo come vero Date, altrimenti tutte le chiamate a
+    // .toLocaleDateString()/.getFullYear() ecc. sulle note in cache andrebbero in errore.
+    notes=(data.notes||[]).map(function(n){
+      n.checkinDate=n.checkin?parseDate(n.checkin):null;
+      return n;
+    });
     biOrdiniStatus=data.biOrdiniStatus||{};
     return true;
   }catch(e){return false;}
@@ -831,7 +805,7 @@ function updateDates(){
 function pickDate(val){if(!val)return;var p=val.split('-').map(Number);offset=Math.round((new Date(p[0],p[1]-1,p[2])-TODAY)/86400000);dashOffset=offset;updateDates();renderAll();}
 function changeDay(n){offset+=n;dashOffset=offset;updateDates();renderAll();}
 function resetDay(){offset=0;dashOffset=0;updateDates();renderAll();}
-function renderAll(){renderKPI();renderDashboard();renderApts();renderTodo();renderPricing();renderIncassi();renderNottiLibere();renderBiancheria();renderNote();}
+function renderAll(){renderKPI();renderDashboard();renderApts();renderPricing();renderIncassi();renderNottiLibere();renderBiancheria();renderNote();}
 
 function renderKPI(){
   var day=getDay();
@@ -872,57 +846,6 @@ function renderApts(){
   }).join('');
 }
 function aptRow(icon,lbl,val){return '<div class="apt-row"><span class="apt-row-icon">'+icon+'</span><span class="apt-row-lbl">'+lbl+'</span><span class="apt-row-val">'+val+'</span></div>';}
-
-function renderTodo(){
-  var today=getDay(),tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
-  var ciOggi=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-in']),today)&&r['Nome Ospite'];});
-  var coOggi=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),today)&&r['Nome Ospite'];});
-  var coDomani=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),tomorrow)&&getRowAddetta(r['Appartamento']);});
-  var fmtS=function(d){return d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}):'\u2014';};
-  var html='';
-  html+='<div class="todo-section"><div class="todo-section-header"><span class="todo-section-title">&#8592; Check-in</span><span class="todo-section-count count-ci">'+ciOggi.length+' oggi</span></div>';
-  if(!ciOggi.length)html+='<div class="todo-empty">Nessun check-in oggi.</div>';
-  else ciOggi.forEach(function(r,i){
-    var nome=r['Nome Ospite']||'\u2014',apt=r['Appartamento']||'\u2014',osp=r['N. Ospiti Adulti']||'?';
-    var phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
-    var msg=getPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDC4B Welcome!';
-    var wKey='ci_wa_'+i;waMessages[wKey]={msg:msg,phone:pClean};
-    var key='ci_'+i;var done=!!todoDone[key];
-    var noteRecs=findNotesFor(apt,today);
-    var noteHtml=noteRecs.length?noteRecs.map(function(n){return '<div class="tc-note">&#128221; '+n.testo+'</div>';}).join(''):'';
-    html+='<div class="todo-card ci '+(done?'done':'')+'" onclick="toggleTodoKey(\''+key+'\',this)"><div class="tc-top"><div class="tc-check">'+(done?'&#10003;':'')+'</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">'+nome+'</span><span class="tc-apt">'+apt+'</span><span class="tc-tag tc-tag-ci">check-in '+fmtS(parseDate(r['Check-in']))+'</span></div><div class="tc-row2">'+(phone?'<button class="tc-wa ci wa-btn" data-key="'+wKey+'">&#128172; '+phone+'</button>':'<span class="tc-meta">N/D</span>')+'<span class="tc-meta">'+osp+' ospiti</span></div>'+noteHtml+'</div></div></div>';
-  });
-  html+='</div>';
-  html+='<div class="todo-section"><div class="todo-section-header"><span class="todo-section-title">&#8594; Check-out</span><span class="todo-section-count count-co">'+coOggi.length+' oggi</span></div>';
-  if(!coOggi.length)html+='<div class="todo-empty">Nessun check-out oggi.</div>';
-  else coOggi.forEach(function(r,i){
-    var nome=r['Nome Ospite']||'\u2014',apt=r['Appartamento']||'\u2014',osp=r['N. Ospiti Adulti']||'?';
-    var phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
-    var msg=getCheckoutPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDE0A What time are you checking out?';
-    var wKey='co_wa_'+i;waMessages[wKey]={msg:msg,phone:pClean};
-    var key='co_'+i;var done=!!todoDone[key];
-    html+='<div class="todo-card co '+(done?'done':'')+'" onclick="toggleTodoKey(\''+key+'\',this)"><div class="tc-top"><div class="tc-check">'+(done?'&#10003;':'')+'</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">'+nome+'</span><span class="tc-apt">'+apt+'</span><span class="tc-tag tc-tag-co">check-out '+fmtS(parseDate(r['Check-out']))+'</span></div><div class="tc-row2">'+(phone?'<button class="tc-wa co wa-btn" data-key="'+wKey+'">&#128172; '+phone+'</button>':'<span class="tc-meta">N/D</span>')+'<span class="tc-meta">'+osp+' ospiti</span></div></div></div></div>';
-  });
-  html+='</div>';
-  html+='<div class="todo-section"><div class="todo-section-header"><span class="todo-section-title">&#9775; Pulizie</span><span class="todo-section-count count-pul">'+coDomani.length+' check-out domani</span></div>';
-  if(!coDomani.length)html+='<div class="todo-empty">Nessun check-out domani.</div>';
-  else coDomani.forEach(function(r,i){
-    var apt=r['Appartamento']||'\u2014';
-    var ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);
-    if(!ai||ai.persona==='\u2014')return;
-    var persona=ai.persona,phone=ai.phone,pClean=phone.replace('+','');
-    var nome=r['Nome Ospite']||'\u2014',osp=r['N. Ospiti Adulti']||'?';
-    var coDate=parseDate(r['Check-out']);
-    var msgPul='Ciao '+persona+', domani ('+fmtS(coDate)+') c\'\u00e8 check-out a '+apt+' di '+nome+' ('+osp+' ospiti). Pulizie e cambio biancheria. Grazie!';
-    var wKey='pul_wa_'+i;waMessages[wKey]={msg:msgPul,phone:pClean};
-    var key='pul_'+i;var done=!!todoDone[key];
-    var waBtn=!phone?'<button class="tc-wa pul wa-btn-share" onclick="event.stopPropagation();shareWAMsg(\''+wKey+'\')">&#128172; Invia a...</button>':'<button class="tc-wa pul wa-btn" data-key="'+wKey+'">&#128172; '+phone+'</button>';
-    html+='<div class="todo-card pul '+(done?'done':'')+'" onclick="toggleTodoKey(\''+key+'\',this)"><div class="tc-top"><div class="tc-check">'+(done?'&#10003;':'')+'</div><div class="tc-body"><div class="tc-row1"><span class="tc-name">'+persona+'</span><span class="tc-apt">'+apt+'</span><span class="tc-tag" style="background:var(--accent-light);color:var(--accent)">domani</span></div><div class="tc-row2">'+waBtn+'<span class="tc-meta">'+nome+' \u00b7 '+osp+' ospiti</span></div></div></div></div>';
-  });
-  html+='</div>';
-  document.getElementById('todoContent').innerHTML=html;
-}
-function toggleTodoKey(key,el){todoDone[key]=!todoDone[key];localStorage.setItem('v3_todo',JSON.stringify(todoDone));el.classList.toggle('done');el.querySelector('.tc-check').innerHTML=todoDone[key]?'&#10003;':'';}
 
 function renderPricing(){
   document.getElementById('pricingBody').innerHTML=APTS.map(function(apt){var ok=!!approved[apt.name];return '<tr><td>'+apt.name+'</td><td>\u2014</td><td>\u2014</td><td style="color:var(--text3)">aggiorna nel Sheet</td><td style="font-size:11px;color:var(--text3)">vedi tab Pricing</td><td><button class="approv-btn '+(ok?'approved':'')+'" onclick="toggleApprove(\''+apt.name+'\',this)">'+(ok?'&#10003; ok':'Approva')+'</button></td></tr>';}).join('');
@@ -1363,7 +1286,12 @@ function renderDashboard(){
     var cardIdx='dash_'+type+'_'+pClean;waMessages[cardIdx]={msg:msg,phone:pClean};
     var wa=phone?'<button class="dash-wa-btn '+type+'" onclick="event.stopPropagation();sendWA(\''+cardIdx+'\')">&#128172; '+phone+'</button>':'<button class="dash-wa-btn '+type+'" onclick="event.stopPropagation();sendWA(\''+cardIdx+'\')" style="opacity:.7;border:1px dashed currentColor;background:transparent">&#128172; Invia a...</button>';
     var nottiStr='';if(isCI){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);if(c1&&c2){var n=Math.round((c2-c1)/86400000);nottiStr='<span style="font-size:11px;color:var(--text3);margin-left:auto">'+n+' nott'+(n===1?'e':'i')+'</span>';}}
-    return '<div class="dash-card '+type+'"><div class="dash-guest-name">'+nome+'</div><div class="dash-meta" style="display:flex;align-items:center">'+osp+' ospiti \u00b7 '+apt+nottiStr+'</div>'+wa+'</div>';
+    var noteHtml='';
+    if(isCI){
+      var noteRecs=findNotesFor(apt,day);
+      if(noteRecs.length)noteHtml=noteRecs.map(function(nt){return '<div class="tc-note">&#128221; '+nt.testo+'</div>';}).join('');
+    }
+    return '<div class="dash-card '+type+'"><div class="dash-guest-name">'+nome+'</div><div class="dash-meta" style="display:flex;align-items:center">'+osp+' ospiti \u00b7 '+apt+nottiStr+'</div>'+wa+noteHtml+'</div>';
   }
   c.innerHTML='<div class="dash-date-hero"><div class="dash-date-day">'+day.getDate()+'</div><div class="dash-date-weekday">'+day.toLocaleDateString('it-IT',{weekday:'long'})+'</div><div class="dash-date-monthyear">'+day.toLocaleDateString('it-IT',{month:'long',year:'numeric'})+'</div></div>'
   +'<div class="dash-sections"><div><div class="dash-sec-title ci">&#8592; Check-in <span class="dash-count ci">'+ciList.length+'</span></div>'+(ciList.length?ciList.map(function(r){return gCard(r,'ci');}).join(''):'<div class="dash-empty">Nessun check-in</div>')+'</div>'
@@ -1468,13 +1396,16 @@ function renderNote(){
   var container=document.getElementById('noteContent');if(!container)return;
   var aptOpts=APTS.map(function(a){return '<option value="'+a.name+'" '+(noteFilterApt===a.name?'selected':'')+'>'+a.name+'</option>';}).join('');
   var aptOptsForm=APTS.map(function(a){return '<option value="'+a.name+'">'+a.name+'</option>';}).join('');
-  var filtered=notes.filter(noteMatchFilter).sort(function(a,b){return (a.checkinDate?a.checkinDate.getTime():0)-(b.checkinDate?b.checkinDate.getTime():0);});
-  var listHtml=filtered.length?filtered.map(function(n){
-    var d=n.checkinDate?n.checkinDate.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):n.checkin;
-    return '<div class="note-card"><div class="note-card-top"><span class="note-card-apt">'+n.apt+'</span><span class="note-card-date">check-in '+d+'</span></div>'
-      +(n.ospite?'<div class="note-card-guest">'+n.ospite+'</div>':'')
-      +'<div class="note-card-text">&#128221; '+n.testo+'</div></div>';
-  }).join(''):'<div class="todo-empty">Nessuna nota trovata per questo filtro.</div>';
+  var hasFilter=noteFilterApt!=='tutti'||!!noteFilterData;
+  var filtered=hasFilter?notes.filter(noteMatchFilter).sort(function(a,b){return (a.checkinDate?a.checkinDate.getTime():0)-(b.checkinDate?b.checkinDate.getTime():0);}):[];
+  var listHtml=!hasFilter
+    ?'<div class="todo-empty">Imposta un filtro (appartamento o data) per vedere le note.</div>'
+    :(filtered.length?filtered.map(function(n){
+        var d=n.checkinDate?n.checkinDate.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):n.checkin;
+        return '<div class="note-card"><div class="note-card-top"><span class="note-card-apt">'+n.apt+'</span><span class="note-card-date">check-in '+d+'</span></div>'
+          +(n.ospite?'<div class="note-card-guest">'+n.ospite+'</div>':'')
+          +'<div class="note-card-text">&#128221; '+n.testo+'</div></div>';
+      }).join(''):'<div class="todo-empty">Nessuna nota trovata per questo filtro.</div>');
 
   var apiWarning=NOTE_API_URL?'':'<div class="note-api-warning">&#9888; Salvataggio non ancora configurato: manca l\'URL della Web App Apps Script (NOTE_API_URL).</div>';
 
@@ -1817,19 +1748,28 @@ function switchTab(name,btn){
   btn.classList.add('active');
   if(name==='pulizie')renderPulizie();
   if(name==='nottiLibere')renderNottiLibere();
-  if(name==='todo')renderTodo();
   if(name==='note')renderNote();
   if(name==='dashboard')renderDashboard();
   if(name==='incassi')renderIncassi();
   if(name==='biancheria')renderBiancheria();
 }
 var lastLoad=0;
+function resyncTodayIfStale(){
+  var real=new Date();real.setHours(0,0,0,0);
+  if(real.getTime()!==TODAY.getTime()){
+    TODAY=real;
+    updateDates();
+    renderAll();
+  }
+}
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible'){
+    resyncTodayIfStale();
     var isLogged=sessionStorage.getItem(SESSION_KEY)==='1';
     if(isLogged&&(Date.now()-lastLoad)/60000>5){loadAllData();lastLoad=Date.now();}
   }
 });
+window.addEventListener('pageshow',function(){resyncTodayIfStale();});
 window.addEventListener('DOMContentLoaded',function(){
   lastLoad=Date.now();
   var pk=document.getElementById('datePicker');
