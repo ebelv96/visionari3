@@ -22,7 +22,7 @@ const HASH='5ac75c5f60bc57d633fc08fba7faa37d0a071b8c9ddb5d2213f7316636cf37e8';
 const SESSION_KEY='v3_auth';
 async function sha256(msg){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 async function tryLogin(){const pwd=document.getElementById('pwd').value;const hash=await sha256(pwd);if(hash===HASH){sessionStorage.setItem(SESSION_KEY,'1');document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';if(typeof loadAllData==='function')loadAllData();}else{document.getElementById('login-error').style.display='block';document.getElementById('pwd').value='';document.getElementById('pwd').focus();}}
-function checkSession(){if(sessionStorage.getItem(SESSION_KEY)==='1'){document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';}}
+function checkSession(){if(sessionStorage.getItem(SESSION_KEY)==='1'){document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';if(typeof loadAllData==='function')loadAllData();}}
 window.addEventListener('DOMContentLoaded',checkSession);
 </script>
 <style>
@@ -39,7 +39,8 @@ window.addEventListener('DOMContentLoaded',checkSession);
   --radius:12px;--radius-sm:8px;
 }
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-.header{background:var(--accent);padding:20px 28px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:100;}
+.sticky-top-wrap{position:sticky;top:0;z-index:100;}
+.header{background:var(--accent);padding:20px 28px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .header-left h1{font-family:'DM Serif Display',serif;font-size:22px;color:#fff;}
 .header-left .subtitle{font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;font-weight:300;}
 .date-nav{display:flex;align-items:center;gap:8px;}
@@ -304,7 +305,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 @media(max-width:600px){
   .header{padding:14px 16px;}.header-left h1{font-size:18px;}
   .kpi-bar{padding:10px 12px;}.kpi-num{font-size:22px;}.kpi-item{min-width:70px;padding:0 8px;}
-  .tabs-wrap{padding:0 12px;position:sticky;top:72px;z-index:90;}
+  .tabs-wrap{padding:0 12px;}
   .tab-btn{padding:11px 12px;font-size:12px;}.content{padding:14px 12px;}
   .apt-grid{grid-template-columns:1fr;}
   .pulizie-table{min-width:580px;}
@@ -330,6 +331,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   </div>
 </div>
 <div id="app" style="display:none">
+<div class="sticky-top-wrap">
 <div class="header">
   <div class="header-left">
     <h1>Visionari 3.0</h1>
@@ -354,6 +356,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
   <button class="tab-btn" onclick="switchTab('nottiLibere',this)">🗓️ Notti Libere</button>
   <button class="tab-btn" onclick="switchTab('incassi',this)">💰 Incassi</button>
   <button class="tab-btn" onclick="switchTab('pricing',this)">📈 Pricing</button>
+</div>
 </div>
 <div class="content">
   <div id="tab-dashboard"    class="tab-pane active"><div id="dashboardContent"></div></div>
@@ -572,9 +575,58 @@ function calcIncasso(r){
   return{lordo:lordo,netto:netto2,pulizia:cp.pulizia,lavanderia:cp.lavanderia,servizi:cp.totServizi,finale:finale};
 }
 
+// ── CACHE LOCALE (mostra subito l'ultimo dato noto, poi aggiorna in background) ──
+const CACHE_KEY='v3_cache_data';
+function saveCache(){
+  try{
+    localStorage.setItem(CACHE_KEY,JSON.stringify({
+      prenotazioni:prenotazioni,addetteSheet:addetteSheet,promptMessaggi:promptMessaggi,
+      notes:notes,biOrdiniStatus:biOrdiniStatus,ts:Date.now()
+    }));
+  }catch(e){console.warn('Impossibile salvare la cache locale',e);}
+}
+function loadCache(){
+  try{
+    var raw=localStorage.getItem(CACHE_KEY);
+    if(!raw)return false;
+    var data=JSON.parse(raw);
+    prenotazioni=data.prenotazioni||[];
+    addetteSheet=data.addetteSheet||[];
+    promptMessaggi=data.promptMessaggi||[];
+    notes=data.notes||[];
+    biOrdiniStatus=data.biOrdiniStatus||{};
+    return true;
+  }catch(e){return false;}
+}
+function cacheAgeLabel(){
+  try{
+    var raw=localStorage.getItem(CACHE_KEY);
+    if(!raw)return '';
+    var ts=JSON.parse(raw).ts;
+    if(!ts)return '';
+    var d=new Date(ts);
+    return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){return '';}
+}
+function showSyncBadge(state){
+  var el=document.getElementById('syncBadge');
+  if(!el)return;
+  if(state==='syncing'){el.textContent='\u21bb aggiornamento...';el.style.opacity='0.85';}
+  else if(state==='done'){var t=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});el.textContent='\u2713 aggiornato alle '+t;setTimeout(function(){if(el)el.style.opacity='0';},2500);}
+  else if(state==='error'){el.textContent='\u26a0 aggiornamento fallito, dati non recenti';el.style.opacity='0.9';}
+}
+
 function showLoading(msg){document.getElementById('aptGrid').innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);font-size:14px;">'+msg+'</div>';}
 async function loadAllData(){
-  showLoading('Caricamento dati\u2026');
+  // 1) Mostra subito l'ultimo dato noto in cache (se c'è), zero attesa
+  var hadCache=loadCache();
+  if(hadCache){
+    renderAll();
+    showSyncBadge('syncing');
+  }else{
+    showLoading('Caricamento dati\u2026');
+  }
+  // 2) In parallelo aggiorna dal Google Sheet e ridisegna in silenzio
   try{
     var res=await Promise.all([fetchSheetSkipTitle(GIDS.prenotazioni),fetchSheetSkipTitle(GIDS.addette)]);
     prenotazioni=res[0];addetteSheet=res[1];
@@ -587,8 +639,15 @@ async function loadAllData(){
     await loadBiancheriaStatus();
     await loadNoteData();
     renderAll();
+    saveCache();
+    showSyncBadge('done');
   }catch(e){
-    document.getElementById('aptGrid').innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--red);font-size:13px;"><strong>Errore caricamento.</strong><br><br>'+e.message+'<br><br><button onclick="loadAllData()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:inherit;font-size:13px;">Riprova</button></div>';
+    if(hadCache){
+      // Teniamo i dati di cache già mostrati, segnaliamo solo che l'update è fallito
+      showSyncBadge('error');
+    }else{
+      document.getElementById('aptGrid').innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--red);font-size:13px;"><strong>Errore caricamento.</strong><br><br>'+e.message+'<br><br><button onclick="loadAllData()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:inherit;font-size:13px;">Riprova</button></div>';
+    }
   }
 }
 async function loadBiancheriaStatus(){
