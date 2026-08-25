@@ -1,0 +1,59 @@
+name: Export Vikey giornaliero
+
+on:
+  schedule:
+    # GitHub Actions usa sempre UTC e non gestisce l'ora legale da solo,
+    # quindi mettiamo due orari (inverno/estate) e uno step più sotto
+    # scarta quello "sbagliato" a seconda della stagione, per restare
+    # sempre vicini alle 05:00 ora di Roma.
+    - cron: '0 4 * * *'  # 05:00 CET (ora solare, ottobre-marzo)
+    - cron: '0 3 * * *'  # 05:00 CEST (ora legale, marzo-ottobre)
+  workflow_dispatch: {}  # permette di lanciarlo a mano da GitHub per test
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verifica se è l'orario giusto per questa stagione
+        id: check
+        run: |
+          ROME_HOUR=$(TZ=Europe/Rome date +%H)
+          echo "Ora attuale a Roma: $ROME_HOUR"
+          if [ "$ROME_HOUR" = "05" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Installa dipendenze
+        if: steps.check.outputs.skip != 'true'
+        run: npm install
+
+      - name: Installa Chromium per Playwright
+        if: steps.check.outputs.skip != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Esegui export Vikey
+        if: steps.check.outputs.skip != 'true'
+        env:
+          VIKEY_EMAIL: ${{ secrets.VIKEY_EMAIL }}
+          VIKEY_PASSWORD: ${{ secrets.VIKEY_PASSWORD }}
+        run: node vikey-export.js
+
+      - name: Carica screenshot in caso di errore
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vikey-export-error-screenshot
+          path: vikey-export-error.png
+          if-no-files-found: ignore

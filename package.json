@@ -1,0 +1,12 @@
+{
+  "name": "vikey-auto-export",
+  "version": "1.0.0",
+  "description": "Export automatico giornaliero delle prenotazioni da Vikey via email",
+  "main": "vikey-export.js",
+  "scripts": {
+    "export": "node vikey-export.js"
+  },
+  "dependencies": {
+    "playwright": "^1.47.0"
+  }
+}
