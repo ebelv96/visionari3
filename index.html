@@ -602,7 +602,15 @@ let nlMonth=NL_TODAY_YM,nlFilterApts=[],nlMinConsec=0;
 // ── BIANCHERIA — config ────────────────────────────────────────
 // Appartamenti gestiti dal servizio lavanderia e capienza in letti matrimoniali (per calcolo set extra col letto singolo)
 const BI_APTS=['Enea Luxury \u2013 Putignani','Enea Luxury \u2013 Piccinni'];
-const BI_MAX_MAT={'Enea Luxury \u2013 Putignani':4,'Enea Luxury \u2013 Piccinni':2};
+// maxMat = numero di letti matrimoniali "veri". extraBeds = letti aggiuntivi oltre i matrimoniali,
+// in ordine di utilizzo, con il tipo di set biancheria richiesto e quante persone ci dormono.
+// Putignani: oltre agli 8 posti nei matrimoniali, il 9° ospite usa il letto singolo -> set singolo.
+// Piccinni: il 5° e 6° ospite dormono sul divano letto (biancheria da matrimoniale, un solo set anche per 2 persone),
+// solo il 7° ospite usa il letto singolo -> set singolo.
+const BI_BED_CONFIG={
+  'Enea Luxury – Putignani':{maxMat:4,extraBeds:[{type:'singolo',capienza:1}]},
+  'Enea Luxury – Piccinni':{maxMat:2,extraBeds:[{type:'matrimoniale',capienza:2},{type:'singolo',capienza:1}]},
+};
 // Dopo aver creato la tab "OrdiniBiancheria" nel Google Sheet (colonne: Settimana | Inviato | DataInvio),
 // incolla qui il suo GID (visibile nell'URL del foglio quando la selezioni)
 GIDS.biancheria='';
@@ -1531,11 +1539,17 @@ function biGuestsForDayReal(aptName,d){
 }
 function biSetsForGuests(aptName,guests){
   if(!guests)return{matrimoniali:0,singolo:0};
-  var maxMat=BI_MAX_MAT[aptName]||0;
-  var matCap=maxMat*2;
-  var matrimoniali=Math.min(Math.ceil(guests/2),maxMat);
-  var extra=guests-matCap;
-  var singolo=extra>0?1:0;
+  var cfg=BI_BED_CONFIG[aptName]||{maxMat:0,extraBeds:[]};
+  var matCap=cfg.maxMat*2;
+  var matrimoniali=Math.min(Math.ceil(guests/2),cfg.maxMat);
+  var singolo=0;
+  var remaining=guests-matCap;
+  cfg.extraBeds.forEach(function(bed){
+    if(remaining<=0)return;
+    if(bed.type==='matrimoniale')matrimoniali+=1;
+    else if(bed.type==='singolo')singolo+=1;
+    remaining-=Math.min(remaining,bed.capienza);
+  });
   return{matrimoniali:matrimoniali,singolo:singolo};
 }
 function biPiecesLabel(sets){
