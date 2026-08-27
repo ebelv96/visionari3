@@ -21,12 +21,11 @@ const VIKEY_EMAIL = process.env.VIKEY_EMAIL;
 const VIKEY_PASSWORD = process.env.VIKEY_PASSWORD;
 const HEADLESS = process.env.HEADLESS !== 'false';
 
-// Data di fine range: generosa e fissa, non serve leggerla dinamicamente
-// dalla tabella prenotazioni. Aggiorna questi valori ogni tanto (es. una
-// volta l'anno) se vuoi tenerli "vicini" al presente, ma non è necessario
-// per correttezza: semplicemente non esisteranno prenotazioni oltre questa data.
-const START = { day: 1, monthIndex: 0, year: 2025 };   // 1 Gennaio 2025
-const END = { day: 31, monthIndex: 11, year: 2028 };   // 31 Dicembre 2028
+// Data di inizio/fine range: fisse, aggiornale ogni tanto se vuoi tenerle
+// "vicine" al presente. Range più stretto = CSV più piccolo = meno rischio
+// di timeout su Apps Script quando lo elabora.
+const START = { day: 1, monthIndex: 0, year: 2026 };   // 1 Gennaio 2026
+const END = { day: 1, monthIndex: 0, year: 2028 };     // 1 Gennaio 2028
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
