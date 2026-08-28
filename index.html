@@ -1514,11 +1514,8 @@ function biGuestsForDay(aptName,d){
   if(hasCheckin)return sum;
 
   // Se la notte di oggi è libera (nessuna prenotazione attiva stanotte)
-  var listanotteLibera=!biHasPrenotazioneAttiva(aptName,d);
-  if(listanotteLibera){
-    // Se c'è un check-in domani, oggi ordiniamo per max capienza ma domani non serve
-    // (gestito in biGuestsForDay restituendo maxCap oggi)
-    // Se domani c'è check-in il cui predecessore (oggi) è libero → maxCap oggi
+  var notteLibera=!biHasPrenotazioneAttiva(aptName,d);
+  if(notteLibera&&biCheckinDomani(aptName,d)){
     return maxCap;
   }
 
