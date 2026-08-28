@@ -1772,6 +1772,14 @@ function biExportPDF(weekKey){
       return '<tr><td>'+dayCell+'</td><td>'+apt+'</td><td>'+setsStr+'</td><td>'+tappetini+'</td></tr>';
     }).join('');
   }).join('');
+  var totStr=biPiecesLabel({matrimoniali:plan.totMat,singolo:plan.totSing});
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:680px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}tfoot td{font-weight:700;background:#0D5A8E;color:#fff;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
+  +'<div class="header"><div><h2>&#129530; Ordine biancheria</h2><div style="font-size:12px;color:#7299B0">Settimana '+plan.friDate.toLocaleDateString('it-IT',{day:'numeric',month:'long'})+' \u2013 '+plan.endDate.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'</div></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Visionari 3.0</strong><br>generato il '+new Date().toLocaleDateString('it-IT')+'</div></div>'
+  +'<table><thead><tr><th>Giorno di consegna</th><th>Luogo</th><th>Set</th><th>Tappetini</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="3">Totale settimana</td><td>'+totStr+'</td></tr></tfoot></table>'
+  +'<div class="footer"><span>Visionari 3.0</span><span>generato il '+new Date().toLocaleDateString('it-IT')+'</span></div>'
+  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
+  var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
+}
 
 function switchTab(name,btn){
   document.querySelectorAll('.tab-pane').forEach(function(el){el.classList.remove('active');});
