@@ -1758,19 +1758,9 @@ function biExportPDF(weekKey){
   var rows=plan.consegne.map(function(c){
     var lbl=c.date.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})+(c.bundlesWeekend?' (incl. sab/dom)':'');
     var apts=Object.keys(c.byApt);
-    if(apts.length<=1){
-      var apt=apts[0]||'\u2014';
-      var setsStr=biPiecesLabel({matrimoniali:c.matrimoniali,singolo:c.singolo});
-      var tappetini=c.matrimoniali+c.singolo;
-      return '<tr><td>'+lbl+'</td><td>'+apt+'</td><td>'+setsStr+'</td><td>'+tappetini+'</td></tr>';
-    }
-    return apts.map(function(apt,idx){
-      var s=c.byApt[apt];
-      var setsStr=biPiecesLabel(s);
-      var tappetini=s.matrimoniali+s.singolo;
-      var dayCell=idx===0?lbl:'<span style="color:#BFCFDA">\u21b3</span>';
-      return '<tr><td>'+dayCell+'</td><td>'+apt+'</td><td>'+setsStr+'</td><td>'+tappetini+'</td></tr>';
-    }).join('');
+    var luogo=apts.length===1?apts[0]:'Putignani + Piccinni';
+    var setsStr=biPiecesLabel({matrimoniali:c.matrimoniali,singolo:c.singolo});
+    return '<tr><td>'+lbl+'</td><td>'+luogo+'</td><td>'+setsStr+'</td><td>2</td></tr>';
   }).join('');
   var totStr=biPiecesLabel({matrimoniali:plan.totMat,singolo:plan.totSing});
   var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:680px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}tfoot td{font-weight:700;background:#0D5A8E;color:#fff;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
