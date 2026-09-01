@@ -1378,18 +1378,25 @@ function biGeneraPlanning(weekKey){
   var p=weekKey.split('-').map(Number);
   var friDate=new Date(p[0],p[1]-1,p[2]);
   var endDate=new Date(friDate);endDate.setDate(endDate.getDate()+7);
+  // La scansione dei check-in deve arrivare fino a 2 giorni oltre endDate (sabato+domenica),
+  // perché quei check-in "tornano indietro" e si consegnano proprio nel venerdì finale (endDate).
+  // Senza questo margine, i check-in del weekend successivo all'ultimo venerdì venivano persi dal conteggio.
+  var scanEnd=new Date(endDate);scanEnd.setDate(scanEnd.getDate()+2);
   var aptsDisp=BI_APTS.filter(function(a){return biFilterApts.length===0||biFilterApts.indexOf(a)!==-1;});
   var byConsegna={};
   var byApt={};
   aptsDisp.forEach(function(a){byApt[a]={matrimoniali:0,singolo:0};});
   var scan=new Date(friDate);
-  while(scan<=endDate){
+  while(scan<=scanEnd){
     (function(scanDate){
+      var cons=biConsegnaDate(scanDate);
+      // Tiene solo le consegne che ricadono davvero in questa settimana (friDate..endDate);
+      // scarta eventuali check-in oltre il weekend che non appartengono a questo ciclo.
+      if(cons<friDate||cons>endDate)return;
       aptsDisp.forEach(function(apt){
         var guests=biGuestsForDay(apt,scanDate);
         if(guests>0){
           var sets=biSetsForGuests(apt,guests);
-          var cons=biConsegnaDate(scanDate);
           var ck=biDateKey(cons);
           if(!byConsegna[ck])byConsegna[ck]={date:new Date(cons),matrimoniali:0,singolo:0,bundlesWeekend:false,byApt:{}};
           byConsegna[ck].matrimoniali+=sets.matrimoniali;
@@ -1436,7 +1443,7 @@ function biRenderOrderBox(weekKey){
   return '<div class="bi-order-box">'
     +'<div style="font-size:12px;color:var(--text3);font-weight:500;margin-bottom:8px">Giorni di consegna</div>'
     +(rows||'<div style="font-size:13px;color:var(--text3);font-style:italic">Nessun check-in nella settimana successiva.</div>')
-    +'<div class="bi-order-row tot"><span>Totale settimana</span><span>'+totStr+' \u2014 '+fmtEur(totPrezzo)+'</span></div>'
+    +'<div class="bi-order-row tot"><span>Totale settimana</span><span>'+totStr+' \u2014 '+fmtEur(biPrezzoSets({matrimoniali:plan.totMat,singolo:plan.totSing}))+'</span></div>'
     +'</div>'
     +'<div class="bi-order-actions"><button class="planning-btn" style="margin-left:0" onclick="biExportPDF(\''+weekKey+'\')">&#128196; Scarica PDF</button></div>'
     +'<label class="bi-inviato-box"><input type="checkbox" '+(inviato?'checked':'')+' onchange="biToggleInviato(\''+weekKey+'\',this.checked)" style="width:17px;height:17px">Inviato</label>';
