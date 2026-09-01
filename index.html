@@ -1377,6 +1377,9 @@ function renderBiancheria(){
 function biGeneraPlanning(weekKey){
   var p=weekKey.split('-').map(Number);
   var friDate=new Date(p[0],p[1]-1,p[2]);
+  // Il venerdì da cui si genera il planning appartiene già alla settimana precedente
+  // (la sua consegna è stata gestita nel planning generato il venerdì prima). Si parte dal lunedì successivo.
+  var mondayNext=new Date(friDate);mondayNext.setDate(mondayNext.getDate()+3);
   var endDate=new Date(friDate);endDate.setDate(endDate.getDate()+7);
   // La scansione dei check-in deve arrivare fino a 2 giorni oltre endDate (sabato+domenica),
   // perché quei check-in "tornano indietro" e si consegnano proprio nel venerdì finale (endDate).
@@ -1386,13 +1389,13 @@ function biGeneraPlanning(weekKey){
   var byConsegna={};
   var byApt={};
   aptsDisp.forEach(function(a){byApt[a]={matrimoniali:0,singolo:0};});
-  var scan=new Date(friDate);
+  var scan=new Date(mondayNext);
   while(scan<=scanEnd){
     (function(scanDate){
       var cons=biConsegnaDate(scanDate);
-      // Tiene solo le consegne che ricadono davvero in questa settimana (friDate..endDate);
+      // Tiene solo le consegne che ricadono davvero in questa settimana (mondayNext..endDate);
       // scarta eventuali check-in oltre il weekend che non appartengono a questo ciclo.
-      if(cons<friDate||cons>endDate)return;
+      if(cons<mondayNext||cons>endDate)return;
       aptsDisp.forEach(function(apt){
         var guests=biGuestsForDay(apt,scanDate);
         if(guests>0){
