@@ -1665,14 +1665,25 @@ function renderBiancheria(){
 function biGeneraPlanning(weekKey){
   var p=weekKey.split('-').map(Number);
   var friDate=new Date(p[0],p[1]-1,p[2]);
+  // Il venerdì da cui si genera il planning appartiene già alla settimana precedente
+  // (la sua consegna è stata gestita nel planning generato il venerdì prima). Si parte dal lunedì successivo.
+  var mondayNext=new Date(friDate);mondayNext.setDate(mondayNext.getDate()+3);
   var endDate=new Date(friDate);endDate.setDate(endDate.getDate()+7);
+  // La scansione dei check-in deve arrivare fino a 2 giorni oltre endDate (sabato+domenica),
+  // perché quei check-in "tornano indietro" e si consegnano proprio nel venerdì finale (endDate).
+  // Senza questo margine, i check-in del weekend successivo all'ultimo venerdì venivano persi dal conteggio.
+  var scanEnd=new Date(endDate);scanEnd.setDate(scanEnd.getDate()+2);
   var aptsDisp=BI_APTS.filter(function(a){return biFilterApts.length===0||biFilterApts.indexOf(a)!==-1;});
   var byConsegna={};
   var byApt={};
   aptsDisp.forEach(function(a){byApt[a]={matrimoniali:0,singolo:0};});
-  var scan=new Date(friDate);
-  while(scan<=endDate){
+  var scan=new Date(mondayNext);
+  while(scan<=scanEnd){
     (function(scanDate){
+      var cons=biConsegnaDate(scanDate);
+      // Tiene solo le consegne che ricadono davvero in questa settimana (mondayNext..endDate);
+      // scarta eventuali check-in oltre il weekend che non appartengono a questo ciclo.
+      if(cons<mondayNext||cons>endDate)return;
       aptsDisp.forEach(function(apt){
         // Se il giorno precedente era una notte libera, abbiamo già ordinato
         // per max capienza ieri → il check-in di oggi non genera ulteriore consegna
@@ -1683,7 +1694,6 @@ function biGeneraPlanning(weekKey){
         var guests=isCheckinDopoNotteLibera?0:biGuestsForDay(apt,scanDate);
         if(guests>0){
           var sets=biSetsForGuests(apt,guests);
-          var cons=biConsegnaDate(scanDate);
           var ck=biDateKey(cons);
           if(!byConsegna[ck])byConsegna[ck]={date:new Date(cons),matrimoniali:0,singolo:0,bundlesWeekend:false,byApt:{}};
           byConsegna[ck].matrimoniali+=sets.matrimoniali;
