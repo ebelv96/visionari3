@@ -42,42 +42,34 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // La pagina HTML principale (navigazione diretta, es. apertura/refresh dell'app)
-  // riceve un controllo extra: se la copia scaricata dalla rete risulta diversa da
-  // quella già in cache, avvisiamo i tab aperti così possono ricaricarsi da soli
-  // una volta sola, senza dover pulire manualmente la cache per vedere l'update.
   var isDocumentRequest = req.mode === 'navigate' || req.destination === 'document';
 
+  if (isDocumentRequest) {
+    // Network-first SOLO per la pagina principale: prova sempre la rete per prima,
+    // così ogni apertura mostra automaticamente l'ultima versione pubblicata, senza
+    // bisogno di pulire la cache a mano. Se sei offline, usa l'ultima copia in cache.
+    event.respondWith(
+      fetch(req).then(function(res) {
+        if (res && res.status === 200) {
+          var resClone = res.clone();
+          caches.open(CACHE_NAME).then(function(cache){ cache.put(req, resClone); });
+        }
+        return res;
+      }).catch(function(){ return caches.match(req); })
+    );
+    return;
+  }
+
+  // Icone e manifest cambiano raramente: qui manteniamo cache-first per velocità.
   event.respondWith(
     caches.match(req).then(function(cached) {
       var networkFetch = fetch(req).then(function(res) {
         if (res && res.status === 200) {
-          var resForCache = res.clone();
-          var resForDiff = isDocumentRequest ? res.clone() : null;
-          caches.open(CACHE_NAME).then(function(cache) {
-            if (isDocumentRequest && cached) {
-              // Confronta il testo vecchio (già in cache) col nuovo appena scaricato,
-              // PRIMA di sovrascrivere la cache, per sapere se è davvero cambiato qualcosa.
-              Promise.all([cached.clone().text(), resForDiff.text()]).then(function(pair){
-                var changed = pair[0] !== pair[1];
-                cache.put(req, resForCache);
-                if (changed) {
-                  self.clients.matchAll().then(function(clientsList){
-                    clientsList.forEach(function(c){
-                      c.postMessage({ type: 'VISIONARI_UPDATE_AVAILABLE' });
-                    });
-                  });
-                }
-              });
-            } else {
-              cache.put(req, resForCache);
-            }
-          });
+          var resClone = res.clone();
+          caches.open(CACHE_NAME).then(function(cache){ cache.put(req, resClone); });
         }
         return res;
       }).catch(function(){ return cached; });
-      // Cache-first: se abbiamo una versione in cache la serviamo subito,
-      // e aggiorniamo la cache in background per la prossima visita.
       return cached || networkFetch;
     })
   );
