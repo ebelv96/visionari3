@@ -1,76 +1,1848 @@
-// Service Worker di Visionari 3.0
-// Obiettivo: far aprire l'app istantaneamente (anche offline) mettendo in cache
-// solo la "shell" statica (index.html, icone, manifest). I dati veri (prenotazioni,
-// note, ecc.) restano sempre gestiti dalla logica JS di loadAllData()/localStorage
-// dentro index.html, quindi qui NON tocchiamo le chiamate verso Google Sheets/Apps Script.
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Visionari 3.0</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0D5A8E">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Visionari">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+#login-screen{position:fixed;inset:0;z-index:9999;background:#0D5A8E;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;}
+.login-box{background:#F7FBFD;border-radius:16px;padding:40px 36px 36px;width:100%;max-width:360px;text-align:center;}
+.login-box h1{font-family:'DM Serif Display',serif;font-size:26px;color:#0D1F2D;margin-bottom:4px;}
+.login-box p{font-size:13px;color:#7299B0;margin-bottom:28px;font-weight:300;}
+.login-box input{width:100%;padding:12px 16px;border:1px solid rgba(10,60,100,0.18);border-radius:10px;font-size:15px;font-family:'DM Sans',sans-serif;background:#EDF4F9;color:#0D1F2D;outline:none;margin-bottom:14px;transition:border-color .15s;}
+.login-box input:focus{border-color:#0D5A8E;}
+.login-box button{width:100%;padding:13px;background:#0D5A8E;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;}
+.login-error{font-size:12px;color:#8B2E2E;margin-top:12px;display:none;}
+.biometric-btn{display:none;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:#0D5A8E;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:14px;}
+.biometric-divider{display:none;text-align:center;font-size:11px;color:#7299B0;margin:2px 0 14px;}
+.biometric-enroll{display:none;text-align:left;}
+.biometric-enroll .be-title{font-size:14px;color:#0D1F2D;font-weight:500;margin-bottom:6px;}
+.biometric-enroll .be-sub{font-size:12px;color:#7299B0;margin-bottom:16px;line-height:1.5;font-weight:300;}
+.biometric-enroll .be-actions{display:flex;gap:8px;}
+.be-btn-primary{flex:1;padding:10px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.be-btn-secondary{flex:1;padding:10px;background:transparent;color:#7299B0;border:1px solid rgba(10,60,100,0.18);border-radius:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.biometric-remove{display:none;margin-top:14px;text-align:center;}
+.biometric-remove a{font-size:11px;color:#7299B0;text-decoration:underline;cursor:pointer;}
+</style>
+<script>
+const HASH='5ac75c5f60bc57d633fc08fba7faa37d0a071b8c9ddb5d2213f7316636cf37e8';
+const SESSION_KEY='v3_auth';
+const WEBAUTHN_CRED_KEY='v3_webauthn_cred_id';
 
-const CACHE_NAME = 'visionari3-shell-v1';
-const SHELL_FILES = [
-  './index.html',
-  './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/apple-touch-icon.png'
+async function sha256(msg){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+
+// ── Helper per WebAuthn (Face ID / impronta / Windows Hello) ──────────────
+function waB64urlEncode(buf){
+  var bytes=new Uint8Array(buf);var str='';
+  for(var i=0;i<bytes.byteLength;i++)str+=String.fromCharCode(bytes[i]);
+  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function waB64urlDecode(str){
+  str=str.replace(/-/g,'+').replace(/_/g,'/');
+  while(str.length%4)str+='=';
+  var bin=atob(str);var bytes=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  return bytes.buffer;
+}
+function waRandomBytes(len){var arr=new Uint8Array(len);crypto.getRandomValues(arr);return arr;}
+function isWebAuthnSupported(){return !!(window.PublicKeyCredential&&navigator.credentials&&navigator.credentials.create&&navigator.credentials.get);}
+async function isPlatformAuthenticatorAvailable(){
+  if(!isWebAuthnSupported()||!window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable)return false;
+  try{return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();}catch(e){return false;}
+}
+function isWebAuthnEnrolled(){return !!localStorage.getItem(WEBAUTHN_CRED_KEY);}
+
+function enterApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  if(typeof loadAllData==='function')loadAllData();
+}
+
+async function tryLogin(){
+  var pwd=document.getElementById('pwd').value;
+  var hash=await sha256(pwd);
+  if(hash===HASH){
+    sessionStorage.setItem(SESSION_KEY,'1');
+    if(isWebAuthnSupported()&&!isWebAuthnEnrolled()&&await isPlatformAuthenticatorAvailable()){
+      showEnrollPrompt();
+    }else{
+      enterApp();
+    }
+  }else{
+    document.getElementById('login-error').style.display='block';
+    document.getElementById('pwd').value='';
+    document.getElementById('pwd').focus();
+  }
+}
+
+function showEnrollPrompt(){
+  document.getElementById('pwd').style.display='none';
+  document.getElementById('loginSubmitBtn').style.display='none';
+  document.getElementById('loginSubtitle').textContent='Accesso riuscito';
+  document.getElementById('biometricEnrollPrompt').style.display='block';
+}
+function dismissEnrollPrompt(){enterApp();}
+
+async function enrollWebAuthn(){
+  try{
+    var cred=await navigator.credentials.create({
+      publicKey:{
+        challenge:waRandomBytes(32),
+        rp:{name:'Visionari 3.0'},
+        user:{id:waRandomBytes(16),name:'team-visionari',displayName:'Team Visionari'},
+        pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+        authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'preferred',userVerification:'required'},
+        timeout:60000,
+        attestation:'none'
+      }
+    });
+    if(cred)localStorage.setItem(WEBAUTHN_CRED_KEY,waB64urlEncode(cred.rawId));
+  }catch(e){
+    console.warn('Attivazione Face ID/impronta non riuscita:',e);
+  }
+  enterApp();
+}
+
+async function loginWithWebAuthn(silent){
+  var credId=localStorage.getItem(WEBAUTHN_CRED_KEY);
+  if(!credId)return false;
+  try{
+    var assertion=await navigator.credentials.get({
+      publicKey:{
+        challenge:waRandomBytes(32),
+        allowCredentials:[{id:waB64urlDecode(credId),type:'public-key',transports:['internal']}],
+        userVerification:'required',
+        timeout:60000
+      }
+    });
+    if(assertion){sessionStorage.setItem(SESSION_KEY,'1');enterApp();return true;}
+  }catch(e){
+    if(!silent)console.warn('Sblocco biometrico non riuscito:',e);
+  }
+  return false;
+}
+
+function removeWebAuthnEnrollment(){
+  localStorage.removeItem(WEBAUTHN_CRED_KEY);
+  document.getElementById('biometricBtn').style.display='none';
+  document.getElementById('biometricDivider').style.display='none';
+  document.getElementById('biometricRemoveLink').style.display='none';
+  document.getElementById('pwd').focus();
+}
+
+async function setupLoginScreen(){
+  if(!isWebAuthnEnrolled()||!isWebAuthnSupported())return;
+  var available=await isPlatformAuthenticatorAvailable();
+  if(!available)return;
+  document.getElementById('biometricBtn').style.display='flex';
+  document.getElementById('biometricDivider').style.display='block';
+  document.getElementById('biometricRemoveLink').style.display='block';
+  loginWithWebAuthn(true); // tentativo automatico e silenzioso all'apertura
+}
+
+function checkSession(){
+  if(sessionStorage.getItem(SESSION_KEY)==='1'){enterApp();return;}
+  setupLoginScreen();
+}
+window.addEventListener('DOMContentLoaded',checkSession);
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#EDF4F9;--surface:#F7FBFD;--surface2:#DAEAF4;
+  --border:rgba(10,60,100,0.10);--border-strong:rgba(10,60,100,0.22);
+  --text:#0D1F2D;--text2:#3A5F7A;--text3:#7299B0;
+  --accent:#0D5A8E;--accent-light:#DDF0FB;
+  --amber:#A06820;--amber-light:#FDF3E0;
+  --red:#8B2E2E;--red-light:#FAE8E8;
+  --blue:#1A4F7A;--blue-light:#D6EAFA;
+  --green:#1A7A3A;--green-light:#E6F5EC;
+  --radius:12px;--radius-sm:8px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.sticky-top-wrap{position:sticky;top:0;z-index:100;}
+.header{background:var(--accent);padding:20px 28px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.header-left h1{font-family:'DM Serif Display',serif;font-size:22px;color:#fff;}
+.header-left .subtitle{font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;font-weight:300;}
+.date-nav{display:flex;align-items:center;gap:8px;}
+.date-nav button{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.date-nav .today-btn{width:auto;padding:0 12px;border-radius:20px;font-size:11px;font-weight:500;font-family:'DM Sans',sans-serif;}
+#dayLabel{font-size:14px;font-weight:500;color:#fff;min-width:52px;text-align:center;}
+.date-picker-wrap input[type="date"]{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:20px;padding:5px 12px;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;}
+.date-picker-wrap input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.7;}
+.kpi-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;overflow-x:auto;}
+.kpi-item{flex:1;min-width:90px;text-align:center;padding:0 12px;border-right:1px solid var(--border);}
+.kpi-item:last-child{border-right:none;}
+.kpi-num{font-family:'DM Serif Display',serif;font-size:28px;line-height:1;color:var(--text);}
+.kpi-num.warn{color:var(--amber);}.kpi-num.good{color:var(--accent);}.kpi-num.green{color:var(--green);}.kpi-num.red{color:var(--red);}
+.kpi-lbl{font-size:10px;color:var(--text3);font-weight:400;margin-top:3px;text-transform:uppercase;letter-spacing:.06em;}
+.tabs-wrap{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;overflow-x:auto;}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;padding:13px 16px;font-size:13px;font-weight:400;color:var(--text3);cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:color .15s,border-color .15s;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
+.content{padding:24px 28px;max-width:1100px;}
+.tab-pane{display:none;}.tab-pane.active{display:block;}
+.apt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+.apt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:box-shadow .15s;border-top:3px solid transparent;}
+.apt-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06);}
+.apt-enea-put{border-top-color:#1A6FA8;}.apt-enea-pic{border-top-color:#2899D4;}
+.apt-domus-g{border-top-color:#2A7A4F;}.apt-domus-p{border-top-color:#5AAF7A;}
+.apt-vis{border-top-color:#8B5E2E;}.apt-mare{border-top-color:#C4883C;}.apt-dimora{border-top-color:#7B5EA7;}
+.apt-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block;margin-right:6px;vertical-align:middle;}
+.dot-enea-put{background:#1A6FA8;}.dot-enea-pic{background:#2899D4;}
+.dot-domus-g{background:#2A7A4F;}.dot-domus-p{background:#5AAF7A;}
+.dot-vis{background:#8B5E2E;}.dot-mare{background:#C4883C;}.dot-dimora{background:#7B5EA7;}
+.apt-card-top{padding:12px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.apt-name{font-family:'DM Serif Display',serif;font-size:15px;color:var(--text);line-height:1.2;}
+.apt-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.status-badge{font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:2px;text-transform:uppercase;letter-spacing:.05em;}
+.s-checkin{background:var(--accent-light);color:var(--accent);}
+.s-checkout{background:var(--amber-light);color:var(--amber);}
+.s-turnover{background:var(--blue-light);color:var(--blue);}
+.s-occupied{background:var(--surface2);color:var(--text2);}
+.s-free{background:var(--red-light);color:var(--red);}
+.apt-body{padding:10px 16px;display:flex;flex-direction:column;gap:7px;}
+.apt-row{display:flex;gap:8px;font-size:12px;align-items:flex-start;}
+.apt-row-icon{width:14px;flex-shrink:0;margin-top:1px;opacity:.5;}
+.apt-row-lbl{color:var(--text3);min-width:68px;flex-shrink:0;}
+.apt-row-val{color:var(--text);flex:1;}
+.apt-row-val.muted{color:var(--text3);font-style:italic;}
+.apt-footer{padding:8px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:11px;color:var(--text3);background:var(--bg);}
+.todo-empty{padding:24px 16px;text-align:center;font-size:13px;color:var(--text3);font-style:italic;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+.acq-item{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;}
+.acq-item:hover{background:var(--surface2);}
+.acq-item.bought{opacity:.4;}
+.acq-item.bought .acq-name{text-decoration:line-through;}
+.acq-check{width:16px;height:16px;border:1.5px solid var(--border-strong);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;}
+.acq-item.bought .acq-check{background:var(--accent);border-color:var(--accent);color:#fff;}
+.acq-name{font-size:13px;color:var(--text);flex:1;}
+.acq-apt{font-size:10px;color:var(--text3);padding:2px 8px;background:var(--surface2);border-radius:20px;}
+.action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+.wa-btn{display:flex;align-items:center;gap:7px;font-size:12px;padding:9px 16px;border-radius:20px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(43,77,58,0.2);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;}
+.params-bar{background:var(--blue-light);border:1px solid rgba(42,75,124,0.15);border-radius:var(--radius-sm);padding:10px 16px;display:flex;gap:24px;flex-wrap:wrap;font-size:12px;color:var(--blue);margin-bottom:16px;}
+.params-bar span{font-weight:500;}
+.incassata-yes{color:var(--accent);font-weight:500;}.incassata-no{color:var(--red);}
+.pricing-wrap{max-width:860px;}
+table.pricing-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);margin-bottom:20px;}
+table.pricing-tbl th{text-align:left;padding:10px 14px;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--bg);}
+table.pricing-tbl td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);}
+table.pricing-tbl tr:last-child td{border-bottom:none;}
+table.pricing-tbl tr:nth-child(even) td{background:rgba(0,0,0,.015);}
+.approv-btn{font-size:10px;padding:4px 10px;border-radius:20px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(43,77,58,0.2);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;}
+.approv-btn.approved{background:var(--accent);color:#fff;}
+.fest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;}
+.fest-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;}
+.fest-date{font-size:11px;color:var(--text3);margin-bottom:2px;}
+.fest-name{font-size:13px;color:var(--text);font-weight:500;}
+.fest-mult{font-size:12px;color:var(--accent);font-weight:500;margin-top:3px;}
+.section-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:12px;margin-top:24px;}
+.section-label:first-child{margin-top:0;}
+.cleaner-section{margin-bottom:28px;}
+.cleaner-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+.cleaner-name{font-family:'DM Serif Display',serif;font-size:17px;color:var(--text);display:flex;align-items:center;gap:8px;}
+.cleaner-totals{display:flex;gap:8px;flex-wrap:wrap;}
+.cleaner-badge-pill{font-size:12px;font-weight:500;padding:4px 12px;border-radius:20px;background:var(--blue-light);color:var(--blue);border:1px solid rgba(26,79,122,0.15);}
+.cleaner-badge-pill.tot{background:var(--accent);color:#fff;border-color:var(--accent);}
+.pulizie-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:8px;}
+.pulizie-table th{text-align:left;padding:9px 14px;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--bg);}
+.pulizie-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top;}
+.pulizie-table tr:last-child td{border-bottom:none;}
+.pulizie-table tr:nth-child(even) td{background:rgba(0,0,0,.013);}
+.letti-pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}
+.letto-pill{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--accent-light);color:var(--accent);}
+.letto-pill.extra{background:var(--amber-light);color:var(--amber);}
+.periodo-range{font-size:11px;color:var(--text3);margin-top:2px;}
+.filter-bar{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center;}
+.filter-bar label{font-size:12px;color:var(--text3);}
+.filter-bar select{font-size:12px;padding:6px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;cursor:pointer;outline:none;}
+.riepilogo-box{background:var(--accent);border-radius:var(--radius);padding:16px 20px;display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px;}
+.riepilogo-item{text-align:center;}
+.riepilogo-num{font-family:'DM Serif Display',serif;font-size:26px;color:#fff;line-height:1;}
+.riepilogo-lbl{font-size:10px;color:rgba(255,255,255,0.65);margin-top:3px;text-transform:uppercase;letter-spacing:.05em;}
+.planning-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:500;background:var(--accent-light);color:var(--accent);border:1px solid rgba(13,90,142,0.2);cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:auto;}
+.pulizie-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+.pulizie-modal{background:var(--surface);border-radius:var(--radius);padding:24px;width:100%;max-width:400px;border:1px solid var(--border);}
+.pulizie-modal-title{font-size:16px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.pm-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;gap:12px;background:var(--bg);}
+.pm-persona{display:flex;align-items:center;gap:10px;}
+.pm-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.pm-name{font-size:14px;font-weight:500;color:var(--text);}
+.pm-info{font-size:11px;color:var(--text3);margin-top:1px;}
+.pm-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:500;background:var(--green-light);color:var(--green);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.pm-close{margin-top:14px;width:100%;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.dash-date-hero{text-align:center;padding:20px 0 16px;margin-bottom:20px;border-bottom:1px solid var(--border);}
+.dash-date-day{font-family:'DM Serif Display',serif;font-size:56px;line-height:1;color:var(--text);}
+.dash-date-weekday{font-size:16px;color:var(--text2);margin-top:4px;text-transform:capitalize;}
+.dash-date-monthyear{font-size:13px;color:var(--text3);font-weight:300;text-transform:capitalize;}
+.dash-sections{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.dash-sec-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;}
+.dash-sec-title.ci{color:var(--green);}.dash-sec-title.co{color:var(--red);}
+.dash-count{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;}
+.dash-count.ci{background:var(--green-light);color:var(--green);}
+.dash-count.co{background:var(--red-light);color:var(--red);}
+.dash-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid transparent;border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;}
+.dash-card.ci{border-left-color:var(--green);}.dash-card.co{border-left-color:var(--red);}
+.dash-guest-name{font-size:15px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.dash-meta{font-size:11px;color:var(--text3);margin-bottom:6px;}
+.dash-wa-btn{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;min-height:30px;}
+.dash-wa-btn.ci{background:var(--green-light);color:var(--green);}
+.dash-wa-btn.co{background:var(--red-light);color:var(--red);}
+.dash-empty{padding:16px;text-align:center;font-size:13px;color:var(--text3);font-style:italic;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);}
+.incassi-wrap{max-width:1060px;}
+.incassi-filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:22px;}
+.incassi-filter-bar label{font-size:12px;color:var(--text3);}
+.incassi-filter-bar select{font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;cursor:pointer;outline:none;}
+.incassi-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px;}
+.incassi-kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;border-top:3px solid var(--accent);}
+.incassi-kpi-card.netto{border-top-color:#1A6FA8;}
+.incassi-kpi-card.servizi{border-top-color:var(--amber);}
+.incassi-kpi-card.costi{border-top-color:var(--red);}
+.incassi-kpi-card.finale{border-top-color:#2A7A4F;}
+.incassi-kpi-num{font-family:'DM Serif Display',serif;font-size:24px;line-height:1;color:var(--text);}
+.incassi-kpi-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:5px;}
+.incassi-note-toggle{font-size:12px;padding:6px 14px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;}
+.incassi-note-box{display:none;margin-top:10px;font-size:11px;color:var(--text3);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;line-height:1.8;}
+table.incassi-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);margin-bottom:28px;}
+table.incassi-tbl th{text-align:left;padding:10px 14px;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--bg);}
+table.incassi-tbl td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+table.incassi-tbl tr:last-child td{border-bottom:none;}
+table.incassi-tbl tr:nth-child(even) td{background:rgba(0,0,0,.015);}
+table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accent)!important;color:#fff!important;border-top:2px solid var(--accent);padding:11px 14px;}
+.piatt-badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap;display:inline-block;}
+.piatt-booking{background:#E8F0FB;color:#1A3E8C;}
+.piatt-airbnb{background:#FCE8EC;color:#8C1A2E;}
+.piatt-diretta{background:var(--green-light);color:var(--green);}
+.piatt-domus{background:var(--amber-light);color:var(--amber);}
+.piatt-altro{background:var(--surface2);color:var(--text3);}
+.val-lordo{color:var(--text);font-weight:500;}
+.val-netto{color:#1A6FA8;font-weight:500;}
+.val-finale{color:#2A7A4F;font-weight:700;}
+.incassi-chart-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px 16px;margin-top:8px;}
+.incassi-chart-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:16px;}
+.chart-bars-wrap{overflow-x:auto;}
+.pulizie-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.nl-wrap{max-width:1100px;}
+.nl-filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.nl-nav-btn{font-size:12px;padding:6px 14px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.nl-range-label{font-size:12px;color:var(--text3);font-weight:500;}
+.nl-grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);}
+.nl-grid{border-collapse:collapse;font-size:12px;width:100%;}
+.nl-grid th,.nl-grid td{padding:0;text-align:center;}
+.nl-apt-col{position:sticky;left:0;background:var(--surface);z-index:5;text-align:left!important;padding:8px 12px!important;font-size:12px;font-weight:500;color:var(--text);border-right:1px solid var(--border-strong);white-space:nowrap;min-width:150px;}
+.nl-day-head{padding:6px 4px!important;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);min-width:34px;}
+.nl-day-head.weekend{background:var(--bg);}
+.nl-day-head .nl-dow{display:block;text-transform:uppercase;font-size:9px;}
+.nl-day-head .nl-num{display:block;font-size:12px;font-weight:500;color:var(--text);}
+.nl-cell{width:34px;height:34px;border:1px solid var(--surface);cursor:default;}
+.nl-cell.free{background:var(--green);cursor:pointer;}
+.nl-cell.free:hover{background:#145C2A;}
+.nl-cell.busy{background:var(--red);opacity:.85;}
+.nl-cell.free.highlight{background:#145C2A;box-shadow:inset 0 0 0 2px #fff;}
+.nl-legend{display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--text3);align-items:center;flex-wrap:wrap;}
+.nl-legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle;}
+.nl-info-box{background:var(--accent);color:#fff;border-radius:var(--radius-sm);padding:10px 16px;font-size:12px;margin-bottom:14px;display:none;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;}
+.nl-info-copy{background:rgba(255,255,255,0.18);border:none;color:#fff;padding:5px 12px;border-radius:16px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;}
+.nl-occ-section{margin-top:22px;}
+.nl-occ-avg-box{background:var(--accent);border-radius:var(--radius);padding:14px 20px;display:flex;align-items:baseline;gap:12px;margin-bottom:16px;}
+.nl-occ-avg-num{font-family:'DM Serif Display',serif;font-size:28px;color:#fff;line-height:1;}
+.nl-occ-avg-lbl{font-size:12px;color:rgba(255,255,255,0.75);}
+.nl-occ-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:12px;}
+.nl-occ-label{min-width:170px;flex-shrink:0;color:var(--text);font-weight:500;display:flex;align-items:center;}
+.nl-occ-bar-wrap{flex:1;height:10px;background:var(--surface2);border-radius:6px;overflow:hidden;}
+.nl-occ-bar-fill{height:100%;background:var(--accent);border-radius:6px;}
+.nl-occ-pct{min-width:38px;text-align:right;color:var(--text2);font-weight:500;flex-shrink:0;}
+.bi-wrap{max-width:640px;}
+.bi-week-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.bi-week-strip{display:flex;gap:4px;margin-bottom:16px;}
+.bi-day-cell{flex:1;text-align:center;padding:8px 2px;border-radius:var(--radius-sm);cursor:pointer;background:transparent;transition:background .15s;}
+.bi-day-cell:hover{background:var(--surface2);}
+.bi-day-cell.selected{background:var(--accent-light);}
+.bi-day-cell.past{opacity:.4;}
+.bi-day-dow{font-size:11px;color:var(--text3);}
+.bi-day-num{font-size:15px;font-weight:400;color:var(--text);margin:2px 0;}
+.bi-day-cell.selected .bi-day-dow{font-size:13px;font-weight:500;color:var(--accent);}
+.bi-day-cell.selected .bi-day-num{font-size:19px;font-weight:500;color:var(--accent);}
+.bi-day-meta{font-size:10px;color:var(--text3);}
+.bi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;}
+.bi-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px;}
+.bi-card-apt{font-size:15px;font-weight:500;color:var(--text);}
+.bi-card-meta{font-size:12px;color:var(--text3);margin-top:2px;}
+.bi-card-sets{border-top:1px solid var(--border);padding-top:8px;font-size:13px;color:var(--text);}
+.bi-card-sets .muted{color:var(--text3);}
+.bi-empty{padding:20px 16px;text-align:center;font-size:13px;color:var(--text3);font-style:italic;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+.bi-consegna-note{background:var(--accent-light);color:var(--accent);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;margin-bottom:14px;}
+.bi-order-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-top:16px;}
+.bi-order-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;}
+.bi-order-row.tot{border-top:1px solid var(--border);margin-top:6px;padding-top:10px;font-weight:500;}
+.bi-order-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+.bi-inviato-box{display:flex;align-items:center;gap:10px;font-size:13px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;margin-top:10px;}
+.note-wrap{max-width:640px;}
+.note-api-warning{background:var(--amber-light);color:var(--amber);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;margin-bottom:16px;}
+.note-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+.note-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius-sm);padding:12px 14px;}
+.note-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
+.note-card-apt{font-size:13px;font-weight:500;color:var(--text);}
+.note-card-date{font-size:11px;color:var(--text3);}
+.note-card-guest{font-size:12px;color:var(--text2);margin-bottom:4px;}
+.note-card-text{font-size:13px;color:var(--text);line-height:1.5;}
+.note-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:10px;}
+.note-form select,.note-form input[type="date"],.note-form input[type="text"]{font-size:13px;padding:9px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;width:100%;}
+.note-textarea{font-size:13px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;width:100%;min-height:80px;resize:vertical;}
+.note-save-btn{align-self:flex-start;padding:9px 20px;border-radius:20px;background:var(--accent);color:#fff;border:none;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.note-save-msg{font-size:12px;min-height:16px;}
+.tc-note{background:var(--accent-light);color:var(--accent);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;margin-top:4px;line-height:1.4;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.apt-card{animation:fadeUp .3s ease both;}
+@media(max-width:650px){.dash-sections{grid-template-columns:1fr;}}
+@media(max-width:600px){
+  .header{padding:14px 16px;}.header-left h1{font-size:18px;}
+  .kpi-bar{padding:10px 12px;}.kpi-num{font-size:22px;}.kpi-item{min-width:70px;padding:0 8px;}
+  .tabs-wrap{padding:0 12px;}
+  .tab-btn{padding:11px 12px;font-size:12px;}.content{padding:14px 12px;}
+  .apt-grid{grid-template-columns:1fr;}
+  .pulizie-table{min-width:580px;}
+  .cleaner-header{flex-direction:column;align-items:flex-start;}
+  .pricing-wrap,.incassi-wrap{overflow-x:auto;}
+  table.pricing-tbl,table.incassi-tbl{min-width:600px;font-size:11px;}
+  .incassi-kpi{grid-template-columns:1fr 1fr;}.incassi-kpi-num{font-size:18px;}
+  .nl-cell{width:28px;height:32px;}
+  .nl-apt-col{min-width:120px;font-size:11px;padding:6px 8px!important;}
+  .nl-day-head{min-width:28px;}
+  .nl-occ-label{min-width:120px;font-size:11px;}
+}
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-box">
+    <h1>Visionari 3.0</h1>
+    <p id="loginSubtitle">Inserisci la password per accedere</p>
+
+    <button id="biometricBtn" class="biometric-btn" onclick="loginWithWebAuthn(false)">&#128065; Sblocca con Face ID / impronta</button>
+    <div id="biometricDivider" class="biometric-divider">oppure</div>
+
+    <input type="password" id="pwd" placeholder="Password" onkeydown="if(event.key==='Enter')tryLogin()" autofocus>
+    <button id="loginSubmitBtn" onclick="tryLogin()">Accedi</button>
+    <div class="login-error" id="login-error">Password errata. Riprova.</div>
+
+    <div id="biometricEnrollPrompt" class="biometric-enroll">
+      <div class="be-title">Attiva lo sblocco rapido su questo dispositivo?</div>
+      <div class="be-sub">La prossima volta potrai entrare con Face ID o l'impronta, senza digitare la password. Lo sblocco è legato a questo dispositivo.</div>
+      <div class="be-actions">
+        <button class="be-btn-primary" onclick="enrollWebAuthn()">Attiva</button>
+        <button class="be-btn-secondary" onclick="dismissEnrollPrompt()">Non ora</button>
+      </div>
+    </div>
+
+    <div id="biometricRemoveLink" class="biometric-remove">
+      <a onclick="removeWebAuthnEnrollment()">Non riconosce? Rimuovi e usa la password</a>
+    </div>
+  </div>
+</div>
+<div id="app" style="display:none">
+<div class="sticky-top-wrap">
+<div class="header">
+  <div class="header-left">
+    <h1>Visionari 3.0</h1>
+    <div class="subtitle" id="fullDate"></div>
+  </div>
+  <div class="date-nav">
+    <button onclick="changeDay(-1)">&#8249;</button>
+    <span id="dayLabel"></span>
+    <button onclick="changeDay(1)">&#8250;</button>
+    <div class="date-picker-wrap"><input type="date" id="datePicker" autocomplete="off" onchange="pickDate(this.value)"></div>
+    <button class="today-btn" onclick="resetDay()">oggi</button>
+  </div>
+</div>
+<div class="kpi-bar" id="kpiBar"></div>
+<div class="tabs-wrap">
+  <button class="tab-btn active" onclick="switchTab('dashboard',this)">📋 Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('appartamenti',this)">🏠 Appartamenti</button>
+  <button class="tab-btn" onclick="switchTab('note',this)">📝 Note</button>
+  <button class="tab-btn" onclick="switchTab('pulizie',this)">🧹 Pulizie</button>
+  <button class="tab-btn" onclick="switchTab('biancheria',this)">🧺 Biancheria</button>
+  <button class="tab-btn" onclick="switchTab('nottiLibere',this)">🗓️ Notti Libere</button>
+  <button class="tab-btn" onclick="switchTab('incassi',this)">💰 Incassi</button>
+  <button class="tab-btn" onclick="switchTab('pricing',this)">📈 Pricing</button>
+</div>
+</div>
+<div class="content">
+  <div id="tab-dashboard"    class="tab-pane active"><div id="dashboardContent"></div></div>
+  <div id="tab-appartamenti" class="tab-pane"><div class="apt-grid" id="aptGrid"></div></div>
+  <div id="tab-note"         class="tab-pane"><div class="note-wrap" id="noteContent"></div></div>
+  <div id="tab-pulizie"      class="tab-pane"><div id="pulizieContent"></div></div>
+  <div id="tab-biancheria"   class="tab-pane"><div class="bi-wrap" id="biancheriaContent"></div></div>
+  <div id="tab-nottiLibere"  class="tab-pane"><div class="nl-wrap" id="nottiLibereContent"></div></div>
+  <div id="tab-incassi" class="tab-pane"><div class="incassi-wrap" id="incassiContent"></div></div>
+  <div id="tab-pricing" class="tab-pane">
+    <div class="pricing-wrap">
+      <div class="section-label">Suggerimenti prezzi — prossimi 14 giorni</div>
+      <table class="pricing-tbl">
+        <thead><tr><th>Appartamento</th><th>Notti libere</th><th>Prezzo attuale</th><th>Suggerimento</th><th>Motivo</th><th>Approva</th></tr></thead>
+        <tbody id="pricingBody"></tbody>
+      </table>
+      <div class="section-label">Festività e eventi — Bari 2025</div>
+      <div class="fest-grid" id="festGrid"></div>
+    </div>
+  </div>
+</div>
+<div id="planningModal" class="pulizie-modal-overlay" style="display:none" onclick="if(event.target===this)closePlanningModal()">
+  <div class="pulizie-modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="pulizie-modal-title">📋 Planning pulizie</div>
+      <button onclick="closePlanningModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)">&times;</button>
+    </div>
+    <div id="planningModalSub"></div>
+    <div id="planningModalRows"></div>
+    <button class="pm-close" onclick="closePlanningModal()">Chiudi</button>
+  </div>
+</div>
+<script>
+const SHEET_ID='1njE_JQ-m_rzdAOR-OWDeI7NfCq2sn0LZe2Ia_A-xjRc';
+const GIDS={prenotazioni:'1940746485',addette:'1820111522',prompt:'955795025'};
+function sheetURL(gid){return 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=csv&gid='+gid;}
+async function fetchSheetSkipTitle(gid){
+  const res=await fetch(sheetURL(gid));
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const text=await res.text();
+  const lines=text.trim().split('\n');
+  if(lines.length<3)return[];
+  return parseCSV(lines.slice(1).join('\n'));
+}
+// Per fogli SENZA riga decorativa di titolo (es. la tab "Note", creata da Apps Script
+// con le intestazioni vere gi\u00e0 in riga 1): qui non si salta nessuna riga.
+async function fetchSheetDirect(gid){
+  const res=await fetch(sheetURL(gid));
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const text=await res.text();
+  return parseCSV(text);
+}
+
+// ── COSTI FISSI MENSILI ───────────────────────────────────────
+const COSTI_FISSI={
+  'Casa dei Visionari – Mare':{
+    voci:[{label:'Affitto',val:860}]
+  },
+  'Enea Luxury – Putignani':{
+    voci:[{label:'Affitto',val:1480},{label:'Commercialista',val:125},{label:'Bollette/manutenzione',val:250}]
+  },
+  'Enea Luxury – Piccinni':{
+    voci:[{label:'Affitto',val:1700},{label:'Commercialista',val:125},{label:'Bollette/manutenzione',val:250}]
+  }
+};
+
+function getCostiFissi(aptName){
+  const key=Object.keys(COSTI_FISSI).find(function(k){return matchApt(k,aptName);});
+  if(!key)return{totale:0,dettaglio:''};
+  const voci=COSTI_FISSI[key].voci;
+  const totale=voci.reduce(function(s,v){return s+v.val;},0);
+  const dettaglio=voci.map(function(v){return v.label+' \u20ac'+v.val;}).join(' + ');
+  return{totale:totale,dettaglio:dettaglio};
+}
+
+// ── DATI STATICI ──────────────────────────────────────────────
+const APTS=[
+  {name:'Enea Luxury \u2013 Putignani',sub:'fino a 9 persone',cls:'apt-enea-put',dot:'dot-enea-put',cap:9},
+  {name:'Enea Luxury \u2013 Piccinni',sub:'fino a 7 persone',cls:'apt-enea-pic',dot:'dot-enea-pic',cap:7},
+  {name:'Domus Pulchra (grande)',sub:'fino a 6 persone',cls:'apt-domus-g',dot:'dot-domus-g',cap:6},
+  {name:'Domus Pulchra (piccolo)',sub:'fino a 4 persone',cls:'apt-domus-p',dot:'dot-domus-p',cap:4},
+  {name:'Casa dei Visionari \u2013 Madonella',sub:'fino a 4 persone',cls:'apt-vis',dot:'dot-vis',cap:4},
+  {name:'Casa dei Visionari \u2013 Mare',sub:'fino a 4 persone',cls:'apt-mare',dot:'dot-mare',cap:4},
+  {name:'Dimora Italia',sub:'',cls:'apt-dimora',dot:'dot-dimora',cap:6},
 ];
+const FESTIVITA=[
+  {data:'25 apr',nome:'Liberazione',mult:'+20\u201325%'},
+  {data:'1 mag',nome:'Festa dei Lavoratori',mult:'+15%'},
+  {data:'2 giu',nome:'Festa della Repubblica',mult:'+25\u201335%'},
+  {data:'7\u20139 mag',nome:'San Nicola (patrono Bari)',mult:'+20%'},
+  {data:'15 ago',nome:'Ferragosto',mult:'+35\u201340%'},
+  {data:'7\u20138 dic',nome:'Immacolata + ponte',mult:'+20\u201330%'},
+  {data:'24\u201326 dic',nome:'Natale',mult:'+30\u201340%'},
+  {data:'31 dic \u2013 1 gen',nome:'Capodanno',mult:'+40\u201350%'},
+];
+const LETTI_APT={
+  'Domus Pulchra (grande)':['Matrimoniale grande','Matrimoniale','Singolo'],
+  'Domus Pulchra (piccolo)':['Matrimoniale','Singolo x2'],
+  'Casa dei Visionari \u2013 Madonella':['Matrimoniale','Singolo x2'],
+  'Casa dei Visionari \u2013 Mare':['Matrimoniale','Doppio'],
+  'Enea Luxury \u2013 Piccinni':['Matrimoniale x2','Singolo','Divano letto'],
+  'Enea Luxury \u2013 Putignani':['Matrimoniale x4','Singolo'],
+  'Dimora Italia':['Matrimoniale','Matrimoniale','Singolo x2'],
+};
+const CLEANER_COLORS={'Elda':'#2A7A4F','Dalila':'#8B5E2E','Giulia':'#C4883C','Teresa':'#1A6FA8','Enza':'#1A6FA8','Annamaria':'#1A6FA8'};
+const APT_PILL_COLORS={
+  'Domus Pulchra (grande)':{bg:'#DBEEFF',color:'#0A3A6B'},
+  'Domus Pulchra (piccolo)':{bg:'#E8F5EE',color:'#1A5C35'},
+  'Casa dei Visionari \u2013 Madonella':{bg:'#F5EDE3',color:'#5C3A15'},
+  'Casa dei Visionari \u2013 Mare':{bg:'#FDF0E0',color:'#7A4E10'},
+  'Enea Luxury \u2013 Putignani':{bg:'#D6EAFA',color:'#1A4F7A'},
+  'Enea Luxury \u2013 Piccinni':{bg:'#EDF6FF',color:'#2A6FA8'},
+  'Dimora Italia':{bg:'#F0EBF8',color:'#5B3E8A'},
+};
+const DOMUS_APTS=['Domus Pulchra (grande)','Domus Pulchra (piccolo)','Dimora Italia'];
 
-self.addEventListener('install', function(event) {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(SHELL_FILES);
-    }).then(function(){ return self.skipWaiting(); })
-  );
-});
+let prenotazioni=[],addetteSheet=[],promptMessaggi=[];
+let approved={};
+const waMessages={};
+let TODAY=new Date();TODAY.setHours(0,0,0,0);
+let offset=0,dashOffset=0;
+var NL_TODAY_YM=(new Date()).getFullYear()+'-'+String((new Date()).getMonth()+1).padStart(2,'0');
+let nlMonth=NL_TODAY_YM,nlFilterApts=[],nlMinConsec=0;
 
-self.addEventListener('activate', function(event) {
-  event.waitUntil(
-    caches.keys().then(function(keys) {
-      return Promise.all(
-        keys.filter(function(k){ return k !== CACHE_NAME; })
-            .map(function(k){ return caches.delete(k); })
-      );
-    }).then(function(){ return self.clients.claim(); })
-  );
-});
+// ── BIANCHERIA — config ────────────────────────────────────────
+// Appartamenti gestiti dal servizio lavanderia e capienza in letti matrimoniali (per calcolo set extra col letto singolo)
+const BI_APTS=['Enea Luxury \u2013 Putignani','Enea Luxury \u2013 Piccinni'];
+// maxMat = numero di letti matrimoniali "veri". extraBeds = letti aggiuntivi oltre i matrimoniali,
+// in ordine di utilizzo, con il tipo di set biancheria richiesto e quante persone ci dormono.
+// Putignani: oltre agli 8 posti nei matrimoniali, il 9° ospite usa il letto singolo -> set singolo.
+// Piccinni: il 5° e 6° ospite dormono sul divano letto (biancheria da matrimoniale, un solo set anche per 2 persone),
+// solo il 7° ospite usa il letto singolo -> set singolo.
+const BI_BED_CONFIG={
+  'Enea Luxury – Putignani':{maxMat:4,extraBeds:[{type:'singolo',capienza:1}]},
+  'Enea Luxury – Piccinni':{maxMat:2,extraBeds:[{type:'matrimoniale',capienza:2},{type:'singolo',capienza:1}]},
+};
+// Dopo aver creato la tab "OrdiniBiancheria" nel Google Sheet (colonne: Settimana | Inviato | DataInvio),
+// incolla qui il suo GID (visibile nell'URL del foglio quando la selezioni)
+GIDS.biancheria='';
+// Dopo aver distribuito lo script Apps Script come Web App, incolla qui l'URL di distribuzione
+const BIANCHERIA_API_URL='';
+let biWeekStart=null,biSelectedDate=null,biFilterApts=[];
+let biOrdiniStatus={},biPlanningCache={};
+const BI_PREZZI={matrimoniale:15,singolo:10};
+function biPrezzoSets(sets){return sets.matrimoniali*BI_PREZZI.matrimoniale+sets.singolo*BI_PREZZI.singolo;}
 
-self.addEventListener('fetch', function(event) {
-  var req = event.request;
+function parseCSV(text){
+  const lines=text.trim().split('\n');
+  if(lines.length<2)return[];
+  const headers=splitCSVLine(lines[0]);
+  return lines.slice(1).map(function(line){
+    const vals=splitCSVLine(line);
+    const obj={};
+    headers.forEach(function(h,i){obj[h.trim()]=(vals[i]||'').trim();});
+    return obj;
+  }).filter(function(r){return Object.values(r).some(function(v){return v!=='';});});
+}
+function splitCSVLine(line){
+  const result=[];var cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){result.push(cur);cur='';}
+    else{cur+=ch;}
+  }
+  result.push(cur);
+  return result;
+}
+function parseDate(str){
+  if(!str)return null;str=str.trim();
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)){var p=str.split(' ')[0].split('/');return new Date(+p[2],+p[1]-1,+p[0]);}
+  if(/^\d{4}-\d{2}-\d{2}/.test(str)){var p2=str.split(' ')[0].split('-');return new Date(+p2[0],+p2[1]-1,+p2[2]);}
+  var n=Number(str);if(!isNaN(n)&&n>10000)return new Date(Date.UTC(1899,11,30)+n*86400000);
+  var d=new Date(str);return isNaN(d)?null:d;
+}
+function sameDay(a,b){return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
+function getDay(){var d=new Date(TODAY);d.setDate(d.getDate()+offset);return d;}
+function fmtEur(n){return '\u20ac'+Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+function normStr(s){return(s||'').toString().trim().toLowerCase().replace(/[\u2013\u2014\u2012]/g,'-').replace(/\s+/g,' ');}
+function matchApt(a,b){return normStr(a)===normStr(b);}
+function parseEur(s){
+  var clean=(s||'0').toString().replace(/[\u20ac\s]/g,'').replace(/\./g,'').replace(',','.');
+  return parseFloat(clean)||0;
+}
+function isDomus(aptName){return DOMUS_APTS.some(function(d){return matchApt(aptName,d);});}
+function isEnea(aptName){return normStr(aptName).indexOf('enea')!==-1;}
 
-  // Interveniamo SOLO su richieste GET dello stesso dominio (la shell statica).
-  // Tutto il resto (Google Sheets, Apps Script, ecc, che sono cross-origin) passa
-  // dritto in rete come sempre: qui non dobbiamo cambiare come vengono letti i dati.
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) {
-    return;
+function getRowAddetta(aptName){
+  return addetteSheet.find(function(r){return matchApt(r['Appartamento'],aptName);})||null;
+}
+function getCostiPulizie(aptName,numOspiti){
+  var row=getRowAddetta(aptName);
+  if(!row)return{persona:'\u2014',phone:'',pulizia:0,lavanderia:0,totServizi:0};
+  var persona=(row['Addetta Pulizie']||'\u2014').trim();
+  var phone=(row['Numero telefono']||'').trim();
+  var pulizia=parseEur(row['Costo pulizia']);
+  var lavBase=parseEur(row['Costo lavanderia']);
+  var ospiti=parseInt(numOspiti)||1;
+  var lavanderia=isEnea(aptName)?lavBase*ospiti:lavBase;
+  return{persona:persona,phone:phone,pulizia:pulizia,lavanderia:lavanderia,totServizi:pulizia+lavanderia};
+}
+function getCompenso(aptName,numOspiti){
+  var c=getCostiPulizie(aptName,numOspiti);
+  if(isEnea(aptName))return{compenso:c.pulizia,dettaglio:'\u20ac'+c.pulizia+' pulizia (lav. esclusa)'};
+  return{compenso:c.pulizia+c.lavanderia,dettaglio:'\u20ac'+c.pulizia+' pul. + \u20ac'+c.lavanderia+' lav.'};
+}
+function calcIncasso(r){
+  var lordo=parseEur(r['Prezzo Lordo (\u20ac)']);
+  var piatt=normStr(r['Piattaforma']||'');
+  var apt=r['Appartamento']||'';
+  var ospiti=parseInt(r['N. Ospiti Adulti'])||1;
+  if(isDomus(apt)){
+    var netto=lordo*0.15;
+    return{lordo:lordo,netto:netto,pulizia:0,lavanderia:0,servizi:0,finale:netto};
+  }
+  var commRate=0;
+  if(piatt.indexOf('booking')!==-1)commRate=0.20;
+  else if(piatt.indexOf('airbnb')!==-1)commRate=0.15;
+  var netto2=lordo*(1-commRate);
+  var cp=getCostiPulizie(apt,ospiti);
+  var finale=netto2-cp.totServizi;
+  return{lordo:lordo,netto:netto2,pulizia:cp.pulizia,lavanderia:cp.lavanderia,servizi:cp.totServizi,finale:finale};
+}
+
+// ── CACHE LOCALE (mostra subito l'ultimo dato noto, poi aggiorna in background) ──
+const CACHE_KEY='v3_cache_data';
+function saveCache(){
+  try{
+    localStorage.setItem(CACHE_KEY,JSON.stringify({
+      prenotazioni:prenotazioni,addetteSheet:addetteSheet,promptMessaggi:promptMessaggi,
+      notes:notes,biOrdiniStatus:biOrdiniStatus,ts:Date.now()
+    }));
+  }catch(e){console.warn('Impossibile salvare la cache locale',e);}
+}
+function loadCache(){
+  try{
+    var raw=localStorage.getItem(CACHE_KEY);
+    if(!raw)return false;
+    var data=JSON.parse(raw);
+    prenotazioni=data.prenotazioni||[];
+    addetteSheet=data.addetteSheet||[];
+    promptMessaggi=data.promptMessaggi||[];
+    // JSON.stringify/parse trasforma checkinDate (un oggetto Date) in una stringa:
+    // qui lo ricostruiamo come vero Date, altrimenti tutte le chiamate a
+    // .toLocaleDateString()/.getFullYear() ecc. sulle note in cache andrebbero in errore.
+    notes=(data.notes||[]).map(function(n){
+      n.checkinDate=n.checkin?parseDate(n.checkin):null;
+      return n;
+    });
+    biOrdiniStatus=data.biOrdiniStatus||{};
+    return true;
+  }catch(e){return false;}
+}
+function cacheAgeLabel(){
+  try{
+    var raw=localStorage.getItem(CACHE_KEY);
+    if(!raw)return '';
+    var ts=JSON.parse(raw).ts;
+    if(!ts)return '';
+    var d=new Date(ts);
+    return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){return '';}
+}
+function showSyncBadge(state){
+  var el=document.getElementById('syncBadge');
+  if(!el)return;
+  if(state==='syncing'){el.textContent='\u21bb aggiornamento...';el.style.opacity='0.85';}
+  else if(state==='done'){var t=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});el.textContent='\u2713 aggiornato alle '+t;setTimeout(function(){if(el)el.style.opacity='0';},2500);}
+  else if(state==='error'){el.textContent='\u26a0 aggiornamento fallito, dati non recenti';el.style.opacity='0.9';}
+}
+
+function showLoading(msg){document.getElementById('aptGrid').innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);font-size:14px;">'+msg+'</div>';}
+async function loadAllData(){
+  // 1) Mostra subito l'ultimo dato noto in cache (se c'è), zero attesa
+  var hadCache=loadCache();
+  if(hadCache){
+    renderAll();
+    showSyncBadge('syncing');
+  }else{
+    showLoading('Caricamento dati\u2026');
+  }
+  // 2) In parallelo aggiorna dal Google Sheet e ridisegna in silenzio
+  try{
+    var res=await Promise.all([fetchSheetSkipTitle(GIDS.prenotazioni),fetchSheetSkipTitle(GIDS.addette)]);
+    prenotazioni=res[0];addetteSheet=res[1];
+    try{
+      var vizUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&gid='+GIDS.prompt;
+      var r2=await fetch(vizUrl);var t2=await r2.text();
+      var json=JSON.parse(t2.replace(/^[^(]+\(/,'').replace(/\);\s*$/,''));
+      promptMessaggi=(json.table.rows||[]).slice(2).map(function(row){return{apt:(row.c[0]&&row.c[0].v)?row.c[0].v.toString().trim():'',msg:(row.c[1]&&row.c[1].v)?row.c[1].v.toString().trim():'',msgCO:(row.c[2]&&row.c[2].v)?row.c[2].v.toString().trim():''};}).filter(function(r){return r.apt&&r.apt!=='Appartamento';});
+    }catch(e){promptMessaggi=[];}
+    await loadBiancheriaStatus();
+    await loadNoteData();
+    renderAll();
+    saveCache();
+    showSyncBadge('done');
+  }catch(e){
+    if(hadCache){
+      // Teniamo i dati di cache già mostrati, segnaliamo solo che l'update è fallito
+      showSyncBadge('error');
+    }else{
+      document.getElementById('aptGrid').innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--red);font-size:13px;"><strong>Errore caricamento.</strong><br><br>'+e.message+'<br><br><button onclick="loadAllData()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:inherit;font-size:13px;">Riprova</button></div>';
+    }
+  }
+}
+async function loadBiancheriaStatus(){
+  biOrdiniStatus={};
+  if(!GIDS.biancheria)return;
+  try{
+    var rows=await fetchSheetSkipTitle(GIDS.biancheria);
+    rows.forEach(function(r){
+      var k=(r['Settimana']||'').trim();
+      if(!k)return;
+      var v=(r['Inviato']||'').toString().trim().toLowerCase();
+      biOrdiniStatus[k]=(v==='true'||v==='s\u00ec'||v==='si');
+    });
+  }catch(e){console.error('Errore caricamento stato biancheria',e);}
+}
+function getPrompt(aptName,nomeOspite){
+  var found=promptMessaggi.find(function(p){return matchApt(p.apt,aptName);});
+  if(!found)return null;
+  return found.msg.replace(/\[NOME OSPITE\]/gi,(nomeOspite||'').split(' ')[0]);
+}
+function getCheckoutPrompt(aptName,nomeOspite){
+  var found=promptMessaggi.find(function(p){return matchApt(p.apt,aptName);})||promptMessaggi.find(function(p){return normStr(aptName).indexOf(normStr(p.apt).slice(0,8))!==-1;});
+  if(!found||!found.msgCO)return null;
+  return found.msgCO.replace(/\[NOME OSPITE\]/gi,(nomeOspite||'').split(' ')[0]);
+}
+function updateDates(){
+  var d=getDay();
+  document.getElementById('fullDate').textContent=d.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('dayLabel').textContent=offset===0?'oggi':offset===1?'domani':offset===-1?'ieri':d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+  var pk=document.getElementById('datePicker');
+  if(pk)pk.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function pickDate(val){if(!val)return;var p=val.split('-').map(Number);offset=Math.round((new Date(p[0],p[1]-1,p[2])-TODAY)/86400000);dashOffset=offset;updateDates();renderAll();}
+function changeDay(n){offset+=n;dashOffset=offset;updateDates();renderAll();}
+function resetDay(){offset=0;dashOffset=0;updateDates();renderAll();}
+function renderAll(){renderKPI();renderDashboard();renderApts();renderPricing();renderIncassi();renderNottiLibere();renderBiancheria();renderNote();}
+
+function renderKPI(){
+  var day=getDay();
+  var ci=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-in']),day);}).length;
+  var co=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),day);}).length;
+  var fr=APTS.filter(function(apt){return !prenotazioni.some(function(r){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;});}).length;
+  document.getElementById('kpiBar').innerHTML='<div class="kpi-item"><div class="kpi-num green">'+ci+'</div><div class="kpi-lbl">&#8592; check-in</div></div><div class="kpi-item"><div class="kpi-num red">'+co+'</div><div class="kpi-lbl">&#8594; check-out</div></div><div class="kpi-item"><div class="kpi-num '+(fr>0?'warn':'')+'">'+fr+'</div><div class="kpi-lbl">liberi</div></div>';
+}
+
+const STATUS_LABEL={turnover:'Turnover',checkin:'Check-in',checkout:'Check-out',occupied:'Occupato',free:'Libero'};
+const STATUS_CLASS={turnover:'s-turnover',checkin:'s-checkin',checkout:'s-checkout',occupied:'s-occupied',free:'s-free'};
+function renderApts(){
+  var day=getDay();var ORDER={turnover:0,checkin:1,checkout:2,occupied:3,free:4};
+  var list=APTS.map(function(apt){
+    var hasCI=prenotazioni.some(function(r){return matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-in']),day);});
+    var hasCO=prenotazioni.some(function(r){return matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-out']),day);});
+    var status;
+    if(hasCI&&hasCO)status='turnover';else if(hasCI)status='checkin';else if(hasCO)status='checkout';
+    else status=prenotazioni.some(function(r){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;})?'occupied':'free';
+    return{apt:apt,status:status,order:ORDER[status]!=null?ORDER[status]:9};
+  }).sort(function(a,b){return a.order-b.order;});
+  document.getElementById('aptGrid').innerHTML=list.map(function(item,idx){
+    var apt=item.apt,status=item.status;
+    var ciRec=prenotazioni.find(function(r){return matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-in']),day);});
+    var coRec=prenotazioni.find(function(r){return matchApt(r['Appartamento'],apt.name)&&sameDay(parseDate(r['Check-out']),day);});
+    var ai=getCostiPulizie(apt.name,2);
+    var rows='';
+    if(ciRec)rows+=aptRow('&#8592;','Check-in',(ciRec['Nome Ospite']||'\u2014')+' &mdash; '+(ciRec['N. Ospiti Adulti']||'?')+' adulti');
+    if(coRec)rows+=aptRow('&#8594;','Check-out',(coRec['Nome Ospite']||'\u2014')+' &mdash; '+(coRec['N. Ospiti Adulti']||'?')+' adulti');
+    if(status==='occupied'&&!ciRec&&!coRec){
+      var ar=prenotazioni.find(function(r){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;});
+      if(ar){var fd=function(d){return d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}):'?';};rows+=aptRow('&#9679;','Ospiti',(ar['Nome Ospite']||'\u2014')+' &mdash; '+(ar['N. Ospiti Adulti']||'?')+' adulti');rows+=aptRow('&#8596;','Periodo',fd(parseDate(ar['Check-in']))+' \u2192 '+fd(parseDate(ar['Check-out'])));}
+      else rows+=aptRow('&#9679;','Stato','<span class="muted">Ospiti presenti</span>');
+    }
+    if(status==='free')rows+=aptRow('&#9675;','Stato','<span class="muted">Nessuna prenotazione</span>');
+    var badge=status==='turnover'?'<span class="status-badge s-turnover" style="font-weight:700;box-shadow:0 0 0 2px rgba(42,75,122,0.3)">&#9650; TURNOVER</span>':'<span class="status-badge '+STATUS_CLASS[status]+'">'+STATUS_LABEL[status]+'</span>';
+    return '<div class="apt-card '+apt.cls+'" style="animation-delay:'+(idx*.05)+'s'+(status==='turnover'?';box-shadow:0 4px 20px rgba(42,75,122,0.15);border-color:rgba(42,75,122,0.3)':'')+'">'+'<div class="apt-card-top"><div><div class="apt-name"><span class="apt-dot '+apt.dot+'"></span>'+apt.name+'</div><div class="apt-sub">'+apt.sub+'</div></div>'+badge+'</div>'+'<div class="apt-body">'+(rows||'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun evento oggi</span>')+'</div>'+'<div class="apt-footer"><span>&#9775; '+ai.persona+'</span></div></div>';
+  }).join('');
+}
+function aptRow(icon,lbl,val){return '<div class="apt-row"><span class="apt-row-icon">'+icon+'</span><span class="apt-row-lbl">'+lbl+'</span><span class="apt-row-val">'+val+'</span></div>';}
+
+function renderPricing(){
+  document.getElementById('pricingBody').innerHTML=APTS.map(function(apt){var ok=!!approved[apt.name];return '<tr><td>'+apt.name+'</td><td>\u2014</td><td>\u2014</td><td style="color:var(--text3)">aggiorna nel Sheet</td><td style="font-size:11px;color:var(--text3)">vedi tab Pricing</td><td><button class="approv-btn '+(ok?'approved':'')+'" onclick="toggleApprove(\''+apt.name+'\',this)">'+(ok?'&#10003; ok':'Approva')+'</button></td></tr>';}).join('');
+  document.getElementById('festGrid').innerHTML=FESTIVITA.map(function(f){return '<div class="fest-card"><div class="fest-date">'+f.data+'</div><div class="fest-name">'+f.nome+'</div><div class="fest-mult">'+f.mult+'</div></div>';}).join('');
+}
+function toggleApprove(name,btn){approved[name]=!approved[name];btn.className='approv-btn '+(approved[name]?'approved':'');btn.innerHTML=approved[name]?'&#10003; ok':'Approva';}
+
+// ── NOTTI LIBERE ──────────────────────────────────────────────
+function nlIsFree(aptName,d){
+  return !prenotazioni.some(function(r){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],aptName)&&c1&&c2&&d>=c1&&d<c2;});
+}
+function nlToggleApt(apt){
+  if(apt==='tutti')nlFilterApts=[];
+  else{var idx=nlFilterApts.indexOf(apt);if(idx===-1)nlFilterApts.push(apt);else nlFilterApts.splice(idx,1);}
+  renderNottiLibere();
+}
+function nlToggleAptDropdown(){
+  var menu=document.getElementById('nlAptDropdownMenu');if(!menu)return;
+  var isOpen=menu.style.display!=='none';
+  menu.style.display=isOpen?'none':'block';
+  if(!isOpen){setTimeout(function(){document.addEventListener('click',function h(e){if(!e.target.closest('#nlAptDropdownMenu')&&!e.target.closest('#nlAptDropdownBtn')){menu.style.display='none';document.removeEventListener('click',h);}});},10);}
+}
+function nlSetMonth(val){nlMonth=val;renderNottiLibere();}
+function nlShowInfo(aptName,dateStr){
+  var p=dateStr.split('-').map(Number);
+  var startD=new Date(p[0],p[1]-1,p[2]);
+  var endD=new Date(startD);
+  var scan=new Date(startD);
+  var guard=0;
+  while(guard<120){
+    if(!nlIsFree(aptName,scan))break;
+    endD=new Date(scan);
+    scan.setDate(scan.getDate()+1);
+    guard++;
+  }
+  var nNotti=Math.round((endD-startD)/86400000)+1;
+  var fmtD=function(d){return d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});};
+  var testo=aptName+': libero dal '+fmtD(startD)+' al '+fmtD(endD)+' ('+nNotti+' nott'+(nNotti===1?'e':'i')+')';
+  var box=document.getElementById('nlInfoBox');
+  if(!box)return;
+  box.style.display='flex';
+  box.innerHTML='<span>'+testo+'</span><button class="nl-info-copy" onclick="nlCopyInfo(this)" data-text="'+testo.replace(/"/g,'&quot;')+'">&#128203; Copia</button>';
+}
+function nlCopyInfo(btn){
+  var text=btn.getAttribute('data-text');
+  navigator.clipboard.writeText(text).then(function(){btn.innerHTML='&#10003; Copiato';setTimeout(function(){btn.innerHTML='&#128203; Copia';},1500);});
+}
+function renderNottiLibere(){
+  var container=document.getElementById('nottiLibereContent');if(!container)return;
+  var mp=nlMonth.split('-').map(Number);
+  var monthYear=mp[0],monthIdx=mp[1]-1;
+  var daysInMonth=new Date(monthYear,monthIdx+1,0).getDate();
+  var days=[];
+  for(var i=0;i<daysInMonth;i++){days.push(new Date(monthYear,monthIdx,i+1));}
+
+  var aptsDisp=APTS.filter(function(a){return nlFilterApts.length===0||nlFilterApts.indexOf(a.name)!==-1;});
+
+  var freeMap={};
+  APTS.forEach(function(apt){
+    freeMap[apt.name]=days.map(function(d){return nlIsFree(apt.name,d);});
+  });
+
+  var highlightMap={};
+  if(nlMinConsec>0){
+    APTS.forEach(function(apt){
+      var arr=freeMap[apt.name];
+      var hl=arr.map(function(){return false;});
+      var runStart=-1;
+      for(var j=0;j<=arr.length;j++){
+        if(j<arr.length&&arr[j]){if(runStart===-1)runStart=j;}
+        else{
+          if(runStart!==-1){
+            var runLen=j-runStart;
+            if(runLen>=nlMinConsec){for(var k=runStart;k<j;k++)hl[k]=true;}
+          }
+          runStart=-1;
+        }
+      }
+      highlightMap[apt.name]=hl;
+    });
   }
 
-  var isDocumentRequest = req.mode === 'navigate' || req.destination === 'document';
+  var occStats=aptsDisp.map(function(apt){
+    var arr=freeMap[apt.name];
+    var freeCount=arr.reduce(function(s,v){return s+(v?1:0);},0);
+    var occCount=arr.length-freeCount;
+    var pct=arr.length?Math.round((occCount/arr.length)*100):0;
+    return{apt:apt,pct:pct,occCount:occCount,totNotti:arr.length};
+  });
+  var occAvg=occStats.length?Math.round(occStats.reduce(function(s,o){return s+o.pct;},0)/occStats.length):0;
 
-  if (isDocumentRequest) {
-    // Network-first SOLO per la pagina principale: prova sempre la rete per prima,
-    // così ogni apertura mostra automaticamente l'ultima versione pubblicata, senza
-    // bisogno di pulire la cache a mano. Se sei offline, usa l'ultima copia in cache.
-    event.respondWith(
-      fetch(req).then(function(res) {
-        if (res && res.status === 200) {
-          var resClone = res.clone();
-          caches.open(CACHE_NAME).then(function(cache){ cache.put(req, resClone); });
-        }
-        return res;
-      }).catch(function(){ return caches.match(req); })
-    );
-    return;
+  var dayHeads=days.map(function(d){
+    var isWeekend=d.getDay()===0||d.getDay()===6;
+    var dow=d.toLocaleDateString('it-IT',{weekday:'short'}).replace('.','');
+    return '<th class="nl-day-head'+(isWeekend?' weekend':'')+'"><span class="nl-dow">'+dow+'</span><span class="nl-num">'+d.getDate()+'</span></th>';
+  }).join('');
+
+  var rows=aptsDisp.map(function(apt){
+    var arr=freeMap[apt.name];
+    var hl=highlightMap[apt.name];
+    var cells=days.map(function(d,i){
+      var isFree=arr[i];
+      var cls='nl-cell '+(isFree?'free':'busy')+((hl&&hl[i])?' highlight':'');
+      var dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      var click=isFree?' onclick="nlShowInfo(\''+apt.name+'\',\''+dateStr+'\')"':'';
+      return '<td class="'+cls+'"'+click+'></td>';
+    }).join('');
+    return '<tr><td class="nl-apt-col"><span class="apt-dot '+apt.dot+'"></span>'+apt.name+'</td>'+cells+'</tr>';
+  }).join('');
+
+  var monthOpts='';
+  var selectedMonthLbl='';
+  for(var mo=-1;mo<12;mo++){
+    var md=new Date(TODAY.getFullYear(),TODAY.getMonth()+mo,1);
+    var mv=md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0');
+    var mlbl=md.toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+    mlbl=mlbl.charAt(0).toUpperCase()+mlbl.slice(1);
+    if(nlMonth===mv)selectedMonthLbl=mlbl;
+    monthOpts+='<option value="'+mv+'" '+(nlMonth===mv?'selected':'')+'>'+mlbl+'</option>';
   }
 
-  // Icone e manifest cambiano raramente: qui manteniamo cache-first per velocità.
-  event.respondWith(
-    caches.match(req).then(function(cached) {
-      var networkFetch = fetch(req).then(function(res) {
-        if (res && res.status === 200) {
-          var resClone = res.clone();
-          caches.open(CACHE_NAME).then(function(cache){ cache.put(req, resClone); });
-        }
-        return res;
-      }).catch(function(){ return cached; });
-      return cached || networkFetch;
+  var nlAptNames=['tutti'].concat(APTS.map(function(a){return a.name;}));
+  window._nlAptNames=nlAptNames;
+  var dropLblNl=nlFilterApts.length===0?'Tutti gli appartamenti':nlFilterApts.length===1?nlFilterApts[0]:nlFilterApts.length+' selezionati';
+  var dropItemsNl=nlAptNames.map(function(a,idx){
+    var isSel=a==='tutti'?nlFilterApts.length===0:nlFilterApts.indexOf(a)!==-1;
+    var lbl=a==='tutti'?'Tutti gli appartamenti':a;
+    var chk=isSel?'<span style="color:var(--accent);font-size:14px">&#10003;</span>':'<span style="width:14px;display:inline-block"></span>';
+    var bg=isSel&&a!=='tutti'?'var(--accent-light)':'transparent';
+    return '<div onclick="nlToggleApt(window._nlAptNames['+idx+'])" style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text);background:'+bg+';border-bottom:'+(a==='tutti'?'1px solid var(--border)':'none')+'" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\''+bg+'\'">'+chk+'<span>'+lbl+'</span></div>';
+  }).join('');
+
+  document.getElementById('nlInfoBox') && (document.getElementById('nlInfoBox').style.display='none');
+
+  container.innerHTML=
+    '<div class="nl-info-box" id="nlInfoBox"></div>'
+    +'<div class="nl-filter-bar">'
+    +'<label style="font-size:12px;color:var(--text3)">Mese:</label>'
+    +'<select onchange="nlSetMonth(this.value)" style="font-size:13px;font-weight:500;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;outline:none">'+monthOpts+'</select>'
+    +'<label style="margin-left:12px;font-size:12px;color:var(--text3)">Appartamento:</label>'
+    +'<div style="position:relative;display:inline-block"><button onclick="nlToggleAptDropdown()" id="nlAptDropdownBtn" style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:'+(nlFilterApts.length>0?'var(--accent)':'var(--surface)')+';color:'+(nlFilterApts.length>0?'#fff':'var(--text)')+';cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between"><span>'+dropLblNl+'</span><span style="font-size:10px;opacity:.7">\u25bc</span></button><div id="nlAptDropdownMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:200;min-width:240px;padding:4px 0;max-height:300px;overflow-y:auto">'+dropItemsNl+'</div></div>'
+    +'<label style="margin-left:12px;font-size:12px;color:var(--text3)">Min. notti consec.:</label>'
+    +'<select onchange="nlMinConsec=parseInt(this.value);renderNottiLibere()" style="font-size:12px;padding:6px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;outline:none">'
+    +'<option value="0" '+(nlMinConsec===0?'selected':'')+'>Tutte</option>'
+    +'<option value="2" '+(nlMinConsec===2?'selected':'')+'>2+ notti</option>'
+    +'<option value="3" '+(nlMinConsec===3?'selected':'')+'>3+ notti</option>'
+    +'<option value="5" '+(nlMinConsec===5?'selected':'')+'>5+ notti</option>'
+    +'</select>'
+    +'</div>'
+    +'<div class="nl-grid-wrap"><table class="nl-grid"><thead><tr><th class="nl-apt-col" style="background:var(--bg)"></th>'+dayHeads+'</tr></thead><tbody>'+(rows||'')+'</tbody></table></div>'
+    +'<div class="nl-legend"><span><span class="nl-legend-dot" style="background:var(--green)"></span>Libera</span><span><span class="nl-legend-dot" style="background:var(--red)"></span>Prenotata</span>'+(nlMinConsec>0?'<span><span class="nl-legend-dot" style="background:#145C2A;box-shadow:inset 0 0 0 2px #fff"></span>\u2265'+nlMinConsec+' notti consecutive</span>':'')+'</div>'
+    +'<div class="nl-occ-section">'
+    +'<div class="nl-occ-avg-box"><div class="nl-occ-avg-num">'+occAvg+'%</div><div class="nl-occ-avg-lbl">occupazione media \u2014 '+selectedMonthLbl+'</div></div>'
+    +occStats.map(function(o){
+      return '<div class="nl-occ-row"><span class="nl-occ-label"><span class="apt-dot '+o.apt.dot+'"></span>'+o.apt.name+'</span>'
+        +'<div class="nl-occ-bar-wrap"><div class="nl-occ-bar-fill" style="width:'+o.pct+'%"></div></div>'
+        +'<span class="nl-occ-pct">'+o.pct+'%</span></div>';
+    }).join('')
+    +'</div>';
+}
+
+// ── INCASSI ───────────────────────────────────────────────────
+var incassiFilterMese='tutti',incassiFilterApt='tutti';
+function toggleIncassiNote(){
+  var box=document.getElementById('incassi-note');
+  if(!box)return;
+  box.style.display=box.style.display==='none'?'block':'none';
+}
+function renderIncassi(){
+  var c=document.getElementById('incassiContent');if(!c)return;
+  var prenoValide=prenotazioni.filter(function(r){return r['Appartamento']&&r['Prezzo Lordo (\u20ac)']&&r['Check-in']&&parseEur(r['Prezzo Lordo (\u20ac)'])>0;});
+  var mesiSet=new Set();
+  prenoValide.forEach(function(r){var d=parseDate(r['Check-in']);if(d)mesiSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));});
+  var mesiList=Array.from(mesiSet).sort();
+  var aptsList=Array.from(new Set(prenoValide.map(function(r){return r['Appartamento'];}))).sort();
+  var meseOpts=mesiList.map(function(m){var p=m.split('-');var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return '<option value="'+m+'" '+(incassiFilterMese===m?'selected':'')+'>'+lbl+'</option>';}).join('');
+  var aptOpts=aptsList.map(function(a){return '<option value="'+a+'" '+(incassiFilterApt===a?'selected':'')+'>'+a+'</option>';}).join('');
+
+  var filtered=prenoValide;
+  if(incassiFilterMese!=='tutti'){
+    var fp=incassiFilterMese.split('-').map(Number);
+    filtered=filtered.filter(function(r){var d=parseDate(r['Check-in']);return d&&d.getFullYear()===fp[0]&&d.getMonth()===fp[1]-1;});
+  }
+  if(incassiFilterApt!=='tutti')filtered=filtered.filter(function(r){return matchApt(r['Appartamento'],incassiFilterApt);});
+
+  var rows=filtered.map(function(r){var ci=calcIncasso(r);return{r:r,lordo:ci.lordo,netto:ci.netto,pulizia:ci.pulizia,lavanderia:ci.lavanderia,servizi:ci.servizi,finale:ci.finale};});
+  var totLordo=rows.reduce(function(s,x){return s+x.lordo;},0);
+  var totNetto=rows.reduce(function(s,x){return s+x.netto;},0);
+  var totServ=rows.reduce(function(s,x){return s+x.servizi;},0);
+
+  var mesiPerApt={};
+  rows.forEach(function(x){
+    var apt=x.r['Appartamento']||'';
+    var d=parseDate(x.r['Check-in']);
+    if(!d||!apt)return;
+    if(!mesiPerApt[apt])mesiPerApt[apt]=new Set();
+    mesiPerApt[apt].add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  });
+
+  var byApt={};
+  rows.forEach(function(x){
+    var apt=x.r['Appartamento']||'\u2014';
+    if(!byApt[apt])byApt[apt]={lordo:0,netto:0,pulizia:0,lavanderia:0,servizi:0,finale:0,n:0};
+    byApt[apt].lordo+=x.lordo;byApt[apt].netto+=x.netto;
+    byApt[apt].pulizia+=x.pulizia;byApt[apt].lavanderia+=x.lavanderia;
+    byApt[apt].servizi+=x.servizi;byApt[apt].finale+=x.finale;byApt[apt].n+=1;
+  });
+
+  var totCostiFissi=0;
+  Object.keys(byApt).forEach(function(apt){
+    var numMesi=mesiPerApt[apt]?mesiPerApt[apt].size:1;
+    var cf=getCostiFissi(apt);
+    byApt[apt].costiFissiTot=cf.totale*numMesi;
+    byApt[apt].costiFissiDettaglio=cf.dettaglio;
+    byApt[apt].costiFissiNumMesi=numMesi;
+    var baseNetto=byApt[apt].finale-byApt[apt].costiFissiTot;
+    byApt[apt].finaleNetto=isEnea(apt)?baseNetto*0.50:baseNetto;
+    totCostiFissi+=byApt[apt].costiFissiTot;
+  });
+
+  var totFinale=Object.values(byApt).reduce(function(s,v){return s+v.finaleNetto;},0);
+
+  var rowsGraf=incassiFilterApt==='tutti'
+    ?prenoValide.map(function(r){var ci=calcIncasso(r);return{r:r,finale:ci.finale,lordo:ci.lordo};})
+    :prenoValide.filter(function(r){return matchApt(r['Appartamento'],incassiFilterApt);}).map(function(r){var ci=calcIncasso(r);return{r:r,finale:ci.finale,lordo:ci.lordo};});
+
+  var byMeseGraf={};
+  var mesiPerAptGraf={};
+  rowsGraf.forEach(function(x){
+    var apt=x.r['Appartamento']||'';
+    var d=parseDate(x.r['Check-in']);if(!d||!apt)return;
+    var mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(!mesiPerAptGraf[apt])mesiPerAptGraf[apt]=new Set();
+    mesiPerAptGraf[apt].add(mk);
+    if(!byMeseGraf[mk])byMeseGraf[mk]={finale:0,costi:0};
+    byMeseGraf[mk].finale+=x.finale;
+  });
+  Object.keys(mesiPerAptGraf).forEach(function(apt){
+    var cf=getCostiFissi(apt);
+    if(cf.totale===0)return;
+    mesiPerAptGraf[apt].forEach(function(mk){
+      if(byMeseGraf[mk])byMeseGraf[mk].costi+=cf.totale;
+    });
+  });
+  var mesiGraf=Object.keys(byMeseGraf).sort();
+
+  var meseLabel=incassiFilterMese==='tutti'?'Tutti i periodi':(function(){var p=incassiFilterMese.split('-');return new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});})();
+
+  var LABEL_OFFSET=60,BAR_W=64,BAR_GAP=24,CHART_H=180,LABEL_H=40,TOP_PAD=30;
+  var maxVal=mesiGraf.reduce(function(m,k){return Math.max(m,byMeseGraf[k].finale-byMeseGraf[k].costi);},0)||1;
+  var svgW=Math.max(500,mesiGraf.length*(BAR_W+BAR_GAP)+BAR_GAP+LABEL_OFFSET);
+  var guides=[.25,.5,.75,1].map(function(p){
+    var y=CHART_H-(p*(CHART_H-TOP_PAD));
+    return '<line x1="'+LABEL_OFFSET+'" y1="'+y+'" x2="'+svgW+'" y2="'+y+'" stroke="#EDF4F9" stroke-width="1"/><text x="'+(LABEL_OFFSET+4)+'" y="'+(y-3)+'" font-size="9" fill="#BFCFDA" font-family="DM Sans,Arial,sans-serif">'+fmtEur(maxVal*p)+'</text>';
+  }).join('');
+  var bars=mesiGraf.map(function(mk,i){
+    var v=byMeseGraf[mk];
+    var finaleNetto=v.finale-v.costi;
+    var x=LABEL_OFFSET+BAR_GAP+i*(BAR_W+BAR_GAP);
+    var barH=Math.max(4,(finaleNetto/maxVal)*(CHART_H-TOP_PAD));
+    var y=CHART_H-barH;
+    var p=mk.split('-');
+    var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'short',year:'2-digit'});
+    return '<rect x="'+x+'" y="'+y+'" width="'+BAR_W+'" height="'+barH+'" rx="6" fill="#0D5A8E" opacity="0.85"/>'
+      +'<text x="'+(x+BAR_W/2)+'" y="'+(y-6)+'" text-anchor="middle" font-size="11" font-weight="600" fill="#2A7A4F" font-family="DM Sans,Arial,sans-serif">'+fmtEur(finaleNetto)+'</text>'
+      +'<text x="'+(x+BAR_W/2)+'" y="'+(CHART_H+18)+'" text-anchor="middle" font-size="11" fill="#7299B0" font-family="DM Sans,Arial,sans-serif">'+lbl+'</text>';
+  }).join('');
+  var svgGraf=mesiGraf.length===0
+    ?'<div style="padding:32px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun dato.</div>'
+    :'<div class="chart-bars-wrap"><svg viewBox="0 0 '+svgW+' '+(CHART_H+LABEL_H)+'" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;min-width:'+svgW+'px;height:auto">'+guides+bars+'</svg></div>';
+
+  var aptRows=Object.entries(byApt).sort(function(a,b){return b[1].finaleNetto-a[1].finaleNetto;}).map(function(e){
+    var apt=e[0],v=e[1];
+    var domus=isDomus(apt);
+    var servStr=domus?'\u2014 (accordo Elda)':fmtEur(v.pulizia)+' pul. + '+fmtEur(v.lavanderia)+' lav.';
+    var costiStr=v.costiFissiDettaglio||'\u2014';
+    var costiLabel=v.costiFissiTot>0?fmtEur(v.costiFissiTot):'\u2014';
+    return '<tr>'
+      +'<td style="font-weight:500">'+apt+'</td>'
+      +'<td style="text-align:center;color:var(--text3)">'+v.n+'</td>'
+      +'<td class="val-lordo">'+fmtEur(v.lordo)+'</td>'
+      +'<td class="val-netto">'+fmtEur(v.netto)+'</td>'
+      +'<td style="font-size:11px;color:var(--amber)">'+servStr+'</td>'
+      +'<td style="font-size:11px;color:var(--red)">'+costiLabel+'</td>'
+      +'<td class="val-finale" style="font-size:15px">'+fmtEur(v.finaleNetto)+'</td>'
+      +'</tr>';
+  }).join('');
+
+  c.innerHTML=
+    '<div class="incassi-filter-bar">'
+    +'<label>Periodo:</label>'
+    +'<select onchange="incassiFilterMese=this.value;renderIncassi()">'
+    +'<option value="tutti" '+(incassiFilterMese==='tutti'?'selected':'')+'>Tutti i mesi</option>'+meseOpts
+    +'</select>'
+    +'<label style="margin-left:8px">Appartamento:</label>'
+    +'<select onchange="incassiFilterApt=this.value;renderIncassi()">'
+    +'<option value="tutti" '+(incassiFilterApt==='tutti'?'selected':'')+'>Tutti</option>'+aptOpts
+    +'</select>'
+    +'</div>'
+
+    +'<div class="incassi-kpi">'
+    +'<div class="incassi-kpi-card"><div class="incassi-kpi-num">'+fmtEur(totLordo)+'</div><div class="incassi-kpi-lbl">Totale lordo</div></div>'
+    +'<div class="incassi-kpi-card netto"><div class="incassi-kpi-num">'+fmtEur(totNetto)+'</div><div class="incassi-kpi-lbl">Totale netto</div></div>'
+    +'<div class="incassi-kpi-card servizi"><div class="incassi-kpi-num">'+fmtEur(totServ)+'</div><div class="incassi-kpi-lbl">Servizi pulizie</div></div>'
+    +'<div class="incassi-kpi-card costi"><div class="incassi-kpi-num">'+fmtEur(totCostiFissi)+'</div><div class="incassi-kpi-lbl">Affitti e spese</div></div>'
+    +'<div class="incassi-kpi-card finale"><div class="incassi-kpi-num">'+fmtEur(totFinale)+'</div><div class="incassi-kpi-lbl">Incasso finale</div></div>'
+    +'</div>'
+
+    +'<div style="margin-bottom:18px">'
+    +'<button class="incassi-note-toggle" onclick="toggleIncassiNote()">&#9432; Come vengono calcolati gli importi &#9660;</button>'
+    +'<div id="incassi-note" class="incassi-note-box">'
+    +'<strong style="color:var(--text2)">Domus Pulchra</strong> \u2192 incasso finale = 15% del lordo (accordo Elda, servizi inclusi, indipendente da piattaforma)<br>'
+    +'<strong style="color:var(--text2)">Altre case</strong> \u2192 netto = lordo \u2212 commissione (Booking \u221220%, Airbnb \u221215%, Diretta 0%) \u2192 incasso finale = netto \u2212 pulizia \u2212 lavanderia \u2212 affitti e spese<br>'
+    +'<strong style="color:var(--text2)">Enea</strong>: lavanderia = tariffa/ospite \u00d7 n. ospiti (decurtata dall\'incasso ma esclusa dal compenso Giulia)<br>'
+    +'<strong style="color:var(--text2)">Affitti e spese</strong>: costo fisso mensile per Mare (\u20ac860), Putignani (\u20ac1.855) e Piccinni (\u20ac2.075). Se il filtro \u00e8 su un mese specifico si decurta un mese; se \u00e8 su tutti i mesi si moltiplica per il numero di mesi presenti nei dati'
+    +'</div></div>'
+
+    +'<div class="section-label" style="margin-top:0">Riepilogo per appartamento \u2014 '+meseLabel+'</div>'
+    +'<table class="incassi-tbl">'
+    +'<thead><tr>'
+    +'<th>Appartamento</th>'
+    +'<th style="text-align:center">Prenot.</th>'
+    +'<th>Lordo</th>'
+    +'<th>Netto</th>'
+    +'<th>Servizi pulizie</th>'
+    +'<th>Affitti e spese</th>'
+    +'<th>Incasso finale</th>'
+    +'</tr></thead>'
+    +'<tbody>'+(aptRows||'<tr><td colspan="7" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato.</td></tr>')+'</tbody>'
+    +'<tfoot><tr>'
+    +'<td>Totale</td>'
+    +'<td style="text-align:center">'+rows.length+'</td>'
+    +'<td>'+fmtEur(totLordo)+'</td>'
+    +'<td>'+fmtEur(totNetto)+'</td>'
+    +'<td>'+fmtEur(totServ)+'</td>'
+    +'<td>'+fmtEur(totCostiFissi)+'</td>'
+    +'<td>'+fmtEur(totFinale)+'</td>'
+    +'</tr></tfoot>'
+    +'</table>'
+
+    +'<div class="incassi-chart-section">'
+    +'<div class="incassi-chart-title">&#128202; Incasso finale per mese'+(incassiFilterApt!=='tutti'?' \u00b7 '+incassiFilterApt:'')+'</div>'
+    +svgGraf
+    +'</div>';
+}
+
+// ── PULIZIE ───────────────────────────────────────────────────
+function lettiDaPreparare(aptName,numOspiti){var letti=LETTI_APT[aptName]||[];var n=parseInt(numOspiti)||2;if(n<=2)return letti.slice(0,1);if(n<=4)return letti.slice(0,2);return letti;}
+function toggleAptFilter(apt){if(!window._filterApts)window._filterApts=[];if(apt==='tutti')window._filterApts=[];else{var idx=window._filterApts.indexOf(apt);if(idx===-1)window._filterApts.push(apt);else window._filterApts.splice(idx,1);}renderPulizie();}
+
+function renderPulizie(){
+  var container=document.getElementById('pulizieContent');if(!container)return;
+  var filterMese=document.getElementById('filterMese')?document.getElementById('filterMese').value:'tutti';
+  var filterMode=document.getElementById('filterMode')?document.getElementById('filterMode').value:'tutti';
+  var filterDal=document.getElementById('filterDal')?document.getElementById('filterDal').value:'';
+  var filterAl=document.getElementById('filterAl')?document.getElementById('filterAl').value:'';
+  var filterApts=window._filterApts||[];
+  var checkouts=prenotazioni.filter(function(r){return r['Appartamento']&&r['Check-out']&&r['Nome Ospite'];}).map(function(r){
+    var apt=r['Appartamento'],ospiti=parseInt(r['N. Ospiti Adulti'])||2;
+    var coDate=parseDate(r['Check-out']);
+    var ai=getCostiPulizie(apt,ospiti);
+    var comp=getCompenso(apt,ospiti);
+    return{apt:apt,coDate:coDate,ospiti:ospiti,persona:ai.persona,phone:ai.phone,pulizia:ai.pulizia,lavanderia:ai.lavanderia,compenso:comp.compenso,dettaglio:comp.dettaglio,nomeOspite:r['Nome Ospite']||'\u2014',letti:lettiDaPreparare(apt,ospiti),nextGuest:null,nextGuestOspiti:0,nextCiDate:null,lettiNext:[]};
+  }).filter(function(r){return r.coDate;}).sort(function(a,b){return a.coDate-b.coDate;});
+  checkouts.forEach(function(co){
+    var next=prenotazioni.filter(function(r){return matchApt(r['Appartamento'],co.apt)&&parseDate(r['Check-in'])>=co.coDate&&r['Nome Ospite'];}).sort(function(a,b){return parseDate(a['Check-in'])-parseDate(b['Check-in']);})[0];
+    if(next){co.nextGuest=next['Nome Ospite']||'\u2014';co.nextGuestOspiti=parseInt(next['N. Ospiti Adulti'])||2;co.nextCiDate=parseDate(next['Check-in']);co.lettiNext=lettiDaPreparare(co.apt,next['N. Ospiti Adulti']);co.letti=co.lettiNext;}
+  });
+  var mesi=Array.from(new Set(checkouts.map(function(r){return r.coDate.getFullYear()+'-'+String(r.coDate.getMonth()+1).padStart(2,'0');}))).sort();
+  var mesiOpts=mesi.map(function(m){var p=m.split('-');var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return '<option value="'+m+'" '+(filterMese===m?'selected':'')+'>'+lbl+'</option>';}).join('');
+  var filtered;
+  if(filterMode==='mese')filtered=filterMese==='tutti'?checkouts:checkouts.filter(function(r){var p=filterMese.split('-');return r.coDate.getFullYear()===+p[0]&&r.coDate.getMonth()===+p[1]-1;});
+  else if(filterMode==='range'&&filterDal){var dal=new Date(filterDal),al=filterAl?new Date(filterAl):new Date('2099-12-31');al.setHours(23,59,59);filtered=checkouts.filter(function(r){return r.coDate>=dal&&r.coDate<=al;});}
+  else filtered=checkouts;
+  var appsDisp=Array.from(new Set(checkouts.map(function(r){return r.apt;}))).sort();
+  window._aptPillNames=['tutti'].concat(appsDisp);
+  var filteredApt=filterApts.length===0?filtered:filtered.filter(function(r){return filterApts.indexOf(r.apt)!==-1;});
+  var totComp=filteredApt.reduce(function(s,r){return s+r.compenso;},0);
+  var totPul=filteredApt.reduce(function(s,r){return s+r.pulizia;},0);
+  var totLav=filteredApt.reduce(function(s,r){return s+(isEnea(r.apt)?0:r.lavanderia);},0);
+  var dropLbl=filterApts.length===0?'Tutti':filterApts.length===1?filterApts[0]:filterApts.length+' selezionati';
+  var dropItems=window._aptPillNames.map(function(a,idx){
+    var isSel=a==='tutti'?filterApts.length===0:filterApts.indexOf(a)!==-1;
+    var lbl=a==='tutti'?'Tutti gli appartamenti':a;
+    var chk=isSel?'<span style="color:var(--accent);font-size:14px">&#10003;</span>':'<span style="width:14px;display:inline-block"></span>';
+    return '<div onclick="toggleAptFilter(window._aptPillNames['+idx+'])" style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text);background:'+(isSel&&a!=='tutti'?'var(--accent-light)':'transparent')+';border-bottom:'+(a==='tutti'?'1px solid var(--border)':'none')+'" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\''+(isSel&&a!=='tutti'?'var(--accent-light)':'transparent')+'\'">'+chk+'<span>'+lbl+'</span></div>';
+  }).join('');
+  var html='<div class="filter-bar"><label>Periodo:</label><select id="filterMode" onchange="renderPulizie()"><option value="tutti" '+(filterMode==='tutti'?'selected':'')+'>Tutti</option><option value="mese" '+(filterMode==='mese'?'selected':'')+'>Per mese</option><option value="range" '+(filterMode==='range'?'selected':'')+'>Intervallo date</option></select>'
+  +(filterMode==='mese'?'<select id="filterMese" onchange="renderPulizie()"><option value="tutti" '+(filterMese==='tutti'?'selected':'')+'>Tutti i mesi</option>'+mesiOpts+'</select>':'')
+  +(filterMode==='range'?'<label style="margin-left:8px">Dal</label><input type="date" id="filterDal" value="'+filterDal+'" onchange="renderPulizie()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;"><label>al</label><input type="date" id="filterAl" value="'+filterAl+'" onchange="renderPulizie()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;">'+(filterDal?'<button onclick="document.getElementById(\'filterDal\').value=\'\';document.getElementById(\'filterAl\').value=\'\';renderPulizie()" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit;">&#10005; Reset</button>':''):'')
+  +'<label style="margin-left:12px">Appartamento:</label><div style="position:relative;display:inline-block"><button onclick="toggleAptDropdown()" id="aptDropdownBtn" style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:'+(filterApts.length>0?'var(--accent)':'var(--surface)')+';color:'+(filterApts.length>0?'#fff':'var(--text)')+';cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:140px;justify-content:space-between"><span>'+dropLbl+'</span><span style="font-size:10px;opacity:.7">\u25bc</span></button><div id="aptDropdownMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:200;min-width:240px;padding:4px 0;max-height:300px;overflow-y:auto">'+dropItems+'</div></div>'
+  +'<button class="planning-btn" onclick="openPlanningModal()">&#128203; Planning</button>'
+  +'<button class="planning-btn" onclick="exportPuliziePDF()" style="margin-left:6px">&#128196; PDF</button></div>'
+  +'<div class="riepilogo-box"><div class="riepilogo-item"><div class="riepilogo-num">'+filteredApt.length+'</div><div class="riepilogo-lbl">interventi</div></div><div class="riepilogo-item"><div class="riepilogo-num">\u20ac'+totPul+'</div><div class="riepilogo-lbl">pulizie</div></div><div class="riepilogo-item"><div class="riepilogo-num">\u20ac'+totLav+'</div><div class="riepilogo-lbl">lavanderia addette</div></div><div class="riepilogo-item"><div class="riepilogo-num">\u20ac'+totComp+'</div><div class="riepilogo-lbl">compenso totale</div></div></div>';
+  var byPersona={};
+  filteredApt.forEach(function(r){if(!byPersona[r.persona])byPersona[r.persona]=[];byPersona[r.persona].push(r);});
+  Object.entries(byPersona).forEach(function(e){
+    var persona=e[0],interventi=e[1];
+    var totC=interventi.reduce(function(s,r){return s+r.compenso;},0);
+    var dot=CLEANER_COLORS[persona]||'#0D5A8E';
+    var fmtD=function(d){return d?d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}):'\u2014';};
+    html+='<div class="cleaner-section"><div class="cleaner-header"><div class="cleaner-name"><span style="width:12px;height:12px;border-radius:50%;background:'+dot+';display:inline-block"></span>'+persona+'</div><div class="cleaner-totals"><span class="cleaner-badge-pill">'+interventi.length+' interventi</span><span class="cleaner-badge-pill tot">compenso \u20ac'+totC+'</span></div></div>'
+    +'<div class="pulizie-table-wrap"><table class="pulizie-table"><thead><tr><th>Check-out</th><th>Appartamento</th><th>Letti</th><th>Prossimo arrivo</th><th>Compenso</th></tr></thead><tbody>'
+    +interventi.map(function(r){return '<tr><td><strong>'+fmtD(r.coDate)+'</strong></td><td><div style="font-weight:500">'+r.apt+'</div></td><td><div class="letti-pills">'+r.letti.map(function(l){return '<span class="letto-pill">'+l+'</span>';}).join('')+'</div></td><td>'+(r.nextGuest?'<div style="font-size:13px">'+r.nextGuest+' \u2014 '+r.nextGuestOspiti+' ospiti</div><div class="periodo-range">&#8594; '+fmtD(r.nextCiDate)+'</div><div class="letti-pills">'+r.lettiNext.map(function(l){return '<span class="letto-pill extra">'+l+'</span>';}).join('')+'</div>':'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun arrivo previsto</span>')+'</td><td><div style="font-weight:600;color:var(--accent)">\u20ac'+r.compenso+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+r.dettaglio+'</div></td></tr>';}).join('')
+    +'</tbody><tfoot><tr><td colspan="4" style="text-align:right;font-weight:500;font-size:12px;color:var(--text3)">Totale '+persona+'</td><td><strong style="color:var(--accent)">\u20ac'+totC+'</strong></td></tr></tfoot></table></div></div>';
+  });
+  if(!filteredApt.length)html+='<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;font-style:italic">Nessun check-out trovato.</div>';
+  container.innerHTML=html;
+}
+
+function toggleAptDropdown(){var menu=document.getElementById('aptDropdownMenu');if(!menu)return;var isOpen=menu.style.display!=='none';menu.style.display=isOpen?'none':'block';if(!isOpen){setTimeout(function(){document.addEventListener('click',function h(e){if(!e.target.closest('#aptDropdownMenu')&&!e.target.closest('#aptDropdownBtn')){menu.style.display='none';document.removeEventListener('click',h);}});},10);}}
+
+function exportPuliziePDF(){
+  var container=document.getElementById('pulizieContent');if(!container)return;
+  var filterApts=window._filterApts||[];
+  var aptLabel=filterApts.length===0?'Tutti gli appartamenti':filterApts.join(', ');
+  var clone=container.cloneNode(true);
+  var fb=clone.querySelector('.filter-bar');if(fb)fb.remove();
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:24px;color:#0D1F2D;}.riepilogo-box{background:#0D5A8E;border-radius:10px;padding:14px 20px;display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px;}.riepilogo-item{text-align:center;}.riepilogo-num{font-size:26px;font-weight:700;color:#fff;line-height:1;}.riepilogo-lbl{font-size:10px;color:rgba(255,255,255,0.65);margin-top:3px;text-transform:uppercase;}.cleaner-section{margin-bottom:28px;}.cleaner-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}.cleaner-name{font-size:17px;font-weight:700;color:#0D1F2D;display:flex;align-items:center;gap:8px;}.cleaner-totals{display:flex;gap:6px;}.cleaner-badge-pill{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;background:#D6EAFA;color:#1A4F7A;}.cleaner-badge-pill.tot{background:#0D5A8E;color:#fff;}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;}th{text-align:left;padding:8px 12px;font-size:10px;font-weight:500;color:#7299B0;text-transform:uppercase;border-bottom:1px solid #D6EAFA;background:#EDF4F9;}td{padding:10px 12px;border-bottom:1px solid #EDF4F9;color:#0D1F2D;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}.letti-pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}.letto-pill{font-size:10px;padding:2px 6px;border-radius:20px;background:#DDF0FB;color:#0D5A8E;}.letto-pill.extra{background:#FDF3E0;color:#A06820;}.periodo-range{font-size:11px;color:#7299B0;margin-top:2px;}.pulizie-table-wrap{overflow:visible;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}tfoot td{font-weight:500;font-size:12px;color:#7299B0;text-align:right;padding:8px 12px;}tfoot strong{color:#0D5A8E;}</style></head><body>'
+  +'<div class="header"><div><h2 style="color:#0D5A8E;margin:0;font-size:20px">&#129529; Riepilogo Pulizie</h2><div style="font-size:12px;color:#7299B0;margin-top:4px">'+aptLabel+'</div></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Visionari 3.0</strong><br>generato il '+new Date().toLocaleDateString('it-IT')+'</div></div>'
+  +clone.innerHTML
+  +'<div class="footer"><span>Visionari 3.0</span><span>generato il '+new Date().toLocaleDateString('it-IT')+'</span></div>'
+  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
+  var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
+}
+
+function getDashDay(){var d=new Date(TODAY);d.setDate(d.getDate()+dashOffset);return d;}
+function renderDashboard(){
+  var c=document.getElementById('dashboardContent');if(!c)return;
+  var day=getDashDay();
+  var ciList=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-in']),day)&&r['Nome Ospite'];});
+  var coList=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),day)&&r['Nome Ospite'];});
+  function gCard(r,type){
+    var nome=r['Nome Ospite']||'\u2014',apt=r['Appartamento']||'\u2014',osp=r['N. Ospiti Adulti']||'?';
+    var phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
+    var isCI=type==='ci';
+    var msg=isCI?(getPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDC4B Welcome to Bari!'):(getCheckoutPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDE0A What time are you checking out?');
+    var cardIdx='dash_'+type+'_'+pClean;waMessages[cardIdx]={msg:msg,phone:pClean};
+    var wa=phone?'<button class="dash-wa-btn '+type+'" onclick="event.stopPropagation();sendWA(\''+cardIdx+'\')">&#128172; '+phone+'</button>':'<button class="dash-wa-btn '+type+'" onclick="event.stopPropagation();sendWA(\''+cardIdx+'\')" style="opacity:.7;border:1px dashed currentColor;background:transparent">&#128172; Invia a...</button>';
+    var nottiStr='';if(isCI){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);if(c1&&c2){var n=Math.round((c2-c1)/86400000);nottiStr='<span style="font-size:11px;color:var(--text3);margin-left:auto">'+n+' nott'+(n===1?'e':'i')+'</span>';}}
+    var noteHtml='';
+    if(isCI){
+      var noteRecs=findNotesFor(apt,day);
+      if(noteRecs.length)noteHtml=noteRecs.map(function(nt){return '<div class="tc-note">&#128221; '+nt.testo+'</div>';}).join('');
+    }
+    return '<div class="dash-card '+type+'"><div class="dash-guest-name">'+nome+'</div><div class="dash-meta" style="display:flex;align-items:center">'+osp+' ospiti \u00b7 '+apt+nottiStr+'</div>'+wa+noteHtml+'</div>';
+  }
+  c.innerHTML='<div class="dash-date-hero"><div class="dash-date-day">'+day.getDate()+'</div><div class="dash-date-weekday">'+day.toLocaleDateString('it-IT',{weekday:'long'})+'</div><div class="dash-date-monthyear">'+day.toLocaleDateString('it-IT',{month:'long',year:'numeric'})+'</div></div>'
+  +'<div class="dash-sections"><div><div class="dash-sec-title ci">&#8592; Check-in <span class="dash-count ci">'+ciList.length+'</span></div>'+(ciList.length?ciList.map(function(r){return gCard(r,'ci');}).join(''):'<div class="dash-empty">Nessun check-in</div>')+'</div>'
+  +'<div><div class="dash-sec-title co">&#8594; Check-out <span class="dash-count co">'+coList.length+'</span></div>'+(coList.length?coList.map(function(r){return gCard(r,'co');}).join(''):'<div class="dash-empty">Nessun check-out</div>')+'</div></div>';
+}
+function sendWA(key){var item=waMessages[key];if(!item)return;navigator.clipboard.writeText(item.msg).then(function(){setTimeout(function(){window.open('https://wa.me/'+item.phone,'_blank');},600);}).catch(function(){window.open('https://wa.me/'+item.phone,'_blank');});}
+function shareWAMsg(key){var item=waMessages[key];if(!item)return;navigator.clipboard.writeText(item.msg).then(function(){setTimeout(function(){window.open('https://wa.me/','_blank');},600);}).catch(function(){window.open('https://wa.me/','_blank');});}
+
+function openPlanningModal(){
+  var today=new Date(TODAY),end=new Date(today);end.setDate(end.getDate()+14);
+  var todayStr=today.toISOString().slice(0,10),endStr=end.toISOString().slice(0,10);
+  var persone=Array.from(new Set(prenotazioni.filter(function(r){return r['Appartamento'];}).map(function(r){return getCostiPulizie(r['Appartamento'],2).persona;}).filter(function(p){return p&&p!=='\u2014';}))).sort();
+  var aptsDisp=Array.from(new Set(prenotazioni.filter(function(r){return r['Appartamento'];}).map(function(r){return r['Appartamento'];}))).sort();
+  document.getElementById('planningModalSub').innerHTML='<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:12px;color:var(--text3);width:70px">&#128197; Periodo</span><input type="date" id="planDal" value="'+todayStr+'" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none"><span style="font-size:12px;color:var(--text3)">\u2192</span><input type="date" id="planAl" value="'+endStr+'" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none"></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:12px;color:var(--text3);width:70px">&#127968; Casa</span><select id="planApt" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px"><option value="tutti">Tutte le case</option>'+aptsDisp.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('')+'</select></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:12px;color:var(--text3);width:70px">&#128100; Persona</span><select id="planPersona" onchange="refreshPlanningRows()" style="font-size:12px;padding:5px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none;cursor:pointer;flex:1;min-width:160px"><option value="tutti">Tutte le persone</option>'+persone.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('')+'</select></div></div><div style="height:1px;background:var(--border);margin:14px 0"></div>';
+  refreshPlanningRows();
+  document.getElementById('planningModal').style.display='flex';
+}
+function refreshPlanningRows(){
+  var dalVal=document.getElementById('planDal')?document.getElementById('planDal').value:'';
+  var alVal=document.getElementById('planAl')?document.getElementById('planAl').value:'';
+  var fApt=document.getElementById('planApt')?document.getElementById('planApt').value:'tutti';
+  var fPer=document.getElementById('planPersona')?document.getElementById('planPersona').value:'tutti';
+  if(!dalVal)return;
+  var start=new Date(dalVal+'T00:00:00'),end=new Date(alVal+'T23:59:59');
+  var interventi=prenotazioni.filter(function(r){return r['Appartamento']&&r['Check-out'];}).map(function(r){var coDate=parseDate(r['Check-out']),apt=r['Appartamento'];var ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);return{apt:apt,coDate:coDate,persona:ai.persona,phone:ai.phone};}).filter(function(r){if(!r.coDate||r.coDate<start||r.coDate>end)return false;if(fApt!=='tutti'&&r.apt!==fApt)return false;if(fPer!=='tutti'&&r.persona!==fPer)return false;return true;});
+  var byP={};interventi.forEach(function(r){if(!byP[r.persona])byP[r.persona]=[];byP[r.persona].push(r);});
+  var rows=Object.entries(byP).map(function(e){var persona=e[0],items=e[1];var dot=CLEANER_COLORS[persona]||'#0D5A8E';var phone=items[0]?items[0].phone||'':'',pClean=phone.replace('+','');var apts=Array.from(new Set(items.map(function(r){return r.apt;}))).join(' \u00b7 ');var btn=pClean?'<button class="pm-btn" onclick="generatePDF(\''+persona+'\',\''+pClean+'\')">&#128196; PDF + WA</button>':'<button class="pm-btn" style="border:1px dashed var(--green);background:transparent;color:var(--green)" onclick="generatePDF(\''+persona+'\',\'\')">&#128196; PDF</button>';return '<div class="pm-row"><div class="pm-persona"><span class="pm-dot" style="background:'+dot+'"></span><div><div class="pm-name">'+persona+'</div><div class="pm-info">'+apts+' \u00b7 '+items.length+' interventi</div></div></div>'+btn+'</div>';}).join('');
+  document.getElementById('planningModalRows').innerHTML=rows||'<div style="padding:20px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun intervento nel periodo.</div>';
+}
+function closePlanningModal(){document.getElementById('planningModal').style.display='none';}
+function generatePDF(persona,phone){
+  var dalVal=document.getElementById('planDal')?document.getElementById('planDal').value:'';
+  var alVal=document.getElementById('planAl')?document.getElementById('planAl').value:'';
+  var fApt=document.getElementById('planApt')?document.getElementById('planApt').value:'tutti';
+  if(!dalVal)return;
+  var start=new Date(dalVal+'T00:00:00'),end=new Date(alVal+'T23:59:59');
+  var fmtDateFull=function(d){return d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'}):'\u2014';};
+  var items=prenotazioni.filter(function(r){return r['Appartamento']&&r['Check-out'];}).map(function(r){
+    var coDate=parseDate(r['Check-out']),apt=r['Appartamento'];
+    var ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);
+    var aptObj=APTS.find(function(a){return matchApt(a.name,apt);});var maxCap=aptObj?aptObj.cap:4;
+    var nextCI=prenotazioni.filter(function(nr){return matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate;}).sort(function(a,b){return parseDate(a['Check-in'])-parseDate(b['Check-in']);})[0];
+    var hasNext=!!nextCI;
+    return{
+      apt:apt,coDate:coDate,persona:ai.persona,hasNext:hasNext,
+      nomeOspite:hasNext?(nextCI['Nome Ospite']||'\u2014'):'',
+      ciDate:hasNext?parseDate(nextCI['Check-in']):coDate,
+      coDateNext:hasNext?parseDate(nextCI['Check-out']):null,
+      arrivoOsp:hasNext?(parseInt(nextCI['N. Ospiti Adulti'])||maxCap):maxCap,
+      arrivoBambini:hasNext?(parseInt(nextCI['N. Ospiti Minori'])||0):0
+    };
+  }).filter(function(r){if(!r.coDate||r.coDate<start||r.coDate>end)return false;if(r.persona!==persona)return false;if(fApt!=='tutti'&&r.apt!==fApt)return false;return true;}).sort(function(a,b){return a.coDate-b.coDate;});
+  if(!items.length){alert('Nessun intervento trovato.');return;}
+  var tableRows=items.map(function(r){
+    var pc=APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};
+    var personeStr=r.hasNext?(r.arrivoOsp+' adult'+(r.arrivoOsp===1?'o':'i')+(r.arrivoBambini>0?', '+r.arrivoBambini+' bambin'+(r.arrivoBambini>1?'i':'o'):'')):('fino a '+r.arrivoOsp+' persone (max capienza)');
+    var nomeStr=r.hasNext?('<strong>'+r.nomeOspite+'</strong>'):'<strong style="color:#A06820">Nessun arrivo previsto</strong>';
+    return '<tr>'
+      +'<td>'+nomeStr+'<div style="font-size:11px;color:#7299B0;margin-top:2px">'+personeStr+'</div></td>'
+      +'<td>'+fmtDateFull(r.ciDate)+'</td>'
+      +'<td>'+(r.hasNext?fmtDateFull(r.coDateNext):'\u2014')+'</td>'
+      +'<td><span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:'+pc.bg+';color:'+pc.color+'">'+r.apt+'</span></td>'
+      +'</tr>';
+  }).join('');
+  var dotC={Elda:'#2A7A4F',Dalila:'#8B5E2E',Giulia:'#C4883C'};
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:760px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
+  +'<div class="header"><div><h2><span style="width:12px;height:12px;border-radius:50%;background:'+(dotC[persona]||'#0D5A8E')+';display:inline-block;margin-right:8px;vertical-align:middle"></span>'+persona+'</h2></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Planning Pulizie</strong><br>'+start.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'<br>'+end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'</div></div>'
+  +'<table><thead><tr><th>Ospite</th><th>Check-in</th><th>Check-out</th><th>Appartamento</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
+  +'<div class="footer"><span>Visionari 3.0 \u00b7 generato il '+new Date().toLocaleDateString('it-IT')+'</span><span>'+items.length+' interventi</span></div>'
+  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
+  var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
+  setTimeout(function(){if(phone)window.open('https://wa.me/'+phone,'_blank');else window.open('https://wa.me/','_blank');},600);
+  closePlanningModal();
+}
+
+// ── NOTE OSPITI ──────────────────────────────────────────────
+// Necessità comunicate via WhatsApp prima del check-in (culla, parcheggio, transfer...)
+// registrate indipendentemente dalla riga di prenotazione (che potrebbe non esistere
+// ancora nel foglio) e agganciate a Appartamento + Data check-in.
+// Dopo aver creato la tab "Note" nel Google Sheet (colonne: Appartamento | Data Check-in |
+// Nome Ospite | Nota | Data inserimento), incolla qui il suo GID.
+GIDS.note='1955543954';
+// Dopo aver distribuito lo script Apps Script (doPost) come Web App, incolla qui l'URL di distribuzione
+const NOTE_API_URL='https://script.google.com/macros/s/AKfycbzvYopBz_SK9hJybLykI_0LvFhIZL0P32sibep28Q84xrHxBd7THxrk94ulS0r32DE/exec';
+let notes=[];
+let noteFilterApt='tutti',noteFilterData='';
+
+async function loadNoteData(){
+  if(!GIDS.note)return;
+  try{
+    var rows=await fetchSheetDirect(GIDS.note);
+    notes=rows.map(function(r){
+      return{
+        apt:(r['Appartamento']||'').trim(),
+        checkin:(r['Data Check-in']||'').trim(),
+        checkinDate:parseDate(r['Data Check-in']),
+        ospite:(r['Nome Ospite']||'').trim(),
+        testo:(r['Nota']||'').trim(),
+        inserita:(r['Data inserimento']||'').trim()
+      };
+    }).filter(function(n){return n.apt&&n.checkinDate&&n.testo;});
+  }catch(e){console.error('Errore caricamento note, mantengo i dati gi\u00e0 in memoria',e);}
+}
+function findNotesFor(aptName,dateObj){
+  return notes.filter(function(n){return matchApt(n.apt,aptName)&&n.checkinDate&&sameDay(n.checkinDate,dateObj);});
+}
+function noteSetApt(v){noteFilterApt=v;renderNote();}
+function noteSetData(v){noteFilterData=v;renderNote();}
+function noteMatchFilter(n){
+  if(noteFilterApt!=='tutti'&&!matchApt(n.apt,noteFilterApt))return false;
+  if(noteFilterData){
+    var key=n.checkinDate?biDateKey(n.checkinDate):'';
+    if(key!==noteFilterData)return false;
+  }
+  return true;
+}
+function renderNote(){
+  var container=document.getElementById('noteContent');if(!container)return;
+  var aptOpts=APTS.map(function(a){return '<option value="'+a.name+'" '+(noteFilterApt===a.name?'selected':'')+'>'+a.name+'</option>';}).join('');
+  var aptOptsForm=APTS.map(function(a){return '<option value="'+a.name+'">'+a.name+'</option>';}).join('');
+  var hasFilter=noteFilterApt!=='tutti'||!!noteFilterData;
+  var filtered=hasFilter?notes.filter(noteMatchFilter).sort(function(a,b){return (a.checkinDate?a.checkinDate.getTime():0)-(b.checkinDate?b.checkinDate.getTime():0);}):[];
+  var listHtml=!hasFilter
+    ?'<div class="todo-empty">Imposta un filtro (appartamento o data) per vedere le note.</div>'
+    :(filtered.length?filtered.map(function(n){
+        var d=n.checkinDate?n.checkinDate.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):n.checkin;
+        return '<div class="note-card"><div class="note-card-top"><span class="note-card-apt">'+n.apt+'</span><span class="note-card-date">check-in '+d+'</span></div>'
+          +(n.ospite?'<div class="note-card-guest">'+n.ospite+'</div>':'')
+          +'<div class="note-card-text">&#128221; '+n.testo+'</div></div>';
+      }).join(''):'<div class="todo-empty">Nessuna nota trovata per questo filtro.</div>');
+
+  var apiWarning=NOTE_API_URL?'':'<div class="note-api-warning">&#9888; Salvataggio non ancora configurato: manca l\'URL della Web App Apps Script (NOTE_API_URL).</div>';
+
+  container.innerHTML=
+    '<div class="filter-bar">'
+    +'<label>Appartamento:</label>'
+    +'<select onchange="noteSetApt(this.value)"><option value="tutti" '+(noteFilterApt==='tutti'?'selected':'')+'>Tutti</option>'+aptOpts+'</select>'
+    +'<label style="margin-left:8px">Data check-in:</label>'
+    +'<input type="date" value="'+noteFilterData+'" onchange="noteSetData(this.value)" style="font-size:12px;padding:6px 12px;border:1px solid var(--border-strong);border-radius:20px;background:var(--surface);color:var(--text);font-family:inherit;outline:none">'
+    +(noteFilterData?'<button onclick="noteSetData(\'\')" style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text3);cursor:pointer;font-family:inherit">&#10005; Reset data</button>':'')
+    +'</div>'
+    +apiWarning
+    +'<div class="note-list">'+listHtml+'</div>'
+    +'<div class="note-form">'
+    +'<div class="section-label" style="margin-top:0">Nuova nota</div>'
+    +'<select id="noteNewApt"><option value="">Seleziona appartamento</option>'+aptOptsForm+'</select>'
+    +'<input type="date" id="noteNewData">'
+    +'<input type="text" id="noteNewOspite" placeholder="Nome ospite (opzionale)">'
+    +'<textarea id="noteNewTesto" class="note-textarea" placeholder="Scrivi qui la nota (es. culla + parcheggio, arrivo ore 22)"></textarea>'
+    +'<button class="note-save-btn" onclick="noteSave()">&#128190; Salva nota</button>'
+    +'<div id="noteSaveMsg" class="note-save-msg"></div>'
+    +'</div>';
+
+  if(noteFilterApt!=='tutti'){var selApt=document.getElementById('noteNewApt');if(selApt)selApt.value=noteFilterApt;}
+  if(noteFilterData){var inpData=document.getElementById('noteNewData');if(inpData)inpData.value=noteFilterData;}
+}
+function noteSave(){
+  var apt=document.getElementById('noteNewApt').value;
+  var data=document.getElementById('noteNewData').value;
+  var ospite=document.getElementById('noteNewOspite').value.trim();
+  var testo=document.getElementById('noteNewTesto').value.trim();
+  var msgBox=document.getElementById('noteSaveMsg');
+  if(!apt||!data||!testo){msgBox.textContent='Compila appartamento, data check-in e nota.';msgBox.style.color='var(--red)';return;}
+  if(!NOTE_API_URL){msgBox.textContent='Salvataggio non configurato: manca NOTE_API_URL.';msgBox.style.color='var(--red)';return;}
+  msgBox.textContent='Salvataggio in corso\u2026';msgBox.style.color='var(--text3)';
+  var payload={appartamento:apt,checkin:data,ospite:ospite,nota:testo};
+  fetch(NOTE_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)})
+    .then(function(res){return res.json();})
+    .then(function(res){
+      if(res&&res.ok===false)throw new Error(res.error||'Errore sconosciuto');
+      notes.push({apt:apt,checkin:data,checkinDate:parseDate(data),ospite:ospite,testo:testo,inserita:''});
+      document.getElementById('noteNewOspite').value='';
+      document.getElementById('noteNewTesto').value='';
+      msgBox.textContent='Nota salvata.';msgBox.style.color='var(--green)';
+      renderNote();
     })
-  );
+    .catch(function(e){msgBox.textContent='Errore salvataggio: '+e.message;msgBox.style.color='var(--red)';});
+}
+
+// ── BIANCHERIA ────────────────────────────────────────────────
+function biMonday(d){var x=new Date(d);var day=x.getDay();var diff=(day===0?-6:1-day);x.setDate(x.getDate()+diff);x.setHours(0,0,0,0);return x;}
+function biDateKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function biHasPrenotazioneAttiva(aptName,d){
+  return prenotazioni.some(function(r){
+    if(!matchApt(r['Appartamento'],aptName))return false;
+    var ci=parseDate(r['Check-in']),co=parseDate(r['Check-out']);
+    if(!ci||!co)return false;
+    return d>=ci&&d<co;
+  });
+}
+function biCheckinDomani(aptName,d){
+  var domani=new Date(d);domani.setDate(domani.getDate()+1);
+  return prenotazioni.some(function(r){
+    return matchApt(r['Appartamento'],aptName)&&sameDay(parseDate(r['Check-in']),domani);
+  });
+}
+function biGuestsForDay(aptName,d){
+  var aptObj=APTS.find(function(a){return matchApt(a.name,aptName);});
+  var maxCap=aptObj?aptObj.cap:0;
+
+  // Conta check-in normali per questo giorno
+  var sum=0;
+  var hasCheckin=false;
+  prenotazioni.forEach(function(r){
+    if(matchApt(r['Appartamento'],aptName)&&sameDay(parseDate(r['Check-in']),d)){
+      var ad=parseInt(r['N. Ospiti Adulti'])||0;
+      var mi=parseInt(r['N. Ospiti Minori'])||0;
+      sum+=ad+mi;
+      hasCheckin=true;
+    }
+  });
+  if(hasCheckin)return sum;
+
+  // Se la notte di oggi è libera (nessuna prenotazione attiva stanotte)
+  var notteLibera=!biHasPrenotazioneAttiva(aptName,d);
+  if(notteLibera&&biCheckinDomani(aptName,d)){
+    return maxCap;
+  }
+
+  return 0;
+}
+function biGuestsForDayReal(aptName,d){
+  // Ritorna gli ospiti reali (solo check-in effettivi, senza logica giorni liberi)
+  // Usato per sapere se domani c'è un check-in "vero" dopo una notte libera
+  var sum=0;
+  prenotazioni.forEach(function(r){
+    if(matchApt(r['Appartamento'],aptName)&&sameDay(parseDate(r['Check-in']),d)){
+      var ad=parseInt(r['N. Ospiti Adulti'])||0;
+      var mi=parseInt(r['N. Ospiti Minori'])||0;
+      sum+=ad+mi;
+    }
+  });
+  return sum;
+}
+function biSetsForGuests(aptName,guests){
+  if(!guests)return{matrimoniali:0,singolo:0};
+  var cfg=BI_BED_CONFIG[aptName]||{maxMat:0,extraBeds:[]};
+  var matCap=cfg.maxMat*2;
+  var matrimoniali=Math.min(Math.ceil(guests/2),cfg.maxMat);
+  var singolo=0;
+  var remaining=guests-matCap;
+  cfg.extraBeds.forEach(function(bed){
+    if(remaining<=0)return;
+    if(bed.type==='matrimoniale')matrimoniali+=1;
+    else if(bed.type==='singolo')singolo+=1;
+    remaining-=Math.min(remaining,bed.capienza);
+  });
+  return{matrimoniali:matrimoniali,singolo:singolo};
+}
+function biPiecesLabel(sets){
+  var parts=[];
+  if(sets.matrimoniali>0)parts.push(sets.matrimoniali+' set matrimonial'+(sets.matrimoniali>1?'i':'e'));
+  if(sets.singolo>0)parts.push(sets.singolo+' set singolo');
+  return parts.length?parts.join(' + '):'\u2014';
+}
+function biPiecesDetail(sets){
+  var lenz=sets.matrimoniali+sets.singolo;
+  if(!lenz)return '';
+  var asciug=sets.matrimoniali*2+sets.singolo*1;
+  return lenz+' lenzuola sotto \u00b7 '+lenz+' sopra \u00b7 '+asciug+' set asciugamani \u00b7 '+lenz+' tappetin'+(lenz===1?'o':'i');
+}
+function biConsegnaDate(checkinDate){
+  var dow=checkinDate.getDay();
+  var d=new Date(checkinDate);
+  if(dow===6)d.setDate(d.getDate()-1);
+  else if(dow===0)d.setDate(d.getDate()-2);
+  return d;
+}
+function biToggleApt(apt){
+  if(apt==='tutti')biFilterApts=[];
+  else{var idx=biFilterApts.indexOf(apt);if(idx===-1)biFilterApts.push(apt);else biFilterApts.splice(idx,1);}
+  renderBiancheria();
+}
+function biToggleAptDropdown(){
+  var menu=document.getElementById('biAptDropdownMenu');if(!menu)return;
+  var isOpen=menu.style.display!=='none';
+  menu.style.display=isOpen?'none':'block';
+  if(!isOpen){setTimeout(function(){document.addEventListener('click',function h(e){if(!e.target.closest('#biAptDropdownMenu')&&!e.target.closest('#biAptDropdownBtn')){menu.style.display='none';document.removeEventListener('click',h);}});},10);}
+}
+function biPrevWeek(){biWeekStart.setDate(biWeekStart.getDate()-7);renderBiancheria();}
+function biNextWeek(){biWeekStart.setDate(biWeekStart.getDate()+7);renderBiancheria();}
+function biResetWeek(){biWeekStart=biMonday(new Date(TODAY));biSelectedDate=new Date(TODAY);renderBiancheria();}
+function biSelectDay(dateStr){
+  var p=dateStr.split('-').map(Number);
+  biSelectedDate=new Date(p[0],p[1]-1,p[2]);
+  var mon=biMonday(biSelectedDate);
+  if(!biWeekStart||mon.getTime()!==biWeekStart.getTime())biWeekStart=mon;
+  renderBiancheria();
+}
+
+function renderBiancheria(){
+  var container=document.getElementById('biancheriaContent');if(!container)return;
+  if(!biWeekStart)biWeekStart=biMonday(new Date(TODAY));
+  if(!biSelectedDate)biSelectedDate=new Date(TODAY);
+
+  var aptsDisp=BI_APTS.filter(function(a){return biFilterApts.length===0||biFilterApts.indexOf(a)!==-1;});
+
+  var days=[];
+  for(var i=0;i<7;i++){var d=new Date(biWeekStart);d.setDate(d.getDate()+i);days.push(d);}
+
+  var biAptNames=['tutti'].concat(BI_APTS);
+  window._biAptNames=biAptNames;
+  var dropLbl=biFilterApts.length===0?'Tutti gli appartamenti':biFilterApts.length===1?biFilterApts[0]:biFilterApts.length+' selezionati';
+  var dropItems=biAptNames.map(function(a,idx){
+    var isSel=a==='tutti'?biFilterApts.length===0:biFilterApts.indexOf(a)!==-1;
+    var lbl=a==='tutti'?'Tutti gli appartamenti':a;
+    var chk=isSel?'<span style="color:var(--accent);font-size:14px">&#10003;</span>':'<span style="width:14px;display:inline-block"></span>';
+    var bg=isSel&&a!=='tutti'?'var(--accent-light)':'transparent';
+    return '<div onclick="biToggleApt(window._biAptNames['+idx+'])" style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text);background:'+bg+';border-bottom:'+(a==='tutti'?'1px solid var(--border)':'none')+'" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\''+bg+'\'">'+chk+'<span>'+lbl+'</span></div>';
+  }).join('');
+
+  var stripHtml=days.map(function(d,i){
+    var isSel=sameDay(d,biSelectedDate);
+    var isPast=d<TODAY&&!sameDay(d,TODAY);
+    var guests=0;
+    aptsDisp.forEach(function(a){guests+=biGuestsForDay(a,d);});
+    var dow=d.toLocaleDateString('it-IT',{weekday:'short'}).replace('.','');
+    var dateStr=biDateKey(d);
+    return '<div class="bi-day-cell'+(isSel?' selected':'')+(isPast?' past':'')+'" onclick="biSelectDay(\''+dateStr+'\')">'
+      +'<div class="bi-day-dow">'+dow+'</div>'
+      +'<div class="bi-day-num">'+d.getDate()+'</div>'
+      +'<div class="bi-day-meta">'+(guests?guests+' osp':'\u2014')+'</div>'
+      +'</div>';
+  }).join('');
+
+  var selRows=[];
+  aptsDisp.forEach(function(apt){
+    var guests=biGuestsForDay(apt,biSelectedDate);
+    if(guests>0){
+      var sets=biSetsForGuests(apt,guests);
+      selRows.push({apt:apt,guests:guests,sets:sets});
+    }
+  });
+  var detailHtml=selRows.length?selRows.map(function(r){
+    return '<div class="bi-card"><div class="bi-card-top"><div><div class="bi-card-apt">'+r.apt+'</div><div class="bi-card-meta">Check-in '+biSelectedDate.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})+' \u00b7 '+r.guests+' ospiti</div></div></div>'
+      +'<div class="bi-card-sets">'+biPiecesLabel(r.sets)+' <span class="muted">('+biPiecesDetail(r.sets)+')</span></div></div>';
+  }).join(''):'<div class="bi-empty">Nessun check-in questo giorno.</div>';
+
+  var isFridaySel=biSelectedDate.getDay()===5;
+  var weekLbl=days[0].toLocaleDateString('it-IT',{day:'numeric',month:'short'})+' \u2013 '+days[6].toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+
+  var orderHtml='';
+  if(isFridaySel){
+    var weekKey=biDateKey(biSelectedDate);
+    var already=biPlanningCache[weekKey];
+    orderHtml='<div style="margin-top:18px">'
+      +'<button class="planning-btn" style="margin-left:0" onclick="biGeneraPlanning(\''+weekKey+'\')">&#128197; Genera planning settimana successiva</button>'
+      +'<div id="biOrderResult">'+(already?biRenderOrderBox(weekKey):'')+'</div>'
+      +'</div>';
+  }
+
+  container.innerHTML=
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">'
+    +'<label style="font-size:12px;color:var(--text3)">Appartamento:</label>'
+    +'<div style="position:relative;display:inline-block"><button onclick="biToggleAptDropdown()" id="biAptDropdownBtn" style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:'+(biFilterApts.length>0?'var(--accent)':'var(--surface)')+';color:'+(biFilterApts.length>0?'#fff':'var(--text)')+';cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:170px;justify-content:space-between"><span>'+dropLbl+'</span><span style="font-size:10px;opacity:.7">\u25bc</span></button><div id="biAptDropdownMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:200;min-width:240px;padding:4px 0">'+dropItems+'</div></div>'
+    +'</div>'
+    +'<div class="bi-week-nav"><button class="nl-nav-btn" onclick="biPrevWeek()">&#8249;</button><span class="nl-range-label">'+weekLbl+'</span><button class="nl-nav-btn" onclick="biNextWeek()">&#8250;</button><button class="nl-nav-btn" onclick="biResetWeek()" style="margin-left:auto">oggi</button></div>'
+    +'<div class="bi-week-strip">'+stripHtml+'</div>'
+    +detailHtml
+    +orderHtml;
+}
+
+function biGeneraPlanning(weekKey){
+  var p=weekKey.split('-').map(Number);
+  var friDate=new Date(p[0],p[1]-1,p[2]);
+  // Il venerdì da cui si genera il planning appartiene già alla settimana precedente
+  // (la sua consegna è stata gestita nel planning generato il venerdì prima). Si parte dal lunedì successivo.
+  var mondayNext=new Date(friDate);mondayNext.setDate(mondayNext.getDate()+3);
+  var endDate=new Date(friDate);endDate.setDate(endDate.getDate()+7);
+  // La scansione dei check-in deve arrivare fino a 2 giorni oltre endDate (sabato+domenica),
+  // perché quei check-in "tornano indietro" e si consegnano proprio nel venerdì finale (endDate).
+  // Senza questo margine, i check-in del weekend successivo all'ultimo venerdì venivano persi dal conteggio.
+  var scanEnd=new Date(endDate);scanEnd.setDate(scanEnd.getDate()+2);
+  var aptsDisp=BI_APTS.filter(function(a){return biFilterApts.length===0||biFilterApts.indexOf(a)!==-1;});
+  var byConsegna={};
+  var byApt={};
+  aptsDisp.forEach(function(a){byApt[a]={matrimoniali:0,singolo:0};});
+  var scan=new Date(mondayNext);
+  while(scan<=scanEnd){
+    (function(scanDate){
+      var cons=biConsegnaDate(scanDate);
+      // Tiene solo le consegne che ricadono davvero in questa settimana (mondayNext..endDate);
+      // scarta eventuali check-in oltre il weekend che non appartengono a questo ciclo.
+      if(cons<mondayNext||cons>endDate)return;
+      aptsDisp.forEach(function(apt){
+        // Se il giorno precedente era una notte libera, abbiamo già ordinato
+        // per max capienza ieri → il check-in di oggi non genera ulteriore consegna
+        var ieriDate=new Date(scanDate);ieriDate.setDate(ieriDate.getDate()-1);
+        var ieraNotteLibera=!biHasPrenotazioneAttiva(apt,ieriDate);
+        var guestsReali=biGuestsForDayReal(apt,scanDate);
+        var isCheckinDopoNotteLibera=ieraNotteLibera&&guestsReali>0;
+        var guests=isCheckinDopoNotteLibera?0:biGuestsForDay(apt,scanDate);
+        if(guests>0){
+          var sets=biSetsForGuests(apt,guests);
+          var ck=biDateKey(cons);
+          if(!byConsegna[ck])byConsegna[ck]={date:new Date(cons),matrimoniali:0,singolo:0,bundlesWeekend:false,byApt:{}};
+          byConsegna[ck].matrimoniali+=sets.matrimoniali;
+          byConsegna[ck].singolo+=sets.singolo;
+          if(!byConsegna[ck].byApt[apt])byConsegna[ck].byApt[apt]={matrimoniali:0,singolo:0};
+          byConsegna[ck].byApt[apt].matrimoniali+=sets.matrimoniali;
+          byConsegna[ck].byApt[apt].singolo+=sets.singolo;
+          if(scanDate.getDay()===6||scanDate.getDay()===0)byConsegna[ck].bundlesWeekend=true;
+          byApt[apt].matrimoniali+=sets.matrimoniali;
+          byApt[apt].singolo+=sets.singolo;
+        }
+      });
+    })(new Date(scan));
+    scan.setDate(scan.getDate()+1);
+  }
+  var consegneList=Object.keys(byConsegna).sort().map(function(k){return byConsegna[k];});
+  var totMat=consegneList.reduce(function(s,c){return s+c.matrimoniali;},0);
+  var totSing=consegneList.reduce(function(s,c){return s+c.singolo;},0);
+  biPlanningCache[weekKey]={consegne:consegneList,byApt:byApt,totMat:totMat,totSing:totSing,friDate:friDate,endDate:endDate};
+  var target=document.getElementById('biOrderResult');
+  if(target)target.innerHTML=biRenderOrderBox(weekKey);
+}
+
+function biConsegnaAptLines(c,htmlMode){
+  var apts=Object.keys(c.byApt);
+  if(apts.length<1)return '';
+  return apts.map(function(apt){
+    var s=c.byApt[apt];
+    var setsStr=biPiecesLabel(s);
+    if(htmlMode)return '<div style="padding-left:14px;font-size:12px;color:var(--text3)">'+apt+': '+setsStr+'</div>';
+    return '<div style="padding-left:16px;font-size:11px;color:#7299B0">'+apt+': '+setsStr+'</div>';
+  }).join('');
+}
+function biRenderOrderBox(weekKey){
+  var plan=biPlanningCache[weekKey];
+  if(!plan)return '';
+  var inviato=!!biOrdiniStatus[weekKey];
+  var rows=plan.consegne.map(function(c){
+    var lbl=c.date.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})+(c.bundlesWeekend?' <span class="muted" style="font-size:11px">(incl. sab/dom)</span>':'');
+    var setsStr=biPiecesLabel({matrimoniali:c.matrimoniali,singolo:c.singolo});
+    return '<div class="bi-order-row"><span>'+lbl+'</span><span>'+setsStr+'</span></div>'+biConsegnaAptLines(c,true);
+  }).join('');
+  var totStr=biPiecesLabel({matrimoniali:plan.totMat,singolo:plan.totSing});
+  var totPrezzo=biPrezzoSets({matrimoniali:plan.totMat,singolo:plan.totSing});
+  return '<div class="bi-order-box">'
+    +'<div style="font-size:12px;color:var(--text3);font-weight:500;margin-bottom:8px">Giorni di consegna</div>'
+    +(rows||'<div style="font-size:13px;color:var(--text3);font-style:italic">Nessun check-in nella settimana successiva.</div>')
+    +'<div class="bi-order-row tot"><span>Totale settimana</span><span>'+totStr+' \u2014 '+fmtEur(totPrezzo)+'</span></div>'
+    +'</div>'
+    +'<div class="bi-order-actions"><button class="planning-btn" style="margin-left:0" onclick="biExportPDF(\''+weekKey+'\')">&#128196; Scarica PDF</button></div>'
+    +'<label class="bi-inviato-box"><input type="checkbox" '+(inviato?'checked':'')+' onchange="biToggleInviato(\''+weekKey+'\',this.checked)" style="width:17px;height:17px">Inviato</label>';
+}
+
+function biToggleInviato(weekKey,checked){
+  biOrdiniStatus[weekKey]=checked;
+  if(!BIANCHERIA_API_URL){
+    console.warn('BIANCHERIA_API_URL non configurato: lo stato "Inviato" non verr\u00e0 salvato nel foglio, solo in locale per questa sessione.');
+    return;
+  }
+  fetch(BIANCHERIA_API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({settimana:weekKey,inviato:checked})
+  }).catch(function(e){console.error('Errore salvataggio stato biancheria',e);});
+}
+
+function biExportPDF(weekKey){
+  var plan=biPlanningCache[weekKey];if(!plan)return;
+  var rows=plan.consegne.map(function(c){
+    var lbl=c.date.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})+(c.bundlesWeekend?' (incl. sab/dom)':'');
+    var apts=Object.keys(c.byApt);
+    if(apts.length<=1){
+      var apt=apts[0]||'\u2014';
+      var setsStr=biPiecesLabel({matrimoniali:c.matrimoniali,singolo:c.singolo});
+      var tappetini=c.matrimoniali+c.singolo;
+      return '<tr><td>'+lbl+'</td><td>'+apt+'</td><td>'+setsStr+'</td><td>'+tappetini+'</td></tr>';
+    }
+    return apts.map(function(apt,idx){
+      var s=c.byApt[apt];
+      var setsStr=biPiecesLabel(s);
+      var tappetini=s.matrimoniali+s.singolo;
+      var dayCell=idx===0?lbl:'<span style="color:#BFCFDA">\u21b3</span>';
+      return '<tr><td>'+dayCell+'</td><td>'+apt+'</td><td>'+setsStr+'</td><td>'+tappetini+'</td></tr>';
+    }).join('');
+  }).join('');
+  var totStr=biPiecesLabel({matrimoniali:plan.totMat,singolo:plan.totSing});
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:680px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}tfoot td{font-weight:700;background:#0D5A8E;color:#fff;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
+  +'<div class="header"><div><h2>&#129530; Ordine biancheria</h2><div style="font-size:12px;color:#7299B0">Settimana '+plan.friDate.toLocaleDateString('it-IT',{day:'numeric',month:'long'})+' \u2013 '+plan.endDate.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'</div></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Visionari 3.0</strong><br>generato il '+new Date().toLocaleDateString('it-IT')+'</div></div>'
+  +'<table><thead><tr><th>Giorno di consegna</th><th>Luogo</th><th>Set</th><th>Tappetini</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="3">Totale settimana</td><td>'+totStr+'</td></tr></tfoot></table>'
+  +'<div class="footer"><span>Visionari 3.0</span><span>generato il '+new Date().toLocaleDateString('it-IT')+'</span></div>'
+  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
+  var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
+}
+
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-pane').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.tab-btn').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='pulizie')renderPulizie();
+  if(name==='nottiLibere')renderNottiLibere();
+  if(name==='note')renderNote();
+  if(name==='dashboard')renderDashboard();
+  if(name==='incassi')renderIncassi();
+  if(name==='biancheria')renderBiancheria();
+}
+var lastLoad=0;
+function resyncTodayIfStale(){
+  var real=new Date();real.setHours(0,0,0,0);
+  if(real.getTime()!==TODAY.getTime()){
+    TODAY=real;
+    updateDates();
+    renderAll();
+  }
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'){
+    resyncTodayIfStale();
+    var isLogged=sessionStorage.getItem(SESSION_KEY)==='1';
+    if(isLogged&&(Date.now()-lastLoad)/60000>5){loadAllData();lastLoad=Date.now();}
+  }
 });
+window.addEventListener('pageshow',function(){resyncTodayIfStale();});
+window.addEventListener('DOMContentLoaded',function(){
+  lastLoad=Date.now();
+  var pk=document.getElementById('datePicker');
+  if(pk){var now=new Date();pk.value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');}
+});
+updateDates();
+document.addEventListener('click',function(e){
+  var btn=e.target.closest('.wa-btn');if(!btn)return;
+  e.stopPropagation();e.preventDefault();
+  var key=btn.getAttribute('data-key');if(!key)return;
+  var item=waMessages[key];if(!item||!item.phone)return;
+  navigator.clipboard.writeText(item.msg).then(function(){setTimeout(function(){window.open('https://wa.me/'+item.phone,'_blank');},600);}).catch(function(){window.open('https://wa.me/'+item.phone,'_blank');});
+});
+
+// Service worker: rende l'app installabile e apre la shell (icone/manifest) all'istante
+// anche a connessione lenta o offline. La pagina principale (index.html) viene invece
+// sempre richiesta alla rete per prima (network-first), così ogni apertura mostra
+// automaticamente l'ultima versione pubblicata, senza dover pulire la cache a mano.
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('service-worker.js').catch(function(e){
+      console.warn('Service worker non registrato:',e);
+    });
+  });
+}
+</script>
+</div>
+</body>
+</html>
