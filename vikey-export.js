@@ -99,7 +99,10 @@ async function run() {
     console.log('Login effettuato.');
 
     console.log('Navigo su Prenotazioni...');
-    const prenotazioniLink = page.getByText('Prenotazioni', { exact: true });
+    // getByText trovava 5 elementi diversi con testo "Prenotazioni" (card di
+    // riepilogo sulla dashboard + voce di menu). La voce di menu vera ha un
+    // aria-label univoco, usiamo quello per essere precisi.
+    const prenotazioniLink = page.getByLabel('Prenotazioni', { exact: true });
     await prenotazioniLink.waitFor({ state: 'visible', timeout: 30000 });
     await prenotazioniLink.click();
 
