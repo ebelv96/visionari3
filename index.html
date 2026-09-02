@@ -1839,6 +1839,18 @@ if('serviceWorker' in navigator){
       console.warn('Service worker non registrato:',e);
     });
   });
+  // Il service worker confronta in background la pagina in cache con quella online:
+  // se sono davvero diverse (cioè è stato pubblicato un aggiornamento) manda questo
+  // messaggio, e qui ricarichiamo una sola volta per allinearci alla versione nuova,
+  // senza dover pulire manualmente la cache. La velocità di apertura resta invariata:
+  // la pagina viene comunque servita subito dalla cache come prima.
+  var visionariReloadingForUpdate=false;
+  navigator.serviceWorker.addEventListener('message',function(event){
+    if(event.data&&event.data.type==='VISIONARI_UPDATE_AVAILABLE'&&!visionariReloadingForUpdate){
+      visionariReloadingForUpdate=true;
+      window.location.reload();
+    }
+  });
 }
 </script>
 </div>
