@@ -195,11 +195,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .apt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
 .apt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:box-shadow .15s;border-top:3px solid transparent;}
 .apt-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06);}
-.apt-enea-put{border-top-color:#1A6FA8;}.apt-enea-pic{border-top-color:#2899D4;}
+.apt-enea-put{border-top-color:#1A6FA8;}.apt-enea-pic{border-top-color:#2899D4;}.apt-enea-sig{border-top-color:#3D4FA0;}
 .apt-domus-g{border-top-color:#2A7A4F;}.apt-domus-p{border-top-color:#5AAF7A;}
 .apt-vis{border-top-color:#8B5E2E;}.apt-mare{border-top-color:#C4883C;}.apt-dimora{border-top-color:#7B5EA7;}
 .apt-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block;margin-right:6px;vertical-align:middle;}
-.dot-enea-put{background:#1A6FA8;}.dot-enea-pic{background:#2899D4;}
+.dot-enea-put{background:#1A6FA8;}.dot-enea-pic{background:#2899D4;}.dot-enea-sig{background:#3D4FA0;}
 .dot-domus-g{background:#2A7A4F;}.dot-domus-p{background:#5AAF7A;}
 .dot-vis{background:#8B5E2E;}.dot-mare{background:#C4883C;}.dot-dimora{background:#7B5EA7;}
 .apt-card-top{padding:12px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
@@ -509,7 +509,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 </div>
 <script>
 const SHEET_ID='1njE_JQ-m_rzdAOR-OWDeI7NfCq2sn0LZe2Ia_A-xjRc';
-const GIDS={prenotazioni:'1940746485',addette:'1820111522',prompt:'955795025'};
+const GIDS={prenotazioni:'1940746485',addette:'1820111522',prompt:'955795025',capacita:'1866768994'};
 function sheetURL(gid){return 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=csv&gid='+gid;}
 async function fetchSheetSkipTitle(gid){
   const res=await fetch(sheetURL(gid));
@@ -551,15 +551,43 @@ function getCostiFissi(aptName){
 }
 
 // ── DATI STATICI ──────────────────────────────────────────────
+// cap e sub sono valori di riserva: all'avvio vengono sovrascritti dal foglio capacit\u00e0 (GIDS.capacita)
 const APTS=[
   {name:'Enea Luxury \u2013 Putignani',sub:'fino a 9 persone',cls:'apt-enea-put',dot:'dot-enea-put',cap:9},
   {name:'Enea Luxury \u2013 Piccinni',sub:'fino a 7 persone',cls:'apt-enea-pic',dot:'dot-enea-pic',cap:7},
+  {name:'Enea Luxury \u2013 Signorile',sub:'',cls:'apt-enea-sig',dot:'dot-enea-sig',cap:0},
   {name:'Domus Pulchra (grande)',sub:'fino a 6 persone',cls:'apt-domus-g',dot:'dot-domus-g',cap:6},
   {name:'Domus Pulchra (piccolo)',sub:'fino a 4 persone',cls:'apt-domus-p',dot:'dot-domus-p',cap:4},
   {name:'Casa dei Visionari \u2013 Madonella',sub:'fino a 4 persone',cls:'apt-vis',dot:'dot-vis',cap:4},
   {name:'Casa dei Visionari \u2013 Mare',sub:'fino a 4 persone',cls:'apt-mare',dot:'dot-mare',cap:4},
   {name:'Dimora Italia',sub:'',cls:'apt-dimora',dot:'dot-dimora',cap:6},
 ];
+// Capacit\u00e0 lette dal foglio: righe [nome, capienza]. Si scorrono tutte le righe e si tengono
+// solo quelle con nome che corrisponde esattamente a un appartamento e capienza numerica,
+// cos\u00ec eventuali righe di titolo/intestazione vengono ignorate da sole.
+var capacitaRows=[];
+function applyCapacita(rows){
+  capacitaRows=rows||[];
+  capacitaRows.forEach(function(r){
+    var cap=parseInt(r[1]);
+    if(!r[0]||!cap)return;
+    var apt=APTS.find(function(a){return matchApt(a.name,r[0]);});
+    if(apt){apt.cap=cap;apt.sub='fino a '+cap+' persone';}
+  });
+}
+async function loadCapacita(){
+  if(!GIDS.capacita)return;
+  try{
+    var res=await fetch(sheetURL(GIDS.capacita));
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var text=await res.text();
+    var rows=text.trim().split('\n').map(function(line){
+      var c=splitCSVLine(line);
+      return[(c[0]||'').trim(),(c[1]||'').trim()];
+    });
+    applyCapacita(rows);
+  }catch(e){console.warn('Capacit\u00e0 non caricate dal foglio, uso i valori di riserva',e);}
+}
 const FESTIVITA=[
   {data:'25 apr',nome:'Liberazione',mult:'+20\u201325%'},
   {data:'1 mag',nome:'Festa dei Lavoratori',mult:'+15%'},
@@ -577,6 +605,7 @@ const LETTI_APT={
   'Casa dei Visionari \u2013 Mare':['Matrimoniale','Doppio'],
   'Enea Luxury \u2013 Piccinni':['Matrimoniale x2','Singolo','Divano letto'],
   'Enea Luxury \u2013 Putignani':['Matrimoniale x4','Singolo'],
+  'Enea Luxury \u2013 Signorile':['Matrimoniale','Matrimoniale','Divano letto'],
   'Dimora Italia':['Matrimoniale','Matrimoniale','Singolo x2'],
 };
 const CLEANER_COLORS={'Elda':'#2A7A4F','Dalila':'#8B5E2E','Giulia':'#C4883C','Teresa':'#1A6FA8','Enza':'#1A6FA8','Annamaria':'#1A6FA8'};
@@ -587,6 +616,7 @@ const APT_PILL_COLORS={
   'Casa dei Visionari \u2013 Mare':{bg:'#FDF0E0',color:'#7A4E10'},
   'Enea Luxury \u2013 Putignani':{bg:'#D6EAFA',color:'#1A4F7A'},
   'Enea Luxury \u2013 Piccinni':{bg:'#EDF6FF',color:'#2A6FA8'},
+  'Enea Luxury \u2013 Signorile':{bg:'#E6E9F7',color:'#2E3D80'},
   'Dimora Italia':{bg:'#F0EBF8',color:'#5B3E8A'},
 };
 const DOMUS_APTS=['Domus Pulchra (grande)','Domus Pulchra (piccolo)','Dimora Italia'];
@@ -705,7 +735,7 @@ function saveCache(){
   try{
     localStorage.setItem(CACHE_KEY,JSON.stringify({
       prenotazioni:prenotazioni,addetteSheet:addetteSheet,promptMessaggi:promptMessaggi,
-      notes:notes,biOrdiniStatus:biOrdiniStatus,ts:Date.now()
+      notes:notes,biOrdiniStatus:biOrdiniStatus,capacita:capacitaRows,ts:Date.now()
     }));
   }catch(e){console.warn('Impossibile salvare la cache locale',e);}
 }
@@ -725,6 +755,7 @@ function loadCache(){
       return n;
     });
     biOrdiniStatus=data.biOrdiniStatus||{};
+    applyCapacita(data.capacita||[]);
     return true;
   }catch(e){return false;}
 }
@@ -758,7 +789,7 @@ async function loadAllData(){
   }
   // 2) In parallelo aggiorna dal Google Sheet e ridisegna in silenzio
   try{
-    var res=await Promise.all([fetchSheetSkipTitle(GIDS.prenotazioni),fetchSheetSkipTitle(GIDS.addette)]);
+    var res=await Promise.all([fetchSheetSkipTitle(GIDS.prenotazioni),fetchSheetSkipTitle(GIDS.addette),loadCapacita()]);
     prenotazioni=res[0];addetteSheet=res[1];
     try{
       var vizUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&gid='+GIDS.prompt;
@@ -798,8 +829,10 @@ function getPrompt(aptName,nomeOspite){
   if(!found)return null;
   return found.msg.replace(/\[NOME OSPITE\]/gi,(nomeOspite||'').split(' ')[0]);
 }
+// Solo corrispondenza esatta: un fallback parziale sul nome manderebbe il messaggio
+// di un altro appartamento (es. i tre Enea iniziano tutti con "enea lux").
 function getCheckoutPrompt(aptName,nomeOspite){
-  var found=promptMessaggi.find(function(p){return matchApt(p.apt,aptName);})||promptMessaggi.find(function(p){return normStr(aptName).indexOf(normStr(p.apt).slice(0,8))!==-1;});
+  var found=promptMessaggi.find(function(p){return matchApt(p.apt,aptName);});
   if(!found||!found.msgCO)return null;
   return found.msgCO.replace(/\[NOME OSPITE\]/gi,(nomeOspite||'').split(' ')[0]);
 }
@@ -1175,7 +1208,7 @@ function renderIncassi(){
     +'Incasso finale = lordo \u2212 commissione \u2212 pulizia \u2212 lavanderia<br>'
     +'<br><strong style="color:var(--text2)">Casa dei Visionari \u2013 Mare</strong><br>'
     +'Incasso finale = lordo \u2212 commissione \u2212 pulizia \u2212 lavanderia \u2212 affitto mensile (\u20ac860)<br>'
-    +'<br><strong style="color:var(--text2)">Enea Luxury \u2013 Putignani \u00b7 Enea Luxury \u2013 Piccinni</strong><br>'
+    +'<br><strong style="color:var(--text2)">Enea Luxury \u2013 Putignani \u00b7 Piccinni \u00b7 Signorile</strong><br>'
     +'Incasso finale = (lordo \u2212 commissione \u2212 pulizia \u2212 lavanderia \u2212 affitti e spese) \u00d7 50%'
     +'</div></div>'
 
