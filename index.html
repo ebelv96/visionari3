@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="it">
-<head> 
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1325,6 +1325,7 @@ function getDashDay(){var d=new Date(TODAY);d.setDate(d.getDate()+dashOffset);re
 function renderDashboard(){
   var c=document.getElementById('dashboardContent');if(!c)return;
   var day=getDashDay();
+  var dashCardSeq=0;
   var ciList=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-in']),day)&&r['Nome Ospite'];});
   var coList=prenotazioni.filter(function(r){return sameDay(parseDate(r['Check-out']),day)&&r['Nome Ospite'];});
   function gCard(r,type){
@@ -1332,7 +1333,9 @@ function renderDashboard(){
     var phone=(r['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+'),pClean=phone.replace('+','');
     var isCI=type==='ci';
     var msg=isCI?(getPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDC4B Welcome to Bari!'):(getCheckoutPrompt(apt,nome)||'Hello '+nome.split(' ')[0]+' \uD83D\uDE0A What time are you checking out?');
-    var cardIdx='dash_'+type+'_'+pClean;waMessages[cardIdx]={msg:msg,phone:pClean};
+    // Chiave univoca per ogni card: con il solo telefono, tutti gli ospiti senza numero
+    // condividevano la stessa chiave e l'ultimo messaggio sovrascriveva gli altri.
+    var cardIdx='dash_'+type+'_'+(++dashCardSeq);waMessages[cardIdx]={msg:msg,phone:pClean};
     var wa=phone?'<button class="dash-wa-btn '+type+'" onclick="event.stopPropagation();sendWA(\''+cardIdx+'\')">&#128172; '+phone+'</button>':'<button class="dash-wa-btn '+type+'" onclick="event.stopPropagation();sendWA(\''+cardIdx+'\')" style="opacity:.7;border:1px dashed currentColor;background:transparent">&#128172; Invia a...</button>';
     var nottiStr='';if(isCI){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);if(c1&&c2){var n=Math.round((c2-c1)/86400000);nottiStr='<span style="font-size:11px;color:var(--text3);margin-left:auto">'+n+' nott'+(n===1?'e':'i')+'</span>';}}
     var noteHtml='';
