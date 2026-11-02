@@ -531,7 +531,10 @@ async function fetchSheetDirect(gid){
 // ── COSTI FISSI MENSILI ───────────────────────────────────────
 const COSTI_FISSI={
   'Casa dei Visionari – Mare':{
-    voci:[{label:'Affitto',val:860}]
+    voci:[{label:'Affitto',val:700},{label:'Bollette e spese',val:300}]
+  },
+  'Enea Luxury – Signorile':{
+    voci:[{label:'Affitto',val:1000}]
   },
   'Enea Luxury – Putignani':{
     voci:[{label:'Affitto',val:1480},{label:'Commercialista',val:125},{label:'Bollette/manutenzione',val:250}]
@@ -541,6 +544,24 @@ const COSTI_FISSI={
   }
 };
 
+// Incasso finale Vito per Putignani + Piccinni + Signorile: importo fisso mensile unico per le tre case
+const VITO_ENEA_FISSO=2200;
+// Gruppo per le regole dell'incasso di Vito
+// Nome canonico dell'appartamento (stesso nome anche se nel foglio cambia il trattino, es. "-" / "\u2013")
+function canonApt(name){
+  var a=APTS.find(function(x){return matchApt(x.name,name);});
+  if(a)return a.name;
+  var k=Object.keys(COSTI_FISSI).find(function(x){return matchApt(x,name);});
+  return k||name;
+}
+function gruppoVito(apt){
+  var n=normStr(apt);
+  if(n.indexOf('visionari')!==-1)return 'visionari';
+  if(n.indexOf('domus')!==-1)return 'domus';
+  if(n.indexOf('dimora')!==-1)return 'dimora';
+  if(n.indexOf('enea')!==-1)return 'enea';
+  return 'altro';
+}
 function getCostiFissi(aptName){
   const key=Object.keys(COSTI_FISSI).find(function(k){return matchApt(k,aptName);});
   if(!key)return{totale:0,dettaglio:''};
@@ -705,7 +726,7 @@ function parseDate(str){
 }
 function sameDay(a,b){return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
 function getDay(){var d=new Date(TODAY);d.setDate(d.getDate()+offset);return d;}
-function fmtEur(n){return '\u20ac'+Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+function fmtEur(n){n=Number(n)||0;var s='\u20ac'+Math.abs(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');return n<0?'\u2212'+s:s;}
 function normStr(s){return(s||'').toString().trim().toLowerCase().replace(/[\u2013\u2014\u2012]/g,'-').replace(/\s+/g,' ');}
 function matchApt(a,b){return normStr(a)===normStr(b);}
 function parseEur(s){
@@ -734,22 +755,31 @@ function getCompenso(aptName,numOspiti){
   if(isEnea(aptName))return{compenso:c.pulizia,dettaglio:'\u20ac'+c.pulizia+' pulizia (lav. esclusa)'};
   return{compenso:c.pulizia+c.lavanderia,dettaglio:'\u20ac'+c.pulizia+' pul. + \u20ac'+c.lavanderia+' lav.'};
 }
+// Incasso per prenotazione (stesse regole per tutte le case):
+//  netto = lordo − commissione piattaforma (Booking 20%, Airbnb 15%, diretta 0%)
+//  pulizie = costo pulizia + lavanderia dal foglio Pulizie.
+//  Per gli Enea la lavanderia segue le regole della sezione Lavanderia: costo lavanderia × ospiti
+//  per cui si prepara la casa (cambio stesso giorno = ospiti in arrivo; dopo giorni liberi = capienza massima,
+//  già contata nel giorno del check-out precedente).
+function lavanderiaOspitiPrenotazione(apt,ciDate){
+  if(!ciDate)return 0;
+  var ev=biEventiApt(apt).filter(function(e){return e.ci&&sameDay(e.ci,ciDate);})[0];
+  return ev?ev.n:0;
+}
 function calcIncasso(r){
-  var lordo=parseEur(r['Prezzo Lordo (\u20ac)']);
+  var lordo=parseEur(r['Prezzo Lordo (€)']);
   var piatt=normStr(r['Piattaforma']||'');
   var apt=r['Appartamento']||'';
-  var ospiti=parseInt(r['N. Ospiti Adulti'])||1;
-  if(isDomus(apt)){
-    var netto=lordo*0.15;
-    return{lordo:lordo,netto:netto,pulizia:0,lavanderia:0,servizi:0,finale:netto};
-  }
   var commRate=0;
   if(piatt.indexOf('booking')!==-1)commRate=0.20;
   else if(piatt.indexOf('airbnb')!==-1)commRate=0.15;
-  var netto2=lordo*(1-commRate);
-  var cp=getCostiPulizie(apt,ospiti);
-  var finale=netto2-cp.totServizi;
-  return{lordo:lordo,netto:netto2,pulizia:cp.pulizia,lavanderia:cp.lavanderia,servizi:cp.totServizi,finale:finale};
+  var netto=lordo*(1-commRate);
+  var row=getRowAddetta(apt);
+  var pulizia=row?parseEur(row['Costo pulizia']):0;
+  var lavBase=row?parseEur(row['Costo lavanderia']):0;
+  var lavanderia=isEnea(apt)?lavBase*lavanderiaOspitiPrenotazione(apt,parseDate(r['Check-in'])):lavBase;
+  var servizi=pulizia+lavanderia;
+  return{lordo:lordo,netto:netto,pulizia:pulizia,lavanderia:lavanderia,servizi:servizi,finale:netto-servizi};
 }
 
 // ── CACHE LOCALE (mostra subito l'ultimo dato noto, poi aggiorna in background) ──
@@ -1080,11 +1110,17 @@ function toggleIncassiNote(){
 }
 function renderIncassi(){
   var c=document.getElementById('incassiContent');if(!c)return;
-  var prenoValide=prenotazioni.filter(function(r){return r['Appartamento']&&r['Prezzo Lordo (\u20ac)']&&r['Check-in']&&parseEur(r['Prezzo Lordo (\u20ac)'])>0;});
+  var prenoValide=prenotazioni.filter(function(r){return r['Appartamento']&&r['Prezzo Lordo (€)']&&r['Check-in']&&parseEur(r['Prezzo Lordo (€)'])>0;});
   var mesiSet=new Set();
   prenoValide.forEach(function(r){var d=parseDate(r['Check-in']);if(d)mesiSet.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));});
   var mesiList=Array.from(mesiSet).sort();
-  var aptsList=Array.from(new Set(prenoValide.map(function(r){return r['Appartamento'];}))).sort();
+  // Tutti i mesi del periodo (anche senza prenotazioni): gli affitti si pagano ogni mese
+  var mesiSpan=[];
+  if(mesiList.length){
+    var mp0=mesiList[0].split('-').map(Number),mp1=mesiList[mesiList.length-1].split('-').map(Number);
+    for(var md=new Date(mp0[0],mp0[1]-1,1);md<=new Date(mp1[0],mp1[1]-1,1);md.setMonth(md.getMonth()+1))mesiSpan.push(md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0'));
+  }
+  var aptsList=Array.from(new Set(prenoValide.map(function(r){return canonApt(r['Appartamento']);}).concat(Object.keys(COSTI_FISSI).map(canonApt)))).sort();
   var meseOpts=mesiList.map(function(m){var p=m.split('-');var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return '<option value="'+m+'" '+(incassiFilterMese===m?'selected':'')+'>'+lbl+'</option>';}).join('');
   var aptOpts=aptsList.map(function(a){return '<option value="'+a+'" '+(incassiFilterApt===a?'selected':'')+'>'+a+'</option>';}).join('');
 
@@ -1094,107 +1130,103 @@ function renderIncassi(){
     filtered=filtered.filter(function(r){var d=parseDate(r['Check-in']);return d&&d.getFullYear()===fp[0]&&d.getMonth()===fp[1]-1;});
   }
   if(incassiFilterApt!=='tutti')filtered=filtered.filter(function(r){return matchApt(r['Appartamento'],incassiFilterApt);});
-
-  var rows=filtered.map(function(r){var ci=calcIncasso(r);return{r:r,lordo:ci.lordo,netto:ci.netto,pulizia:ci.pulizia,lavanderia:ci.lavanderia,servizi:ci.servizi,finale:ci.finale};});
-  var totLordo=rows.reduce(function(s,x){return s+x.lordo;},0);
-  var totNetto=rows.reduce(function(s,x){return s+x.netto;},0);
-  var totServ=rows.reduce(function(s,x){return s+x.servizi;},0);
-
-  var mesiPerApt={};
-  rows.forEach(function(x){
-    var apt=x.r['Appartamento']||'';
-    var d=parseDate(x.r['Check-in']);
-    if(!d||!apt)return;
-    if(!mesiPerApt[apt])mesiPerApt[apt]=new Set();
-    mesiPerApt[apt].add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
-  });
+  var numMesi=incassiFilterMese==='tutti'?Math.max(1,mesiSpan.length):1;
+  // Gli affitti si contano in tutti i mesi, ma solo da quando la casa è attiva (mese della prima prenotazione)
+  var primoMese={};
+  prenoValide.forEach(function(r){var d=parseDate(r['Check-in']);if(!d)return;var k=canonApt(r['Appartamento']);var mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(!primoMese[k]||mk<primoMese[k])primoMese[k]=mk;});
+  var mesiAttivi=function(apt){
+    var pm=primoMese[canonApt(apt)];if(!pm)return 0;
+    if(incassiFilterMese!=='tutti')return incassiFilterMese>=pm?1:0;
+    // Con "Tutti i mesi" affitti e fisso Vito si contano in tutti i mesi del periodo, anche futuri
+    return mesiSpan.filter(function(mk){return mk>=pm;}).length;
+  };
 
   var byApt={};
-  rows.forEach(function(x){
-    var apt=x.r['Appartamento']||'\u2014';
-    if(!byApt[apt])byApt[apt]={lordo:0,netto:0,pulizia:0,lavanderia:0,servizi:0,finale:0,n:0};
-    byApt[apt].lordo+=x.lordo;byApt[apt].netto+=x.netto;
-    byApt[apt].pulizia+=x.pulizia;byApt[apt].lavanderia+=x.lavanderia;
-    byApt[apt].servizi+=x.servizi;byApt[apt].finale+=x.finale;byApt[apt].n+=1;
+  var addApt=function(apt){if(!byApt[apt])byApt[apt]={lordo:0,netto:0,pulizia:0,lavanderia:0,servizi:0,finale:0,n:0};return byApt[apt];};
+  filtered.forEach(function(r){
+    var ci=calcIncasso(r);var v=addApt(canonApt(r['Appartamento']));
+    v.lordo+=ci.lordo;v.netto+=ci.netto;v.pulizia+=ci.pulizia;v.lavanderia+=ci.lavanderia;v.servizi+=ci.servizi;v.finale+=ci.finale;v.n++;
   });
+  // Le case con affitti compaiono anche nei mesi senza prenotazioni
+  Object.keys(COSTI_FISSI).forEach(function(apt){if(incassiFilterApt==='tutti'||matchApt(apt,incassiFilterApt))addApt(canonApt(apt));});
 
-  var totCostiFissi=0;
-  Object.keys(byApt).forEach(function(apt){
-    var numMesi=mesiPerApt[apt]?mesiPerApt[apt].size:1;
-    var cf=getCostiFissi(apt);
-    byApt[apt].costiFissiTot=cf.totale*numMesi;
-    byApt[apt].costiFissiDettaglio=cf.dettaglio;
-    byApt[apt].costiFissiNumMesi=numMesi;
-    var baseNetto=byApt[apt].finale-byApt[apt].costiFissiTot;
-    byApt[apt].finaleNetto=isEnea(apt)?baseNetto*0.50:baseNetto;
-    totCostiFissi+=byApt[apt].costiFissiTot;
+  var GRUPPO_ORD={visionari:0,domus:1,dimora:2,enea:3,altro:4};
+  var aptKeys=Object.keys(byApt).sort(function(x,y){return (GRUPPO_ORD[gruppoVito(x)]-GRUPPO_ORD[gruppoVito(y)])||x.localeCompare(y);});
+  var T={lordo:0,netto:0,servizi:0,costi:0,totale:0,vito:0,n:0};
+  aptKeys.forEach(function(apt){
+    var v=byApt[apt];var cf=getCostiFissi(apt);
+    v.mesiCosti=mesiAttivi(apt);
+    v.costiFissiTot=cf.totale*v.mesiCosti;v.costiFissiDettaglio=cf.dettaglio;
+    v.totale=v.finale-v.costiFissiTot;
+    var g=gruppoVito(apt);
+    v.vito=g==='visionari'?v.totale:g==='domus'?v.lordo*0.15:g==='dimora'?v.lordo*0.15/3:null;
+    T.lordo+=v.lordo;T.netto+=v.netto;T.servizi+=v.servizi;T.costi+=v.costiFissiTot;T.totale+=v.totale;T.n+=v.n;
+    if(v.vito!==null)T.vito+=v.vito;
   });
+  var eneaKeys=aptKeys.filter(function(a){return gruppoVito(a)==='enea';});
+  var mesiEnea=eneaKeys.reduce(function(m,a){return Math.max(m,mesiAttivi(a));},0);
+  var vitoEnea=VITO_ENEA_FISSO*mesiEnea;
+  T.vito+=vitoEnea;
 
-  var totFinale=Object.values(byApt).reduce(function(s,v){return s+v.finaleNetto;},0);
-
-  var rowsGraf=incassiFilterApt==='tutti'
-    ?prenoValide.map(function(r){var ci=calcIncasso(r);return{r:r,finale:ci.finale,lordo:ci.lordo};})
-    :prenoValide.filter(function(r){return matchApt(r['Appartamento'],incassiFilterApt);}).map(function(r){var ci=calcIncasso(r);return{r:r,finale:ci.finale,lordo:ci.lordo};});
-
+  // Grafico: incasso finale totale per mese (affitti contati in tutti i mesi)
   var byMeseGraf={};
-  var mesiPerAptGraf={};
-  rowsGraf.forEach(function(x){
-    var apt=x.r['Appartamento']||'';
-    var d=parseDate(x.r['Check-in']);if(!d||!apt)return;
+  mesiSpan.forEach(function(mk){byMeseGraf[mk]=0;});
+  prenoValide.filter(function(r){return incassiFilterApt==='tutti'||matchApt(r['Appartamento'],incassiFilterApt);}).forEach(function(r){
+    var d=parseDate(r['Check-in']);if(!d)return;
     var mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    if(!mesiPerAptGraf[apt])mesiPerAptGraf[apt]=new Set();
-    mesiPerAptGraf[apt].add(mk);
-    if(!byMeseGraf[mk])byMeseGraf[mk]={finale:0,costi:0};
-    byMeseGraf[mk].finale+=x.finale;
+    byMeseGraf[mk]=(byMeseGraf[mk]||0)+calcIncasso(r).finale;
   });
-  Object.keys(mesiPerAptGraf).forEach(function(apt){
-    var cf=getCostiFissi(apt);
-    if(cf.totale===0)return;
-    mesiPerAptGraf[apt].forEach(function(mk){
-      if(byMeseGraf[mk])byMeseGraf[mk].costi+=cf.totale;
-    });
-  });
+  var aptCosti=Object.keys(COSTI_FISSI).filter(function(a){return incassiFilterApt==='tutti'||matchApt(a,incassiFilterApt);});
   var mesiGraf=Object.keys(byMeseGraf).sort();
+  mesiGraf.forEach(function(mk){aptCosti.forEach(function(a){var pm=primoMese[canonApt(a)];if(pm&&mk>=pm)byMeseGraf[mk]-=getCostiFissi(a).totale;});});
 
   var meseLabel=incassiFilterMese==='tutti'?'Tutti i periodi':(function(){var p=incassiFilterMese.split('-');return new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});})();
 
   var LABEL_OFFSET=60,BAR_W=64,BAR_GAP=24,CHART_H=180,LABEL_H=40,TOP_PAD=30;
-  var maxVal=mesiGraf.reduce(function(m,k){return Math.max(m,byMeseGraf[k].finale-byMeseGraf[k].costi);},0)||1;
+  var maxVal=mesiGraf.reduce(function(m,k){return Math.max(m,byMeseGraf[k]);},0)||1;
   var svgW=Math.max(500,mesiGraf.length*(BAR_W+BAR_GAP)+BAR_GAP+LABEL_OFFSET);
   var guides=[.25,.5,.75,1].map(function(p){
     var y=CHART_H-(p*(CHART_H-TOP_PAD));
     return '<line x1="'+LABEL_OFFSET+'" y1="'+y+'" x2="'+svgW+'" y2="'+y+'" stroke="#EDF4F9" stroke-width="1"/><text x="'+(LABEL_OFFSET+4)+'" y="'+(y-3)+'" font-size="9" fill="#BFCFDA" font-family="DM Sans,Arial,sans-serif">'+fmtEur(maxVal*p)+'</text>';
   }).join('');
   var bars=mesiGraf.map(function(mk,i){
-    var v=byMeseGraf[mk];
-    var finaleNetto=v.finale-v.costi;
+    var val=byMeseGraf[mk];
     var x=LABEL_OFFSET+BAR_GAP+i*(BAR_W+BAR_GAP);
-    var barH=Math.max(4,(finaleNetto/maxVal)*(CHART_H-TOP_PAD));
+    var barH=Math.max(4,(Math.max(0,val)/maxVal)*(CHART_H-TOP_PAD));
     var y=CHART_H-barH;
     var p=mk.split('-');
     var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'short',year:'2-digit'});
-    return '<rect x="'+x+'" y="'+y+'" width="'+BAR_W+'" height="'+barH+'" rx="6" fill="#0D5A8E" opacity="0.85"/>'
-      +'<text x="'+(x+BAR_W/2)+'" y="'+(y-6)+'" text-anchor="middle" font-size="11" font-weight="600" fill="#2A7A4F" font-family="DM Sans,Arial,sans-serif">'+fmtEur(finaleNetto)+'</text>'
+    return '<rect x="'+x+'" y="'+y+'" width="'+BAR_W+'" height="'+barH+'" rx="6" fill="'+(val<0?'#8B2E2E':'#0D5A8E')+'" opacity="0.85"/>'
+      +'<text x="'+(x+BAR_W/2)+'" y="'+(y-6)+'" text-anchor="middle" font-size="11" font-weight="600" fill="'+(val<0?'#8B2E2E':'#2A7A4F')+'" font-family="DM Sans,Arial,sans-serif">'+fmtEur(val)+'</text>'
       +'<text x="'+(x+BAR_W/2)+'" y="'+(CHART_H+18)+'" text-anchor="middle" font-size="11" fill="#7299B0" font-family="DM Sans,Arial,sans-serif">'+lbl+'</text>';
   }).join('');
   var svgGraf=mesiGraf.length===0
     ?'<div style="padding:32px;text-align:center;font-size:13px;color:var(--text3);font-style:italic">Nessun dato.</div>'
     :'<div class="chart-bars-wrap"><svg viewBox="0 0 '+svgW+' '+(CHART_H+LABEL_H)+'" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;min-width:'+svgW+'px;height:auto">'+guides+bars+'</svg></div>';
 
-  var aptRows=Object.entries(byApt).sort(function(a,b){return b[1].finaleNetto-a[1].finaleNetto;}).map(function(e){
-    var apt=e[0],v=e[1];
-    var domus=isDomus(apt);
-    var servStr=domus?'\u2014 (accordo Elda)':fmtEur(v.pulizia)+' pul. + '+fmtEur(v.lavanderia)+' lav.';
-    var costiStr=v.costiFissiDettaglio||'\u2014';
-    var costiLabel=v.costiFissiTot>0?fmtEur(v.costiFissiTot):'\u2014';
+  var sub=function(t){return '<div style="font-size:10px;color:var(--text3);margin-top:2px;font-weight:400">'+t+'</div>';};
+  var eneaFirst=true;
+  var aptRows=aptKeys.map(function(apt){
+    var v=byApt[apt];var g=gruppoVito(apt);
+    var vitoCell='';
+    if(g==='enea'){
+      if(eneaFirst){
+        eneaFirst=false;
+        vitoCell='<td rowspan="'+eneaKeys.length+'" style="vertical-align:middle;text-align:center;background:var(--green-light);color:var(--green);font-weight:700;font-size:15px;border-left:3px solid var(--green)">'+fmtEur(vitoEnea)+sub('fisso '+fmtEur(VITO_ENEA_FISSO)+'/mese'+(mesiEnea>1?' × '+mesiEnea+' mesi':'')+'<br>Putignani + Piccinni + Signorile')+'</td>';
+      }
+    }else{
+      vitoCell='<td style="background:var(--green-light);color:var(--green);font-weight:700">'+fmtEur(v.vito)+(g==='dimora'?sub('di cui (lordo × 15%) '+fmtEur(v.lordo*0.15)):g==='domus'?sub('lordo × 15%'):'')+'</td>';
+    }
+    var cfLbl=v.costiFissiTot>0?fmtEur(v.costiFissiTot)+sub(v.costiFissiDettaglio+(v.mesiCosti>1?' × '+v.mesiCosti+' mesi':'')):'—';
     return '<tr>'
       +'<td style="font-weight:500">'+apt+'</td>'
       +'<td style="text-align:center;color:var(--text3)">'+v.n+'</td>'
       +'<td class="val-lordo">'+fmtEur(v.lordo)+'</td>'
       +'<td class="val-netto">'+fmtEur(v.netto)+'</td>'
-      +'<td style="font-size:11px;color:var(--amber)">'+servStr+'</td>'
-      +'<td style="font-size:11px;color:var(--red)">'+costiLabel+'</td>'
-      +'<td class="val-finale" style="font-size:15px">'+fmtEur(v.finaleNetto)+'</td>'
+      +'<td style="color:var(--amber)">'+fmtEur(v.servizi)+sub(fmtEur(v.pulizia)+' pul. + '+fmtEur(v.lavanderia)+' lav.')+'</td>'
+      +'<td style="color:var(--red)">'+cfLbl+'</td>'
+      +'<td class="val-finale" style="font-size:14px'+(v.totale<0?';color:var(--red)':'')+'">'+fmtEur(v.totale)+'</td>'
+      +vitoCell
       +'</tr>';
   }).join('');
 
@@ -1211,55 +1243,56 @@ function renderIncassi(){
     +'</div>'
 
     +'<div class="incassi-kpi">'
-    +'<div class="incassi-kpi-card"><div class="incassi-kpi-num">'+fmtEur(totLordo)+'</div><div class="incassi-kpi-lbl">Totale lordo</div></div>'
-    +'<div class="incassi-kpi-card netto"><div class="incassi-kpi-num">'+fmtEur(totNetto)+'</div><div class="incassi-kpi-lbl">Totale netto</div></div>'
-    +'<div class="incassi-kpi-card servizi"><div class="incassi-kpi-num">'+fmtEur(totServ)+'</div><div class="incassi-kpi-lbl">Servizi pulizie</div></div>'
-    +'<div class="incassi-kpi-card costi"><div class="incassi-kpi-num">'+fmtEur(totCostiFissi)+'</div><div class="incassi-kpi-lbl">Affitti e spese</div></div>'
-    +'<div class="incassi-kpi-card finale"><div class="incassi-kpi-num">'+fmtEur(totFinale)+'</div><div class="incassi-kpi-lbl">Incasso finale</div></div>'
+    +'<div class="incassi-kpi-card"><div class="incassi-kpi-num">'+fmtEur(T.lordo)+'</div><div class="incassi-kpi-lbl">Totale lordo</div></div>'
+    +'<div class="incassi-kpi-card netto"><div class="incassi-kpi-num">'+fmtEur(T.netto)+'</div><div class="incassi-kpi-lbl">Totale netto</div></div>'
+    +'<div class="incassi-kpi-card servizi"><div class="incassi-kpi-num">'+fmtEur(T.servizi)+'</div><div class="incassi-kpi-lbl">Pulizie</div></div>'
+    +'<div class="incassi-kpi-card costi"><div class="incassi-kpi-num">'+fmtEur(T.costi)+'</div><div class="incassi-kpi-lbl">Affitti e spese</div></div>'
+    +'<div class="incassi-kpi-card netto"><div class="incassi-kpi-num">'+fmtEur(T.totale)+'</div><div class="incassi-kpi-lbl">Incasso finale totale</div></div>'
+    +'<div class="incassi-kpi-card finale"><div class="incassi-kpi-num">'+fmtEur(T.vito)+'</div><div class="incassi-kpi-lbl">Incasso finale Vito</div></div>'
     +'</div>'
 
     +'<div style="margin-bottom:18px">'
     +'<button class="incassi-note-toggle" onclick="toggleIncassiNote()">&#9432; Come vengono calcolati gli importi &#9660;</button>'
     +'<div id="incassi-note" class="incassi-note-box">'
-    +'<strong style="color:var(--text2)">Tariffe e commissioni</strong><br>'
-    +'Affitti mensili: Mare \u20ac860 \u00b7 Putignani \u20ac1.855 (affitto \u20ac1.480 + commercialista \u20ac125 + bollette \u20ac250) \u00b7 Piccinni \u20ac2.075 (affitto \u20ac1.700 + commercialista \u20ac125 + bollette \u20ac250)<br>'
-    +'Commissioni: Booking.com \u221220% \u00b7 Airbnb \u221215% \u00b7 Diretta 0%<br>'
-    +'Lavanderia Enea: tariffa/ospite \u00d7 n. ospiti (decurtata dall\'incasso, esclusa dal compenso addetta)<br>'
-    +'<br><strong style="color:var(--text2)">Domus Pulchra (grande e piccolo) \u00b7 Dimora Italia</strong><br>'
-    +'Incasso finale = lordo \u00d7 15% \u2014 accordo Elda, servizi e commissioni inclusi<br>'
-    +'<br><strong style="color:var(--text2)">Casa dei Visionari \u2013 Madonella</strong><br>'
-    +'Incasso finale = lordo \u2212 commissione \u2212 pulizia \u2212 lavanderia<br>'
-    +'<br><strong style="color:var(--text2)">Casa dei Visionari \u2013 Mare</strong><br>'
-    +'Incasso finale = lordo \u2212 commissione \u2212 pulizia \u2212 lavanderia \u2212 affitto mensile (\u20ac860)<br>'
-    +'<br><strong style="color:var(--text2)">Enea Luxury \u2013 Putignani \u00b7 Piccinni \u00b7 Signorile</strong><br>'
-    +'Incasso finale = (lordo \u2212 commissione \u2212 pulizia \u2212 lavanderia \u2212 affitti e spese) \u00d7 50%'
+    +'<strong style="color:var(--text2)">Per tutte le case</strong><br>'
+    +'Netto = lordo − commissione (Booking.com 20% · Airbnb 15% · diretta 0%)<br>'
+    +'Pulizie = costo pulizia + lavanderia dal foglio Pulizie (Enea: lavanderia secondo le regole della sezione Lavanderia)<br>'
+    +'Incasso finale totale = netto − pulizie − affitti e spese<br>'
+    +'Affitti e spese contati in tutti i mesi: Mare €1.000 · Putignani €1.855 · Piccinni €2.075 · Signorile €1.000<br>'
+    +'<br><strong style="color:var(--text2)">Incasso finale Vito</strong><br>'
+    +'Casa dei Visionari (Madonella, Mare): uguale all\'incasso finale totale<br>'
+    +'Domus Pulchra (grande e piccolo): lordo × 15%<br>'
+    +'Dimora Italia: (lordo × 15%) ÷ 3<br>'
+    +'Putignani + Piccinni + Signorile: fisso '+fmtEur(VITO_ENEA_FISSO)+' al mese per le tre case insieme'
     +'</div></div>'
 
-    +'<div class="section-label" style="margin-top:0">Riepilogo per appartamento \u2014 '+meseLabel+'</div>'
+    +'<div class="section-label" style="margin-top:0">Riepilogo per appartamento — '+meseLabel+'</div>'
     +'<table class="incassi-tbl">'
     +'<thead><tr>'
     +'<th>Appartamento</th>'
     +'<th style="text-align:center">Prenot.</th>'
     +'<th>Lordo</th>'
     +'<th>Netto</th>'
-    +'<th>Servizi pulizie</th>'
+    +'<th>Pulizie</th>'
     +'<th>Affitti e spese</th>'
-    +'<th>Incasso finale</th>'
+    +'<th>Incasso finale totale</th>'
+    +'<th>Incasso finale Vito</th>'
     +'</tr></thead>'
-    +'<tbody>'+(aptRows||'<tr><td colspan="7" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato.</td></tr>')+'</tbody>'
+    +'<tbody>'+(aptRows||'<tr><td colspan="8" style="color:var(--text3);font-style:italic;padding:16px;">Nessun dato.</td></tr>')+'</tbody>'
     +'<tfoot><tr>'
     +'<td>Totale</td>'
-    +'<td style="text-align:center">'+rows.length+'</td>'
-    +'<td>'+fmtEur(totLordo)+'</td>'
-    +'<td>'+fmtEur(totNetto)+'</td>'
-    +'<td>'+fmtEur(totServ)+'</td>'
-    +'<td>'+fmtEur(totCostiFissi)+'</td>'
-    +'<td>'+fmtEur(totFinale)+'</td>'
+    +'<td style="text-align:center">'+T.n+'</td>'
+    +'<td>'+fmtEur(T.lordo)+'</td>'
+    +'<td>'+fmtEur(T.netto)+'</td>'
+    +'<td>'+fmtEur(T.servizi)+'</td>'
+    +'<td>'+fmtEur(T.costi)+'</td>'
+    +'<td>'+fmtEur(T.totale)+'</td>'
+    +'<td>'+fmtEur(T.vito)+'</td>'
     +'</tr></tfoot>'
     +'</table>'
 
     +'<div class="incassi-chart-section">'
-    +'<div class="incassi-chart-title">&#128202; Incasso finale per mese'+(incassiFilterApt!=='tutti'?' \u00b7 '+incassiFilterApt:'')+'</div>'
+    +'<div class="incassi-chart-title">&#128202; Incasso finale totale per mese'+(incassiFilterApt!=='tutti'?' · '+incassiFilterApt:'')+'</div>'
     +svgGraf
     +'</div>';
 }
@@ -1742,7 +1775,11 @@ function biCheckinDomani(aptName,d){
 //    L'arrivo dopo i giorni liberi non genera un'altra consegna.
 //  - nessuna prenotazione successiva -> nessuna consegna finché non arriva una prenotazione
 //  - prima prenotazione in assoluto (nessun soggiorno precedente) -> set per gli ospiti al check-in
+var _biEvCache={src:null,map:{}};
 function biEventiApt(aptName){
+  if(_biEvCache.src!==prenotazioni){_biEvCache={src:prenotazioni,map:{}};}
+  var ck=normStr(aptName);
+  if(_biEvCache.map[ck])return _biEvCache.map[ck];
   var maxCap=getMaxCap(aptName);
   var stays=prenotazioni.filter(function(r){return matchApt(r['Appartamento'],aptName)&&parseDate(r['Check-in'])&&parseDate(r['Check-out']);})
     .map(function(r){return{ci:parseDate(r['Check-in']),co:parseDate(r['Check-out']),osp:ospitiPren(r)||2};})
@@ -1751,10 +1788,11 @@ function biEventiApt(aptName){
   stays.forEach(function(st,i){
     var n=maxCap?Math.min(st.osp,maxCap):st.osp;
     var prev=i>0?stays[i-1]:null;
-    if(!prev)ev.push({date:st.ci,n:n});
-    else if(sameDay(prev.co,st.ci)||st.ci<prev.co)ev.push({date:st.ci,n:n});
-    else ev.push({date:prev.co,n:maxCap||n});
+    if(!prev)ev.push({date:st.ci,n:n,ci:st.ci});
+    else if(sameDay(prev.co,st.ci)||st.ci<prev.co)ev.push({date:st.ci,n:n,ci:st.ci});
+    else ev.push({date:prev.co,n:maxCap||n,ci:st.ci});
   });
+  _biEvCache.map[ck]=ev;
   return ev;
 }
 function biGuestsForDay(aptName,d){
