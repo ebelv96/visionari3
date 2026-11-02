@@ -1242,7 +1242,67 @@ function renderIncassi(){
 }
 
 // ── PULIZIE ───────────────────────────────────────────────────
-function lettiDaPreparare(aptName,numOspiti){var letti=LETTI_APT[aptName]||[];var n=parseInt(numOspiti)||2;if(n<=2)return letti.slice(0,1);if(n<=4)return letti.slice(0,2);return letti;}
+// ── REGOLE PREPARAZIONE CASA ──────────────────────────────────
+// Caso 1 = check-out seguito da check-in lo stesso giorno: sempre preparazione per gli ospiti in arrivo.
+// Caso 2 = nessun check-in lo stesso giorno. Il comportamento dipende dal gruppo:
+//  'kit'       -> prepara per i prossimi ospiti; letti e biancheria mancanti fino alla capienza massima restano come kit
+//  'max'       -> prepara tutto per la capienza massima
+//  'letti_max' -> letti per la capienza massima; asciugamani per i prossimi ospiti in bagno, extra fino alla capienza massima in armadio
+//  'prossimo'  -> (appartamenti senza regola dedicata, es. Dimora Italia) prepara per i prossimi ospiti, o capienza massima se non ci sono arrivi
+const PREP_REGOLE={
+  'Casa dei Visionari \u2013 Madonella':'kit',
+  'Casa dei Visionari \u2013 Mare':'kit',
+  'Enea Luxury \u2013 Signorile':'kit',
+  'Domus Pulchra (piccolo)':'max',
+  'Domus Pulchra (grande)':'letti_max',
+  'Enea Luxury \u2013 Putignani':'letti_max',
+  'Enea Luxury \u2013 Piccinni':'letti_max'
+};
+// Ospiti di default se il gruppo 'kit' non ha ancora un arrivo prenotato: un letto matrimoniale pronto, il resto come kit
+const PREP_OSPITI_DEFAULT_KIT=2;
+function getRegolaPrep(apt){var k=Object.keys(PREP_REGOLE).find(function(x){return matchApt(x,apt);});return k?PREP_REGOLE[k]:'prossimo';}
+function getMaxCap(apt){var a=APTS.find(function(x){return matchApt(x.name,apt);});return a&&a.cap?a.cap:0;}
+function ospitiPren(r){return (parseInt(r['N. Ospiti Adulti'])||0)+(parseInt(r['N. Ospiti Minori'])||0);}
+function preparazioneCasa(apt,coDate){
+  var maxCap=getMaxCap(apt);
+  var nextRec=prenotazioni.filter(function(r){var ci=parseDate(r['Check-in']);return matchApt(r['Appartamento'],apt)&&ci&&ci>=coDate&&r['Nome Ospite'];}).sort(function(a,b){return parseDate(a['Check-in'])-parseDate(b['Check-in']);})[0]||null;
+  var caso=(nextRec&&sameDay(parseDate(nextRec['Check-in']),coDate))?1:2;
+  var nextOsp=nextRec?(ospitiPren(nextRec)||2):0;
+  if(maxCap&&nextOsp>maxCap)nextOsp=maxCap;
+  var maxOsp=maxCap||nextOsp||2;
+  var regola=getRegolaPrep(apt);
+  var perLetti,perAsciug,kit=false,armadio=0;
+  if(caso===1){perLetti=nextOsp;perAsciug=nextOsp;}
+  else if(regola==='kit'){perLetti=Math.min(nextOsp||PREP_OSPITI_DEFAULT_KIT,maxOsp);perAsciug=perLetti;kit=perLetti<maxOsp;}
+  else if(regola==='max'){perLetti=maxOsp;perAsciug=maxOsp;}
+  else if(regola==='letti_max'){perLetti=maxOsp;perAsciug=nextOsp||maxOsp;armadio=Math.max(0,maxOsp-perAsciug);}
+  else{perLetti=nextOsp||maxOsp;perAsciug=perLetti;}
+  var letti=lettiDaPreparare(apt,perLetti);
+  var lettiMax=lettiDaPreparare(apt,maxOsp);
+  var kitLetti=kit?lettiMax.slice(letti.length):[];
+  var kitAsciug=kit?Math.max(0,maxOsp-perAsciug):0;
+  var testo;
+  if(caso===1)testo='Cambio stesso giorno: prepara per '+perLetti+' ospiti';
+  else if(regola==='kit')testo='Prepara per '+perLetti+' ospiti'+(nextRec?'':' (nessun arrivo prenotato)')+(kit?' + lascia kit (letto e biancheria) per altri '+kitAsciug:'');
+  else if(regola==='max')testo='Prepara tutto per capienza massima ('+maxOsp+')';
+  else if(regola==='letti_max')testo='Letti per capienza massima ('+maxOsp+'), asciugamani '+perAsciug+' in bagno'+(armadio?' + '+armadio+' in armadio':'');
+  else testo='Prepara per '+perLetti+' ospiti';
+  return{caso:caso,regola:regola,letti:letti,kitLetti:kitLetti,asciugamani:perAsciug,armadio:armadio,kitAsciug:kitAsciug,maxOsp:maxOsp,nextRec:nextRec,testo:testo};
+}
+function prepCellHtml(p){
+  var badge='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:'+(p.caso===1?'var(--blue)':'var(--amber)')+';margin-bottom:3px">Caso '+p.caso+(p.caso===1?' \u00b7 stesso giorno':'')+'</div>';
+  var pills='<div class="letti-pills">'+p.letti.map(function(l){return '<span class="letto-pill">'+l+'</span>';}).join('')+p.kitLetti.map(function(l){return '<span class="letto-pill extra">kit: '+l+'</span>';}).join('')+'</div>';
+  var asc='<div style="font-size:11px;color:var(--text2);margin-top:4px">Asciugamani: '+p.asciugamani+' in bagno'+(p.armadio?' + '+p.armadio+' in armadio':'')+(p.kitAsciug?' + '+p.kitAsciug+' nel kit':'')+'</div>';
+  return badge+pills+asc;
+}
+function prepPdfHtml(p){
+  var lines=['<strong>Caso '+p.caso+'</strong> \u2014 '+p.testo];
+  if(p.letti.length)lines.push('Letti: '+p.letti.join(', '));
+  if(p.kitLetti.length)lines.push('Kit: '+p.kitLetti.join(', '));
+  lines.push('Asciugamani: '+p.asciugamani+' in bagno'+(p.armadio?' + '+p.armadio+' in armadio':'')+(p.kitAsciug?' + '+p.kitAsciug+' nel kit':''));
+  return lines.join('<br>');
+}
+function lettiDaPreparare(aptName,numOspiti){var lk=Object.keys(LETTI_APT).find(function(k){return matchApt(k,aptName);});var letti=lk?LETTI_APT[lk]:[];var n=parseInt(numOspiti)||2;if(n<=2)return letti.slice(0,1);if(n<=4)return letti.slice(0,2);return letti;}
 function toggleAptFilter(apt){if(!window._filterApts)window._filterApts=[];if(apt==='tutti')window._filterApts=[];else{var idx=window._filterApts.indexOf(apt);if(idx===-1)window._filterApts.push(apt);else window._filterApts.splice(idx,1);}renderPulizie();}
 
 function renderPulizie(){
@@ -1261,7 +1321,8 @@ function renderPulizie(){
   }).filter(function(r){return r.coDate;}).sort(function(a,b){return a.coDate-b.coDate;});
   checkouts.forEach(function(co){
     var next=prenotazioni.filter(function(r){return matchApt(r['Appartamento'],co.apt)&&parseDate(r['Check-in'])>=co.coDate&&r['Nome Ospite'];}).sort(function(a,b){return parseDate(a['Check-in'])-parseDate(b['Check-in']);})[0];
-    if(next){co.nextGuest=next['Nome Ospite']||'\u2014';co.nextGuestOspiti=parseInt(next['N. Ospiti Adulti'])||2;co.nextCiDate=parseDate(next['Check-in']);co.lettiNext=lettiDaPreparare(co.apt,next['N. Ospiti Adulti']);co.letti=co.lettiNext;}
+    if(next){co.nextGuest=next['Nome Ospite']||'\u2014';co.nextGuestOspiti=ospitiPren(next)||2;co.nextCiDate=parseDate(next['Check-in']);}
+    co.prep=preparazioneCasa(co.apt,co.coDate);
   });
   var mesi=Array.from(new Set(checkouts.map(function(r){return r.coDate.getFullYear()+'-'+String(r.coDate.getMonth()+1).padStart(2,'0');}))).sort();
   var mesiOpts=mesi.map(function(m){var p=m.split('-');var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return '<option value="'+m+'" '+(filterMese===m?'selected':'')+'>'+lbl+'</option>';}).join('');
@@ -1297,8 +1358,8 @@ function renderPulizie(){
     var dot=CLEANER_COLORS[persona]||'#0D5A8E';
     var fmtD=function(d){return d?d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}):'\u2014';};
     html+='<div class="cleaner-section"><div class="cleaner-header"><div class="cleaner-name"><span style="width:12px;height:12px;border-radius:50%;background:'+dot+';display:inline-block"></span>'+persona+'</div><div class="cleaner-totals"><span class="cleaner-badge-pill">'+interventi.length+' interventi</span><span class="cleaner-badge-pill tot">compenso \u20ac'+totC+'</span></div></div>'
-    +'<div class="pulizie-table-wrap"><table class="pulizie-table"><thead><tr><th>Check-out</th><th>Appartamento</th><th>Letti</th><th>Prossimo arrivo</th><th>Compenso</th></tr></thead><tbody>'
-    +interventi.map(function(r){return '<tr><td><strong>'+fmtD(r.coDate)+'</strong></td><td><div style="font-weight:500">'+r.apt+'</div></td><td><div class="letti-pills">'+r.letti.map(function(l){return '<span class="letto-pill">'+l+'</span>';}).join('')+'</div></td><td>'+(r.nextGuest?'<div style="font-size:13px">'+r.nextGuest+' \u2014 '+r.nextGuestOspiti+' ospiti</div><div class="periodo-range">&#8594; '+fmtD(r.nextCiDate)+'</div><div class="letti-pills">'+r.lettiNext.map(function(l){return '<span class="letto-pill extra">'+l+'</span>';}).join('')+'</div>':'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun arrivo previsto</span>')+'</td><td><div style="font-weight:600;color:var(--accent)">\u20ac'+r.compenso+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+r.dettaglio+'</div></td></tr>';}).join('')
+    +'<div class="pulizie-table-wrap"><table class="pulizie-table"><thead><tr><th>Check-out</th><th>Appartamento</th><th>Preparazione</th><th>Prossimo arrivo</th><th>Compenso</th></tr></thead><tbody>'
+    +interventi.map(function(r){return '<tr><td><strong>'+fmtD(r.coDate)+'</strong></td><td><div style="font-weight:500">'+r.apt+'</div></td><td>'+prepCellHtml(r.prep)+'</td><td>'+(r.nextGuest?'<div style="font-size:13px">'+r.nextGuest+' \u2014 '+r.nextGuestOspiti+' ospiti</div><div class="periodo-range">&#8594; '+fmtD(r.nextCiDate)+'</div>':'<span style="font-size:12px;color:var(--text3);font-style:italic">Nessun arrivo previsto</span>')+'</td><td><div style="font-weight:600;color:var(--accent)">\u20ac'+r.compenso+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+r.dettaglio+'</div></td></tr>';}).join('')
     +'</tbody><tfoot><tr><td colspan="4" style="text-align:right;font-weight:500;font-size:12px;color:var(--text3)">Totale '+persona+'</td><td><strong style="color:var(--accent)">\u20ac'+totC+'</strong></td></tr></tfoot></table></div></div>';
   });
   if(!filteredApt.length)html+='<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;font-style:italic">Nessun check-out trovato.</div>';
@@ -1393,7 +1454,8 @@ function generatePDF(persona,phone){
       ciDate:hasNext?parseDate(nextCI['Check-in']):coDate,
       coDateNext:hasNext?parseDate(nextCI['Check-out']):null,
       arrivoOsp:hasNext?(parseInt(nextCI['N. Ospiti Adulti'])||maxCap):maxCap,
-      arrivoBambini:hasNext?(parseInt(nextCI['N. Ospiti Minori'])||0):0
+      arrivoBambini:hasNext?(parseInt(nextCI['N. Ospiti Minori'])||0):0,
+      prep:preparazioneCasa(apt,coDate)
     };
   }).filter(function(r){if(!r.coDate||r.coDate<start||r.coDate>end)return false;if(r.persona!==persona)return false;if(fApt!=='tutti'&&r.apt!==fApt)return false;return true;}).sort(function(a,b){return a.coDate-b.coDate;});
   if(!items.length){alert('Nessun intervento trovato.');return;}
@@ -1406,12 +1468,13 @@ function generatePDF(persona,phone){
       +'<td>'+fmtDateFull(r.ciDate)+'</td>'
       +'<td>'+(r.hasNext?fmtDateFull(r.coDateNext):'\u2014')+'</td>'
       +'<td><span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:'+pc.bg+';color:'+pc.color+'">'+r.apt+'</span></td>'
+      +'<td style="font-size:12px;line-height:1.5">'+prepPdfHtml(r.prep)+'</td>'
       +'</tr>';
   }).join('');
   var dotC={Elda:'#2A7A4F',Dalila:'#8B5E2E',Giulia:'#C4883C'};
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:760px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:900px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
   +'<div class="header"><div><h2><span style="width:12px;height:12px;border-radius:50%;background:'+(dotC[persona]||'#0D5A8E')+';display:inline-block;margin-right:8px;vertical-align:middle"></span>'+persona+'</h2></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Planning Pulizie</strong><br>'+start.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'<br>'+end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'</div></div>'
-  +'<table><thead><tr><th>Ospite</th><th>Check-in</th><th>Check-out</th><th>Appartamento</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
+  +'<table><thead><tr><th>Ospite</th><th>Check-in</th><th>Check-out</th><th>Appartamento</th><th>Preparazione</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
   +'<div class="footer"><span>Visionari 3.0 \u00b7 generato il '+new Date().toLocaleDateString('it-IT')+'</span><span>'+items.length+' interventi</span></div>'
   +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
   var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
