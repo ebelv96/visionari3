@@ -655,16 +655,15 @@ let nlMonth=NL_TODAY_YM,nlFilterApts=[],nlMinConsec=0;
 
 // ── BIANCHERIA — config ────────────────────────────────────────
 // Appartamenti gestiti dal servizio lavanderia e capienza in letti matrimoniali (per calcolo set extra col letto singolo)
-const BI_APTS=['Enea Luxury \u2013 Putignani','Enea Luxury \u2013 Piccinni'];
-// maxMat = numero di letti matrimoniali "veri". extraBeds = letti aggiuntivi oltre i matrimoniali,
-// in ordine di utilizzo, con il tipo di set biancheria richiesto e quante persone ci dormono.
-// Putignani: oltre agli 8 posti nei matrimoniali, il 9° ospite usa il letto singolo -> set singolo.
-// Piccinni: il 5° e 6° ospite dormono sul divano letto (biancheria da matrimoniale, un solo set anche per 2 persone),
-// solo il 7° ospite usa il letto singolo -> set singolo.
-const BI_BED_CONFIG={
-  'Enea Luxury – Putignani':{maxMat:4,extraBeds:[{type:'singolo',capienza:1}]},
-  'Enea Luxury – Piccinni':{maxMat:2,extraBeds:[{type:'matrimoniale',capienza:2},{type:'singolo',capienza:1}]},
-};
+const BI_APTS=['Enea Luxury \u2013 Putignani','Enea Luxury \u2013 Piccinni','Enea Luxury \u2013 Signorile'];
+// Contatto lavanderia: letto dal foglio Pulizie (riga con Appartamento = "Lavanderia"), altrimenti questi valori
+const LAVANDERIA_DEFAULT={nome:'Daniela',tel:''};
+function getLavanderiaContatto(){
+  var row=addetteSheet.find(function(r){return normStr(r['Appartamento'])==='lavanderia';});
+  if(row)return{nome:(row['Addetta Pulizie']||LAVANDERIA_DEFAULT.nome).trim(),tel:(row['Numero telefono']||'').replace(/\s+/g,'').replace(/^00/,'+')};
+  return LAVANDERIA_DEFAULT;
+}
+// I set per ogni casa si calcolano dai letti della tab "Dashboard capienza" (vedi LETTI_CONFIG / biSetsForGuests).
 // Dopo aver creato la tab "OrdiniBiancheria" nel Google Sheet (colonne: Settimana | Inviato | DataInvio),
 // incolla qui il suo GID (visibile nell'URL del foglio quando la selezioni)
 GIDS.biancheria='';
@@ -1470,9 +1469,28 @@ function renderDashboard(){
     }
     return '<div class="dash-card '+type+'"><div class="dash-guest-name">'+nome+'</div><div class="dash-meta" style="display:flex;align-items:center">'+osp+' ospiti \u00b7 '+apt+nottiStr+'</div>'+wa+noteHtml+'</div>';
   }
+  var lavHtml='';
+  if(day.getDay()===5){
+    var lav=getLavanderiaContatto();
+    var wk=biDateKey(day);
+    var lavBtn=lav.tel
+      ?'<button class="dash-wa-btn ci" style="background:var(--accent-light);color:var(--accent)" onclick="dashLavanderia(\''+wk+'\')">&#128196; PDF + &#128172; '+lav.tel+'</button>'
+      :'<button class="dash-wa-btn ci" style="background:var(--accent-light);color:var(--accent)" onclick="dashLavanderia(\''+wk+'\')">&#128196; Genera PDF</button><div style="font-size:11px;color:var(--amber);margin-top:6px">Numero di '+lav.nome+' mancante: aggiungi nel foglio Pulizie una riga \u201cLavanderia\u201d</div>';
+    lavHtml='<div style="margin-bottom:20px"><div class="dash-sec-title" style="color:var(--accent)">&#129530; Lavanderia</div>'
+      +'<div class="dash-card" style="border-left-color:var(--accent)"><div class="dash-guest-name">Ordine biancheria \u2014 '+lav.nome+'</div>'
+      +'<div class="dash-meta">Consegne della settimana successiva (luned\u00ec\u2013venerd\u00ec)</div>'+lavBtn+'</div></div>';
+  }
   c.innerHTML='<div class="dash-date-hero"><div class="dash-date-day">'+day.getDate()+'</div><div class="dash-date-weekday">'+day.toLocaleDateString('it-IT',{weekday:'long'})+'</div><div class="dash-date-monthyear">'+day.toLocaleDateString('it-IT',{month:'long',year:'numeric'})+'</div></div>'
+  +lavHtml
   +'<div class="dash-sections"><div><div class="dash-sec-title ci">&#8592; Check-in <span class="dash-count ci">'+ciList.length+'</span></div>'+(ciList.length?ciList.map(function(r){return gCard(r,'ci');}).join(''):'<div class="dash-empty">Nessun check-in</div>')+'</div>'
   +'<div><div class="dash-sec-title co">&#8594; Check-out <span class="dash-count co">'+coList.length+'</span></div>'+(coList.length?coList.map(function(r){return gCard(r,'co');}).join(''):'<div class="dash-empty">Nessun check-out</div>')+'</div></div>';
+}
+function dashLavanderia(weekKey){
+  biGeneraPlanning(weekKey,true);
+  biExportPDF(weekKey);
+  var lav=getLavanderiaContatto();
+  var tel=(lav.tel||'').replace('+','');
+  setTimeout(function(){window.open('https://wa.me/'+tel,'_blank');},600);
 }
 function sendWA(key){var item=waMessages[key];if(!item)return;navigator.clipboard.writeText(item.msg).then(function(){setTimeout(function(){window.open('https://wa.me/'+item.phone,'_blank');},600);}).catch(function(){window.open('https://wa.me/'+item.phone,'_blank');});}
 function shareWAMsg(key){var item=waMessages[key];if(!item)return;navigator.clipboard.writeText(item.msg).then(function(){setTimeout(function(){window.open('https://wa.me/','_blank');},600);}).catch(function(){window.open('https://wa.me/','_blank');});}
@@ -1709,56 +1727,45 @@ function biCheckinDomani(aptName,d){
     return matchApt(r['Appartamento'],aptName)&&sameDay(parseDate(r['Check-in']),domani);
   });
 }
-function biGuestsForDay(aptName,d){
-  var aptObj=APTS.find(function(a){return matchApt(a.name,aptName);});
-  var maxCap=aptObj?aptObj.cap:0;
-
-  // Conta check-in normali per questo giorno
-  var sum=0;
-  var hasCheckin=false;
-  prenotazioni.forEach(function(r){
-    if(matchApt(r['Appartamento'],aptName)&&sameDay(parseDate(r['Check-in']),d)){
-      var ad=parseInt(r['N. Ospiti Adulti'])||0;
-      var mi=parseInt(r['N. Ospiti Minori'])||0;
-      sum+=ad+mi;
-      hasCheckin=true;
-    }
+// Fabbisogno biancheria: si ordina per il giorno in cui la signora prepara la casa.
+//  - check-out seguito da check-in lo stesso giorno -> set per gli ospiti in arrivo
+//  - check-out seguito da giorni liberi -> set per la capienza massima nel giorno del check-out
+//    (Putignani/Piccinni: letti per la capienza massima e asciugamani extra nell'armadio;
+//     Signorile: letti per i prossimi ospiti + kit fino alla capienza massima).
+//    L'arrivo dopo i giorni liberi non genera un'altra consegna.
+//  - nessuna prenotazione successiva -> nessuna consegna finché non arriva una prenotazione
+//  - prima prenotazione in assoluto (nessun soggiorno precedente) -> set per gli ospiti al check-in
+function biEventiApt(aptName){
+  var maxCap=getMaxCap(aptName);
+  var stays=prenotazioni.filter(function(r){return matchApt(r['Appartamento'],aptName)&&parseDate(r['Check-in'])&&parseDate(r['Check-out']);})
+    .map(function(r){return{ci:parseDate(r['Check-in']),co:parseDate(r['Check-out']),osp:ospitiPren(r)||2};})
+    .sort(function(x,y){return x.ci-y.ci;});
+  var ev=[];
+  stays.forEach(function(st,i){
+    var n=maxCap?Math.min(st.osp,maxCap):st.osp;
+    var prev=i>0?stays[i-1]:null;
+    if(!prev)ev.push({date:st.ci,n:n});
+    else if(sameDay(prev.co,st.ci)||st.ci<prev.co)ev.push({date:st.ci,n:n});
+    else ev.push({date:prev.co,n:maxCap||n});
   });
-  if(hasCheckin)return sum;
-
-  // Se la notte di oggi è libera (nessuna prenotazione attiva stanotte)
-  var notteLibera=!biHasPrenotazioneAttiva(aptName,d);
-  if(notteLibera&&biCheckinDomani(aptName,d)){
-    return maxCap;
-  }
-
-  return 0;
+  return ev;
 }
-function biGuestsForDayReal(aptName,d){
-  // Ritorna gli ospiti reali (solo check-in effettivi, senza logica giorni liberi)
-  // Usato per sapere se domani c'è un check-in "vero" dopo una notte libera
-  var sum=0;
-  prenotazioni.forEach(function(r){
-    if(matchApt(r['Appartamento'],aptName)&&sameDay(parseDate(r['Check-in']),d)){
-      var ad=parseInt(r['N. Ospiti Adulti'])||0;
-      var mi=parseInt(r['N. Ospiti Minori'])||0;
-      sum+=ad+mi;
-    }
-  });
-  return sum;
+function biGuestsForDay(aptName,d){
+  return biEventiApt(aptName).reduce(function(s,e){return s+(sameDay(e.date,d)?e.n:0);},0);
 }
 function biSetsForGuests(aptName,guests){
   if(!guests)return{matrimoniali:0,singolo:0};
-  var cfg=BI_BED_CONFIG[aptName]||{maxMat:0,extraBeds:[]};
-  var matCap=cfg.maxMat*2;
+  // Stessa logica dei letti in Pulizie: prima i matrimoniali, poi i letti extra.
+  // Letto extra da 2 posti (divano letto) = set matrimoniale; da 1 posto (singolo, divano singolo) = set singolo.
+  var k=Object.keys(LETTI_CONFIG).find(function(x){return matchApt(x,aptName);});
+  var cfg=k?LETTI_CONFIG[k]:{maxMat:0,extraBeds:[]};
   var matrimoniali=Math.min(Math.ceil(guests/2),cfg.maxMat);
   var singolo=0;
-  var remaining=guests-matCap;
+  var remaining=guests-cfg.maxMat*2;
   cfg.extraBeds.forEach(function(bed){
     if(remaining<=0)return;
-    if(bed.type==='matrimoniale')matrimoniali+=1;
-    else if(bed.type==='singolo')singolo+=1;
-    remaining-=Math.min(remaining,bed.capienza);
+    if(bed.capienza>=2)matrimoniali+=1;else singolo+=1;
+    remaining-=bed.capienza;
   });
   return{matrimoniali:matrimoniali,singolo:singolo};
 }
@@ -1847,7 +1854,7 @@ function renderBiancheria(){
     }
   });
   var detailHtml=selRows.length?selRows.map(function(r){
-    return '<div class="bi-card"><div class="bi-card-top"><div><div class="bi-card-apt">'+r.apt+'</div><div class="bi-card-meta">Check-in '+biSelectedDate.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})+' \u00b7 '+r.guests+' ospiti</div></div></div>'
+    return '<div class="bi-card"><div class="bi-card-top"><div><div class="bi-card-apt">'+r.apt+'</div><div class="bi-card-meta">Preparazione '+biSelectedDate.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})+' \u00b7 set per '+r.guests+' ospiti</div></div></div>'
       +'<div class="bi-card-sets">'+biPiecesLabel(r.sets)+' <span class="muted">('+biPiecesDetail(r.sets)+')</span></div></div>';
   }).join(''):'<div class="bi-empty">Nessun check-in questo giorno.</div>';
 
@@ -1875,7 +1882,7 @@ function renderBiancheria(){
     +orderHtml;
 }
 
-function biGeneraPlanning(weekKey){
+function biGeneraPlanning(weekKey,tuttiApt){
   var p=weekKey.split('-').map(Number);
   var friDate=new Date(p[0],p[1]-1,p[2]);
   // Il venerdì da cui si genera il planning appartiene già alla settimana precedente
@@ -1886,7 +1893,7 @@ function biGeneraPlanning(weekKey){
   // perché quei check-in "tornano indietro" e si consegnano proprio nel venerdì finale (endDate).
   // Senza questo margine, i check-in del weekend successivo all'ultimo venerdì venivano persi dal conteggio.
   var scanEnd=new Date(endDate);scanEnd.setDate(scanEnd.getDate()+2);
-  var aptsDisp=BI_APTS.filter(function(a){return biFilterApts.length===0||biFilterApts.indexOf(a)!==-1;});
+  var aptsDisp=BI_APTS.filter(function(a){return tuttiApt||biFilterApts.length===0||biFilterApts.indexOf(a)!==-1;});
   var byConsegna={};
   var byApt={};
   aptsDisp.forEach(function(a){byApt[a]={matrimoniali:0,singolo:0};});
@@ -1898,13 +1905,8 @@ function biGeneraPlanning(weekKey){
       // scarta eventuali check-in oltre il weekend che non appartengono a questo ciclo.
       if(cons<mondayNext||cons>endDate)return;
       aptsDisp.forEach(function(apt){
-        // Se il giorno precedente era una notte libera, abbiamo già ordinato
-        // per max capienza ieri → il check-in di oggi non genera ulteriore consegna
-        var ieriDate=new Date(scanDate);ieriDate.setDate(ieriDate.getDate()-1);
-        var ieraNotteLibera=!biHasPrenotazioneAttiva(apt,ieriDate);
-        var guestsReali=biGuestsForDayReal(apt,scanDate);
-        var isCheckinDopoNotteLibera=ieraNotteLibera&&guestsReali>0;
-        var guests=isCheckinDopoNotteLibera?0:biGuestsForDay(apt,scanDate);
+        // Fabbisogno del giorno secondo le regole di preparazione (vedi biEventiApt)
+        var guests=biGuestsForDay(apt,scanDate);
         if(guests>0){
           var sets=biSetsForGuests(apt,guests);
           var ck=biDateKey(cons);
