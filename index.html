@@ -939,7 +939,9 @@ function renderApts(){
     if(coRec)rows+=aptRow('&#8594;','Check-out',(coRec['Nome Ospite']||'\u2014')+' &mdash; '+(coRec['N. Ospiti Adulti']||'?')+' adulti');
     if(status==='occupied'&&!ciRec&&!coRec){
       var ar=prenotazioni.find(function(r){var c1=parseDate(r['Check-in']),c2=parseDate(r['Check-out']);return matchApt(r['Appartamento'],apt.name)&&c1&&c2&&day>=c1&&day<c2;});
-      if(ar){var fd=function(d){return d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}):'?';};rows+=aptRow('&#9679;','Ospiti',(ar['Nome Ospite']||'\u2014')+' &mdash; '+(ar['N. Ospiti Adulti']||'?')+' adulti');rows+=aptRow('&#8596;','Periodo',fd(parseDate(ar['Check-in']))+' \u2192 '+fd(parseDate(ar['Check-out'])));}
+      if(ar){var fd=function(d){return d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short'}):'?';};rows+=aptRow('&#9679;','Ospiti',(ar['Nome Ospite']||'\u2014')+' &mdash; '+(ar['N. Ospiti Adulti']||'?')+' adulti');rows+=aptRow('&#8596;','Periodo',fd(parseDate(ar['Check-in']))+' \u2192 '+fd(parseDate(ar['Check-out'])));
+        var telOsp=(ar['Telefono']||'').replace(/\s+/g,'').replace(/^00/,'+');
+        rows+=aptRow('&#9742;','Telefono',telOsp?'<a href="tel:'+telOsp+'" style="color:var(--accent);font-weight:500;text-decoration:none">'+telOsp+'</a> &middot; <a href="https://wa.me/'+telOsp.replace('+','')+'" target="_blank" style="color:var(--green);text-decoration:none">WhatsApp</a>':'<span class="muted">non disponibile</span>');}
       else rows+=aptRow('&#9679;','Stato','<span class="muted">Ospiti presenti</span>');
     }
     if(status==='free')rows+=aptRow('&#9675;','Stato','<span class="muted">Nessuna prenotazione</span>');
@@ -1110,7 +1112,19 @@ function renderNottiLibere(){
 }
 
 // ── INCASSI ───────────────────────────────────────────────────
-var incassiFilterMese='tutti',incassiFilterApt='tutti';
+var incassiMesiSel=[],incassiFilterApt='tutti';  // incassiMesiSel vuoto = tutti i mesi
+function incToggleMese(m){
+  if(m==='tutti')incassiMesiSel=[];
+  else{var i=incassiMesiSel.indexOf(m);if(i===-1)incassiMesiSel.push(m);else incassiMesiSel.splice(i,1);incassiMesiSel.sort();}
+  renderIncassi();
+  var menu=document.getElementById('incMeseMenu');if(menu)menu.style.display='block';
+}
+function incToggleMeseDropdown(){
+  var menu=document.getElementById('incMeseMenu');if(!menu)return;
+  var isOpen=menu.style.display!=='none';
+  menu.style.display=isOpen?'none':'block';
+  if(!isOpen){setTimeout(function(){document.addEventListener('click',function h(e){if(!e.target.closest('#incMeseMenu')&&!e.target.closest('#incMeseBtn')){var m=document.getElementById('incMeseMenu');if(m)m.style.display='none';document.removeEventListener('click',h);}});},10);}
+}
 function toggleIncassiNote(){
   var box=document.getElementById('incassi-note');
   if(!box)return;
@@ -1129,24 +1143,32 @@ function renderIncassi(){
     for(var md=new Date(mp0[0],mp0[1]-1,1);md<=new Date(mp1[0],mp1[1]-1,1);md.setMonth(md.getMonth()+1))mesiSpan.push(md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0'));
   }
   var aptsList=Array.from(new Set(prenoValide.map(function(r){return canonApt(r['Appartamento']);}).concat(Object.keys(COSTI_FISSI).map(canonApt)))).sort();
-  var meseOpts=mesiList.map(function(m){var p=m.split('-');var lbl=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return '<option value="'+m+'" '+(incassiFilterMese===m?'selected':'')+'>'+lbl+'</option>';}).join('');
+  var tuttiMesi=incassiMesiSel.length===0;
+  var meseLbl=function(m){var p=m.split('-');var l=new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});return l.charAt(0).toUpperCase()+l.slice(1);};
+  window._incMesi=['tutti'].concat(mesiList);
+  var meseItems=window._incMesi.map(function(m,idx){
+    var isSel=m==='tutti'?tuttiMesi:incassiMesiSel.indexOf(m)!==-1;
+    var bg=isSel&&m!=='tutti'?'var(--accent-light)':'transparent';
+    var chk=isSel?'<span style="color:var(--accent);font-size:14px">&#10003;</span>':'<span style="width:14px;display:inline-block"></span>';
+    return '<div onclick="event.stopPropagation();incToggleMese(window._incMesi['+idx+'])" style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text);background:'+bg+';border-bottom:'+(m==='tutti'?'1px solid var(--border)':'none')+'">'+chk+'<span>'+(m==='tutti'?'Tutti i mesi':meseLbl(m))+'</span></div>';
+  }).join('');
+  var meseBtnLbl=tuttiMesi?'Tutti i mesi':incassiMesiSel.length===1?meseLbl(incassiMesiSel[0]):incassiMesiSel.length+' mesi selezionati';
   var aptOpts=aptsList.map(function(a){return '<option value="'+a+'" '+(incassiFilterApt===a?'selected':'')+'>'+a+'</option>';}).join('');
 
   var filtered=prenoValide;
-  if(incassiFilterMese!=='tutti'){
-    var fp=incassiFilterMese.split('-').map(Number);
-    filtered=filtered.filter(function(r){var d=parseDate(r['Check-in']);return d&&d.getFullYear()===fp[0]&&d.getMonth()===fp[1]-1;});
+  if(!tuttiMesi){
+    filtered=filtered.filter(function(r){var d=parseDate(r['Check-in']);return d&&incassiMesiSel.indexOf(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'))!==-1;});
   }
+  // Mesi su cui si contano affitti e fisso Vito: tutti i mesi del periodo, oppure quelli selezionati
+  var mesiCalcolo=tuttiMesi?mesiSpan:incassiMesiSel;
   if(incassiFilterApt!=='tutti')filtered=filtered.filter(function(r){return matchApt(r['Appartamento'],incassiFilterApt);});
-  var numMesi=incassiFilterMese==='tutti'?Math.max(1,mesiSpan.length):1;
   // Gli affitti si contano in tutti i mesi, ma solo da quando la casa è attiva (mese della prima prenotazione)
   var primoMese={};
   prenoValide.forEach(function(r){var d=parseDate(r['Check-in']);if(!d)return;var k=canonApt(r['Appartamento']);var mk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(!primoMese[k]||mk<primoMese[k])primoMese[k]=mk;});
   var mesiAttivi=function(apt){
     var pm=primoMese[canonApt(apt)];if(!pm)return 0;
-    if(incassiFilterMese!=='tutti')return incassiFilterMese>=pm?1:0;
-    // Con "Tutti i mesi" affitti e fisso Vito si contano in tutti i mesi del periodo, anche futuri
-    return mesiSpan.filter(function(mk){return mk>=pm;}).length;
+    // Affitti contati in ogni mese considerato (anche futuri), da quando la casa è attiva
+    return mesiCalcolo.filter(function(mk){return mk>=pm;}).length;
   };
 
   var byApt={};
@@ -1175,7 +1197,7 @@ function renderIncassi(){
   // Mesi con fisso Vito Enea: mesi del periodo da agosto 2026 (VITO_ENEA_DAL) e da quando almeno un Enea è attivo
   var primoEnea=eneaKeys.map(function(a){return primoMese[canonApt(a)];}).filter(Boolean).sort()[0];
   var inizioVito=primoEnea&&primoEnea>VITO_ENEA_DAL?primoEnea:VITO_ENEA_DAL;
-  var mesiEnea=!primoEnea?0:incassiFilterMese!=='tutti'?(incassiFilterMese>=inizioVito?1:0):mesiSpan.filter(function(mk){return mk>=inizioVito;}).length;
+  var mesiEnea=!primoEnea?0:mesiCalcolo.filter(function(mk){return mk>=inizioVito;}).length;
   var vitoEnea=VITO_ENEA_FISSO*mesiEnea;
   T.vito+=vitoEnea;
 
@@ -1191,7 +1213,7 @@ function renderIncassi(){
   var mesiGraf=Object.keys(byMeseGraf).sort();
   mesiGraf.forEach(function(mk){aptCosti.forEach(function(a){var pm=primoMese[canonApt(a)];if(pm&&mk>=pm)byMeseGraf[mk]-=getCostiFissi(a).totale;});});
 
-  var meseLabel=incassiFilterMese==='tutti'?'Tutti i periodi':(function(){var p=incassiFilterMese.split('-');return new Date(+p[0],+p[1]-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});})();
+  var meseLabel=tuttiMesi?'Tutti i periodi':incassiMesiSel.map(function(m){return meseLbl(m).toLowerCase();}).join(', ');
 
   var LABEL_OFFSET=60,BAR_W=64,BAR_GAP=24,CHART_H=180,LABEL_H=40,TOP_PAD=30;
   var maxVal=mesiGraf.reduce(function(m,k){return Math.max(m,byMeseGraf[k]);},0)||1;
@@ -1244,9 +1266,8 @@ function renderIncassi(){
   c.innerHTML=
     '<div class="incassi-filter-bar">'
     +'<label>Periodo:</label>'
-    +'<select onchange="incassiFilterMese=this.value;renderIncassi()">'
-    +'<option value="tutti" '+(incassiFilterMese==='tutti'?'selected':'')+'>Tutti i mesi</option>'+meseOpts
-    +'</select>'
+    +'<div style="position:relative;display:inline-block"><button id="incMeseBtn" onclick="incToggleMeseDropdown()" style="font-size:12px;padding:6px 14px;border:1px solid var(--border-strong);border-radius:20px;background:'+(tuttiMesi?'var(--surface)':'var(--accent)')+';color:'+(tuttiMesi?'var(--text)':'#fff')+';cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;min-width:150px;justify-content:space-between"><span>'+meseBtnLbl+'</span><span style="font-size:10px;opacity:.7">\u25bc</span></button>'
+    +'<div id="incMeseMenu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);z-index:200;min-width:220px;padding:4px 0;max-height:320px;overflow-y:auto">'+meseItems+'</div></div>'
     +'<label style="margin-left:8px">Appartamento:</label>'
     +'<select onchange="incassiFilterApt=this.value;renderIncassi()">'
     +'<option value="tutti" '+(incassiFilterApt==='tutti'?'selected':'')+'>Tutti</option>'+aptOpts
