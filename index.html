@@ -546,6 +546,8 @@ const COSTI_FISSI={
 
 // Incasso finale Vito per Putignani + Piccinni + Signorile: importo fisso mensile unico per le tre case
 const VITO_ENEA_FISSO=2200;
+// Il fisso Vito per gli Enea vale da questo mese in poi (prima Enea non aveva incasso Vito)
+const VITO_ENEA_DAL='2026-08';
 // Gruppo per le regole dell'incasso di Vito
 // Nome canonico dell'appartamento (stesso nome anche se nel foglio cambia il trattino, es. "-" / "\u2013")
 function canonApt(name){
@@ -1164,7 +1166,10 @@ function renderIncassi(){
     if(v.vito!==null)T.vito+=v.vito;
   });
   var eneaKeys=aptKeys.filter(function(a){return gruppoVito(a)==='enea';});
-  var mesiEnea=eneaKeys.reduce(function(m,a){return Math.max(m,mesiAttivi(a));},0);
+  // Mesi con fisso Vito Enea: mesi del periodo da agosto 2026 (VITO_ENEA_DAL) e da quando almeno un Enea è attivo
+  var primoEnea=eneaKeys.map(function(a){return primoMese[canonApt(a)];}).filter(Boolean).sort()[0];
+  var inizioVito=primoEnea&&primoEnea>VITO_ENEA_DAL?primoEnea:VITO_ENEA_DAL;
+  var mesiEnea=!primoEnea?0:incassiFilterMese!=='tutti'?(incassiFilterMese>=inizioVito?1:0):mesiSpan.filter(function(mk){return mk>=inizioVito;}).length;
   var vitoEnea=VITO_ENEA_FISSO*mesiEnea;
   T.vito+=vitoEnea;
 
@@ -1212,7 +1217,7 @@ function renderIncassi(){
     if(g==='enea'){
       if(eneaFirst){
         eneaFirst=false;
-        vitoCell='<td rowspan="'+eneaKeys.length+'" style="vertical-align:middle;text-align:center;background:var(--green-light);color:var(--green);font-weight:700;font-size:15px;border-left:3px solid var(--green)">'+fmtEur(vitoEnea)+sub('fisso '+fmtEur(VITO_ENEA_FISSO)+'/mese'+(mesiEnea>1?' × '+mesiEnea+' mesi':'')+'<br>Putignani + Piccinni + Signorile')+'</td>';
+        vitoCell='<td rowspan="'+eneaKeys.length+'" style="vertical-align:middle;text-align:center;background:var(--green-light);color:var(--green);font-weight:700;font-size:15px;border-left:3px solid var(--green)">'+fmtEur(vitoEnea)+sub((mesiEnea?'fisso '+fmtEur(VITO_ENEA_FISSO)+'/mese'+(mesiEnea>1?' × '+mesiEnea+' mesi':''):'nessun incasso Vito prima di agosto 2026')+'<br>Putignani + Piccinni + Signorile')+'</td>';
       }
     }else{
       vitoCell='<td style="background:var(--green-light);color:var(--green);font-weight:700">'+fmtEur(v.vito)+(g==='dimora'?sub('di cui (lordo × 15%) '+fmtEur(v.lordo*0.15)):g==='domus'?sub('lordo × 15%'):'')+'</td>';
@@ -1263,7 +1268,7 @@ function renderIncassi(){
     +'Casa dei Visionari (Madonella, Mare): uguale all\'incasso finale totale<br>'
     +'Domus Pulchra (grande e piccolo): lordo × 15%<br>'
     +'Dimora Italia: (lordo × 15%) ÷ 3<br>'
-    +'Putignani + Piccinni + Signorile: fisso '+fmtEur(VITO_ENEA_FISSO)+' al mese per le tre case insieme'
+    +'Putignani + Piccinni + Signorile: fisso '+fmtEur(VITO_ENEA_FISSO)+' al mese per le tre case insieme, da agosto 2026 (prima nessun incasso Vito)'
     +'</div></div>'
 
     +'<div class="section-label" style="margin-top:0">Riepilogo per appartamento — '+meseLabel+'</div>'
