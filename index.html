@@ -509,7 +509,7 @@ table.incassi-tbl tfoot td{font-weight:600;font-size:13px;background:var(--accen
 </div>
 <script>
 const SHEET_ID='1njE_JQ-m_rzdAOR-OWDeI7NfCq2sn0LZe2Ia_A-xjRc';
-const GIDS={prenotazioni:'1940746485',addette:'1820111522',prompt:'955795025',capacita:'1866768994'};
+const GIDS={prenotazioni:'1940746485',addette:'1820111522',prompt:'955795025',capacita:'1866768974'};
 function sheetURL(gid){return 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=csv&gid='+gid;}
 async function fetchSheetSkipTitle(gid){
   const res=await fetch(sheetURL(gid));
@@ -566,13 +566,37 @@ const APTS=[
 // solo quelle con nome che corrisponde esattamente a un appartamento e capienza numerica,
 // cos\u00ec eventuali righe di titolo/intestazione vengono ignorate da sole.
 var capacitaRows=[];
+// Confronto tollerante per i nomi nel foglio capacit\u00e0 (es. "Madonnella" / "Madonella"):
+// ignora le lettere doppie, cos\u00ec un refuso nel foglio non fa perdere la riga.
+function matchAptLoose(a,b){var f=function(x){return normStr(x).replace(/(.)\1+/g,'$1');};return f(a)===f(b);}
+// Legge la colonna "Set letti" (es. "4 letti matrimoniali + 1 singolo", "1 matrimoniale + 1 divano letto").
+// I letti extra si usano dopo i matrimoniali: prima i divani letto (2 posti), poi i singoli.
+function parseSetLetti(txt){
+  if(!txt)return null;
+  var maxMat=0,extra=[];
+  txt.toLowerCase().split('+').forEach(function(part){
+    var m=part.match(/(\d+)/);var n=m?parseInt(m[1]):1;
+    var bed=null;
+    if(/matrimonial/.test(part)){maxMat+=n;return;}
+    if(/divano/.test(part))bed=/singol/.test(part)?{nome:'divano letto singolo',capienza:1}:{nome:'divano letto',capienza:2};
+    else if(/doppi|castello/.test(part))bed={nome:'letto doppio',capienza:2};
+    else if(/singol/.test(part))bed={nome:'letto singolo',capienza:1};
+    if(bed)for(var i=0;i<n;i++)extra.push({nome:bed.nome,capienza:bed.capienza});
+  });
+  if(!maxMat&&!extra.length)return null;
+  extra.sort(function(a,b){return b.capienza-a.capienza;});
+  return{maxMat:maxMat,extraBeds:extra};
+}
 function applyCapacita(rows){
   capacitaRows=rows||[];
   capacitaRows.forEach(function(r){
+    if(!r[0])return;
+    var apt=APTS.find(function(a){return matchAptLoose(a.name,r[0]);});
+    if(!apt)return;
     var cap=parseInt(r[1]);
-    if(!r[0]||!cap)return;
-    var apt=APTS.find(function(a){return matchApt(a.name,r[0]);});
-    if(apt){apt.cap=cap;apt.sub='fino a '+cap+' persone';}
+    if(cap){apt.cap=cap;apt.sub='fino a '+cap+' persone';}
+    var cfg=parseSetLetti(r[2]);
+    if(cfg)LETTI_CONFIG[apt.name]=cfg;
   });
 }
 async function loadCapacita(){
@@ -583,7 +607,7 @@ async function loadCapacita(){
     var text=await res.text();
     var rows=text.trim().split('\n').map(function(line){
       var c=splitCSVLine(line);
-      return[(c[0]||'').trim(),(c[1]||'').trim()];
+      return[(c[0]||'').trim(),(c[1]||'').trim(),(c[2]||'').trim()];
     });
     applyCapacita(rows);
   }catch(e){console.warn('Capacit\u00e0 non caricate dal foglio, uso i valori di riserva',e);}
@@ -1242,12 +1266,52 @@ function renderIncassi(){
 }
 
 // ── PULIZIE ───────────────────────────────────────────────────
+// ── LETTI PER NUMERO DI OSPITI ───────────────────────────────
+// Stessa logica della biancheria: prima si riempiono i letti matrimoniali (2 ospiti ciascuno,
+// es. 5 ospiti = 3 matrimoniali), poi i letti extra (prima divani letto, poi singoli).
+// I letti vengono letti dal foglio "Dashboard capienza" (colonna "Set letti", GIDS.capacita):
+// i valori qui sotto sono solo la riserva se il foglio non risponde.
+const LETTI_CONFIG={
+  'Enea Luxury \u2013 Putignani':{maxMat:4,extraBeds:[{nome:'letto singolo',capienza:1}]},
+  'Enea Luxury \u2013 Piccinni':{maxMat:2,extraBeds:[{nome:'divano letto',capienza:2},{nome:'letto singolo',capienza:1}]},
+  'Enea Luxury \u2013 Signorile':{maxMat:2,extraBeds:[{nome:'divano letto',capienza:2}]},
+  'Domus Pulchra (grande)':{maxMat:3,extraBeds:[]},
+  'Domus Pulchra (piccolo)':{maxMat:1,extraBeds:[{nome:'letto singolo',capienza:1}]},
+  'Casa dei Visionari \u2013 Madonella':{maxMat:1,extraBeds:[{nome:'divano letto',capienza:2}]},
+  'Casa dei Visionari \u2013 Mare':{maxMat:1,extraBeds:[{nome:'divano letto',capienza:2}]},
+  'Dimora Italia':{maxMat:2,extraBeds:[{nome:'letto singolo',capienza:1},{nome:'letto singolo',capienza:1}]}
+};
+function lettiPerOspiti(apt,ospiti){
+  var k=Object.keys(LETTI_CONFIG).find(function(x){return matchApt(x,apt);});
+  if(!k||!ospiti)return{mat:0,extra:[]};
+  var cfg=LETTI_CONFIG[k];
+  var mat=Math.min(Math.ceil(ospiti/2),cfg.maxMat);
+  var rem=ospiti-cfg.maxMat*2,extra=[];
+  cfg.extraBeds.forEach(function(b){if(rem<=0)return;extra.push(b.nome);rem-=b.capienza;});
+  return{mat:mat,extra:extra};
+}
+function lettiDiff(maxL,l){
+  // letti presenti nella configurazione massima ma non preparati (per il kit)
+  return{mat:Math.max(0,maxL.mat-l.mat),extra:maxL.extra.slice(l.extra.length)};
+}
+function lettiTesto(l){
+  var parts=[];
+  if(l.mat)parts.push(l.mat+' matrimonial'+(l.mat>1?'i':'e'));
+  var cnt={};l.extra.forEach(function(n){cnt[n]=(cnt[n]||0)+1;});
+  Object.keys(cnt).forEach(function(n){
+    var c=cnt[n];
+    if(c===1)parts.push('1 '+n);
+    else parts.push(c+' '+n.replace('letto singolo','letti singoli').replace('divano letto singolo','divani letto singoli').replace(/^divano letto$/,'divani letto').replace('letto doppio','letti doppi'));
+  });
+  return parts.length?parts.join(' + '):'\u2014';
+}
+
 // ── REGOLE PREPARAZIONE CASA ──────────────────────────────────
-// Caso 1 = check-out seguito da check-in lo stesso giorno: sempre preparazione per gli ospiti in arrivo.
-// Caso 2 = nessun check-in lo stesso giorno. Il comportamento dipende dal gruppo:
-//  'kit'       -> prepara per i prossimi ospiti; letti e biancheria mancanti fino alla capienza massima restano come kit
+// Check-out seguito da check-in lo stesso giorno: sempre preparazione per gli ospiti in arrivo.
+// Nessun check-in lo stesso giorno, a seconda del gruppo:
+//  'kit'       -> prepara per i prossimi ospiti; letti e asciugamani mancanti fino alla capienza massima lasciati come kit
 //  'max'       -> prepara tutto per la capienza massima
-//  'letti_max' -> letti per la capienza massima; asciugamani per i prossimi ospiti in bagno, extra fino alla capienza massima in armadio
+//  'letti_max' -> letti per la capienza massima; asciugamani per i prossimi ospiti + extra fino alla capienza massima nell'armadio
 //  'prossimo'  -> (appartamenti senza regola dedicata, es. Dimora Italia) prepara per i prossimi ospiti, o capienza massima se non ci sono arrivi
 const PREP_REGOLE={
   'Casa dei Visionari \u2013 Madonella':'kit',
@@ -1258,7 +1322,7 @@ const PREP_REGOLE={
   'Enea Luxury \u2013 Putignani':'letti_max',
   'Enea Luxury \u2013 Piccinni':'letti_max'
 };
-// Ospiti di default se il gruppo 'kit' non ha ancora un arrivo prenotato: un letto matrimoniale pronto, il resto come kit
+// Ospiti di default per il gruppo 'kit' quando non c'è ancora un arrivo prenotato
 const PREP_OSPITI_DEFAULT_KIT=2;
 function getRegolaPrep(apt){var k=Object.keys(PREP_REGOLE).find(function(x){return matchApt(x,apt);});return k?PREP_REGOLE[k]:'prossimo';}
 function getMaxCap(apt){var a=APTS.find(function(x){return matchApt(x.name,apt);});return a&&a.cap?a.cap:0;}
@@ -1266,43 +1330,43 @@ function ospitiPren(r){return (parseInt(r['N. Ospiti Adulti'])||0)+(parseInt(r['
 function preparazioneCasa(apt,coDate){
   var maxCap=getMaxCap(apt);
   var nextRec=prenotazioni.filter(function(r){var ci=parseDate(r['Check-in']);return matchApt(r['Appartamento'],apt)&&ci&&ci>=coDate&&r['Nome Ospite'];}).sort(function(a,b){return parseDate(a['Check-in'])-parseDate(b['Check-in']);})[0]||null;
-  var caso=(nextRec&&sameDay(parseDate(nextRec['Check-in']),coDate))?1:2;
+  var stessoGiorno=!!(nextRec&&sameDay(parseDate(nextRec['Check-in']),coDate));
   var nextOsp=nextRec?(ospitiPren(nextRec)||2):0;
   if(maxCap&&nextOsp>maxCap)nextOsp=maxCap;
   var maxOsp=maxCap||nextOsp||2;
   var regola=getRegolaPrep(apt);
   var perLetti,perAsciug,kit=false,armadio=0;
-  if(caso===1){perLetti=nextOsp;perAsciug=nextOsp;}
+  if(stessoGiorno){perLetti=nextOsp;perAsciug=nextOsp;}
   else if(regola==='kit'){perLetti=Math.min(nextOsp||PREP_OSPITI_DEFAULT_KIT,maxOsp);perAsciug=perLetti;kit=perLetti<maxOsp;}
   else if(regola==='max'){perLetti=maxOsp;perAsciug=maxOsp;}
   else if(regola==='letti_max'){perLetti=maxOsp;perAsciug=nextOsp||maxOsp;armadio=Math.max(0,maxOsp-perAsciug);}
   else{perLetti=nextOsp||maxOsp;perAsciug=perLetti;}
-  var letti=lettiDaPreparare(apt,perLetti);
-  var lettiMax=lettiDaPreparare(apt,maxOsp);
-  var kitLetti=kit?lettiMax.slice(letti.length):[];
+  var letti=lettiPerOspiti(apt,perLetti);
+  var kitLetti=kit?lettiDiff(lettiPerOspiti(apt,maxOsp),letti):{mat:0,extra:[]};
   var kitAsciug=kit?Math.max(0,maxOsp-perAsciug):0;
-  var testo;
-  if(caso===1)testo='Cambio stesso giorno: prepara per '+perLetti+' ospiti';
-  else if(regola==='kit')testo='Prepara per '+perLetti+' ospiti'+(nextRec?'':' (nessun arrivo prenotato)')+(kit?' + lascia kit (letto e biancheria) per altri '+kitAsciug:'');
-  else if(regola==='max')testo='Prepara tutto per capienza massima ('+maxOsp+')';
-  else if(regola==='letti_max')testo='Letti per capienza massima ('+maxOsp+'), asciugamani '+perAsciug+' in bagno'+(armadio?' + '+armadio+' in armadio':'');
-  else testo='Prepara per '+perLetti+' ospiti';
-  return{caso:caso,regola:regola,letti:letti,kitLetti:kitLetti,asciugamani:perAsciug,armadio:armadio,kitAsciug:kitAsciug,maxOsp:maxOsp,nextRec:nextRec,testo:testo};
+  return{
+    letti:lettiTesto(letti),
+    kitLetti:(kitLetti.mat||kitLetti.extra.length)?lettiTesto(kitLetti):'',
+    asciugamani:perAsciug,armadio:armadio,kitAsciug:kitAsciug,
+    apt:apt,stessoGiorno:stessoGiorno,nextCiDate:nextRec?parseDate(nextRec['Check-in']):null
+  };
 }
-function prepCellHtml(p){
-  var badge='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:'+(p.caso===1?'var(--blue)':'var(--amber)')+';margin-bottom:3px">Caso '+p.caso+(p.caso===1?' \u00b7 stesso giorno':'')+'</div>';
-  var pills='<div class="letti-pills">'+p.letti.map(function(l){return '<span class="letto-pill">'+l+'</span>';}).join('')+p.kitLetti.map(function(l){return '<span class="letto-pill extra">kit: '+l+'</span>';}).join('')+'</div>';
-  var asc='<div style="font-size:11px;color:var(--text2);margin-top:4px">Asciugamani: '+p.asciugamani+' in bagno'+(p.armadio?' + '+p.armadio+' in armadio':'')+(p.kitAsciug?' + '+p.kitAsciug+' nel kit':'')+'</div>';
-  return badge+pills+asc;
+// Testo breve: solo letti e asciugamani. L'armadio compare solo con la regola "capienza massima" (letti_max).
+function prepRighe(p,senzaAvvisoLibero){
+  // Casa dei Visionari (Madonella e Mare): preparazione sempre uguale
+  if(p.apt&&/visionari/i.test(p.apt))return['<strong>Letti:</strong> letto + divano letto','<strong>Asciugamani:</strong> per 4'];
+  var r=['<strong>Letti:</strong> '+p.letti,'<strong>Asciugamani:</strong> '+p.asciugamani+(p.armadio?' + '+p.armadio+' nell\'armadio':'')];
+  if(p.kitLetti||p.kitAsciug)r.push('<strong>Kit per gli ospiti:</strong> '+[p.kitLetti,p.kitAsciug?p.kitAsciug+(p.kitAsciug===1?' asciugamano':' asciugamani'):''].filter(Boolean).join(' + '));
+  // Check-out non seguito da check-in lo stesso giorno: avviso in rosso
+  if(!p.stessoGiorno&&!senzaAvvisoLibero){
+    var fino=p.nextCiDate?'FINO AL '+p.nextCiDate.toLocaleDateString('it-IT',{day:'numeric',month:'long'}).toUpperCase():'FINO A NUOVA PRENOTAZIONE';
+    r.push('<strong style="color:#C0262D">CASA LIBERA '+fino+', POSSIBILIT\u00c0 DI DOVER TORNARE NEI GIORNI LIBERI</strong>');
+  }
+  return r;
 }
-function prepPdfHtml(p){
-  var lines=['<strong>Caso '+p.caso+'</strong> \u2014 '+p.testo];
-  if(p.letti.length)lines.push('Letti: '+p.letti.join(', '));
-  if(p.kitLetti.length)lines.push('Kit: '+p.kitLetti.join(', '));
-  lines.push('Asciugamani: '+p.asciugamani+' in bagno'+(p.armadio?' + '+p.armadio+' in armadio':'')+(p.kitAsciug?' + '+p.kitAsciug+' nel kit':''));
-  return lines.join('<br>');
-}
-function lettiDaPreparare(aptName,numOspiti){var lk=Object.keys(LETTI_APT).find(function(k){return matchApt(k,aptName);});var letti=lk?LETTI_APT[lk]:[];var n=parseInt(numOspiti)||2;if(n<=2)return letti.slice(0,1);if(n<=4)return letti.slice(0,2);return letti;}
+function prepCellHtml(p){return '<div style="font-size:12px;line-height:1.6">'+prepRighe(p).join('<br>')+'</div>';}
+function prepPdfHtml(p){return prepRighe(p).join('<br>');}
+function lettiDaPreparare(aptName,numOspiti){var l=lettiPerOspiti(aptName,parseInt(numOspiti)||2);var t=lettiTesto(l);return t==='\u2014'?[]:[t];}
 function toggleAptFilter(apt){if(!window._filterApts)window._filterApts=[];if(apt==='tutti')window._filterApts=[];else{var idx=window._filterApts.indexOf(apt);if(idx===-1)window._filterApts.push(apt);else window._filterApts.splice(idx,1);}renderPulizie();}
 
 function renderPulizie(){
@@ -1442,40 +1506,82 @@ function generatePDF(persona,phone){
   if(!dalVal)return;
   var start=new Date(dalVal+'T00:00:00'),end=new Date(alVal+'T23:59:59');
   var fmtDateFull=function(d){return d?d.toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'}):'\u2014';};
-  var items=prenotazioni.filter(function(r){return r['Appartamento']&&r['Check-out'];}).map(function(r){
-    var coDate=parseDate(r['Check-out']),apt=r['Appartamento'];
-    var ai=getCostiPulizie(apt,r['N. Ospiti Adulti']||2);
-    var aptObj=APTS.find(function(a){return matchApt(a.name,apt);});var maxCap=aptObj?aptObj.cap:4;
-    var nextCI=prenotazioni.filter(function(nr){return matchApt(nr['Appartamento'],apt)&&parseDate(nr['Check-in'])>=coDate;}).sort(function(a,b){return parseDate(a['Check-in'])-parseDate(b['Check-in']);})[0];
-    var hasNext=!!nextCI;
-    return{
-      apt:apt,coDate:coDate,persona:ai.persona,hasNext:hasNext,
-      nomeOspite:hasNext?(nextCI['Nome Ospite']||'\u2014'):'',
-      ciDate:hasNext?parseDate(nextCI['Check-in']):coDate,
-      coDateNext:hasNext?parseDate(nextCI['Check-out']):null,
-      arrivoOsp:hasNext?(parseInt(nextCI['N. Ospiti Adulti'])||maxCap):maxCap,
-      arrivoBambini:hasNext?(parseInt(nextCI['N. Ospiti Minori'])||0):0,
-      prep:preparazioneCasa(apt,coDate)
-    };
-  }).filter(function(r){if(!r.coDate||r.coDate<start||r.coDate>end)return false;if(r.persona!==persona)return false;if(fApt!=='tutti'&&r.apt!==fApt)return false;return true;}).sort(function(a,b){return a.coDate-b.coDate;});
+  // Ogni riga = chi arriva (ospite, persone, check-in, check-out). La signora pulisce alla data di check-in.
+  // Se tra un check-out e il check-in successivo ci sono giorni vuoti, si inserisce una riga grigia
+  // "Appartamento libero" che parte dal check-out (finto check-in = giorno della pulizia) e arriva al check-in successivo.
+  var mieApt=Array.from(new Set(prenotazioni.filter(function(r){return r['Appartamento']&&getCostiPulizie(r['Appartamento'],2).persona===persona;}).map(function(r){return r['Appartamento'];})));
+  if(fApt!=='tutti')mieApt=mieApt.filter(function(a){return matchApt(a,fApt);});
+  var items=[];
+  mieApt.forEach(function(apt){
+    var stays=prenotazioni.filter(function(r){return matchApt(r['Appartamento'],apt)&&r['Nome Ospite']&&parseDate(r['Check-in'])&&parseDate(r['Check-out']);})
+      .map(function(r){return{nome:r['Nome Ospite'],adulti:parseInt(r['N. Ospiti Adulti'])||0,bambini:parseInt(r['N. Ospiti Minori'])||0,ci:parseDate(r['Check-in']),co:parseDate(r['Check-out'])};})
+      .sort(function(x,y){return x.ci-y.ci;});
+    stays.forEach(function(st,i){
+      var prev=i>0?stays[i-1]:null;
+      var dopoLibero=!!(prev&&st.ci>prev.co&&!sameDay(st.ci,prev.co));
+      items.push({tipo:'ospite',apt:apt,data:st.ci,st:st,dopoLibero:dopoLibero,liberoDal:dopoLibero?prev.co:null,
+        prep:(!dopoLibero&&prev)?preparazioneCasa(apt,prev.co):null});
+      var next=stays[i+1]||null;
+      if(!next||(next.ci>st.co&&!sameDay(next.ci,st.co))){
+        items.push({tipo:'libero',apt:apt,data:st.co,fino:next?next.ci:null,prep:preparazioneCasa(apt,st.co)});
+      }
+    });
+  });
+  items=items.filter(function(r){return r.data>=start&&r.data<=end;}).sort(function(x,y){return x.data-y.data||(x.tipo==='libero'?-1:1);});
   if(!items.length){alert('Nessun intervento trovato.');return;}
+  // Se nel planning ci sono più case, ognuna ha un colore ben distinto
+  var PLAN_PALETTE=[
+    {row:'#E4F0FB',border:'#1A6FA8',pill:'#C9E1F6',text:'#0E4570'},
+    {row:'#FDEBD6',border:'#D9822B',pill:'#F9D6AE',text:'#7A4510'},
+    {row:'#E3F4E7',border:'#2A8A4A',pill:'#C3E6CC',text:'#185A2E'},
+    {row:'#EFE6F8',border:'#7B4FB0',pill:'#DCCBF0',text:'#4A2A72'},
+    {row:'#FBE4E6',border:'#C0262D',pill:'#F4C6CA',text:'#7A1519'},
+    {row:'#E2F4F4',border:'#1F8C8C',pill:'#BFE5E5',text:'#125656'}
+  ];
+  var aptOrder=[];items.forEach(function(r){if(aptOrder.indexOf(r.apt)===-1)aptOrder.push(r.apt);});
+  var multiApt=aptOrder.length>1;
+  var aptColor=function(apt){return PLAN_PALETTE[aptOrder.indexOf(apt)%PLAN_PALETTE.length];};
+  var legendHtml=multiApt?'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+aptOrder.map(function(a){var c=aptColor(a);return '<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;background:'+c.pill+';color:'+c.text+';border-left:4px solid '+c.border+'">'+a+'</span>';}).join('')+'</div>':'';
+  var nPulizie=0;
+  var fmtGiorno=function(d){return d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});};
   var tableRows=items.map(function(r){
     var pc=APT_PILL_COLORS[r.apt]||{bg:'#EDF4F9',color:'#0D5A8E'};
-    var personeStr=r.hasNext?(r.arrivoOsp+' adult'+(r.arrivoOsp===1?'o':'i')+(r.arrivoBambini>0?', '+r.arrivoBambini+' bambin'+(r.arrivoBambini>1?'i':'o'):'')):('fino a '+r.arrivoOsp+' persone (max capienza)');
-    var nomeStr=r.hasNext?('<strong>'+r.nomeOspite+'</strong>'):'<strong style="color:#A06820">Nessun arrivo previsto</strong>';
-    return '<tr>'
-      +'<td>'+nomeStr+'<div style="font-size:11px;color:#7299B0;margin-top:2px">'+personeStr+'</div></td>'
-      +'<td>'+fmtDateFull(r.ciDate)+'</td>'
-      +'<td>'+(r.hasNext?fmtDateFull(r.coDateNext):'\u2014')+'</td>'
-      +'<td><span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:'+pc.bg+';color:'+pc.color+'">'+r.apt+'</span></td>'
-      +'<td style="font-size:12px;line-height:1.5">'+prepPdfHtml(r.prep)+'</td>'
-      +'</tr>';
+    var c=multiApt?aptColor(r.apt):null;
+    if(c)pc={bg:c.pill,color:c.text};
+    var border=c?c.border:'#B5BEC8';
+    var bgCol=r.tipo==='libero'?'#E9ECEF':(c?c.row:'');
+    var bg=bgCol?'background:'+bgCol+';':'';
+    var aptCell='<td style="'+bg+'"><span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:'+pc.bg+';color:'+pc.color+'">'+r.apt+'</span></td>';
+    var first='<td style="'+bg+'border-left:5px solid '+border+';">';
+    if(r.tipo==='libero'){
+      // Riga grigia: dal check-out (giorno della pulizia) al check-in successivo, preparazione secondo le regole
+      nPulizie++;
+      return '<tr>'+first+'<strong style="color:#4F5A66">APPARTAMENTO LIBERO</strong></td>'
+        +'<td style="'+bg+'color:#5F6B78">'+fmtGiorno(r.data)+'</td>'
+        +'<td style="'+bg+'color:#5F6B78">'+(r.fino?fmtGiorno(r.fino):'nuova prenotazione')+'</td>'
+        +aptCell
+        +'<td style="'+bg+'font-size:12px;line-height:1.5">'+prepRighe(r.prep,true).join('<br>')+'</td></tr>';
+    }
+    var st=r.st;
+    var personeStr=st.adulti+' adult'+(st.adulti===1?'o':'i')+(st.bambini>0?', '+st.bambini+' bambin'+(st.bambini>1?'i':'o'):'');
+    // Dopo una riga grigia la casa è già stata preparata: nessuna preparazione da indicare
+    var prepTxt;
+    if(r.dopoLibero)prepTxt='<span style="color:#9AA5B1">—</span>';
+    else if(r.prep){prepTxt=prepRighe(r.prep,true).join('<br>');nPulizie++;}
+    else prepTxt='<span style="color:#9AA5B1">—</span>';
+    return '<tr>'+first+'<strong>'+st.nome+'</strong><div style="font-size:11px;color:#7299B0;margin-top:2px">'+personeStr+'</div></td>'
+      +'<td style="'+bg+'">'+fmtGiorno(st.ci)+'</td>'
+      +'<td style="'+bg+'">'+fmtGiorno(st.co)+'</td>'
+      +aptCell
+      +'<td style="'+bg+'font-size:12px;line-height:1.5">'+prepTxt+'</td></tr>';
   }).join('');
+  legendHtml=legendHtml?legendHtml.replace(/<\/div>$/,'<span style="display:inline-flex;align-items:center;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;background:#E9ECEF;color:#4F5A66">Grigio = appartamento libero</span></div>'):'<div style="margin-bottom:12px"><span style="display:inline-flex;align-items:center;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;background:#E9ECEF;color:#4F5A66">Grigio = appartamento libero</span></div>';
   var dotC={Elda:'#2A7A4F',Dalila:'#8B5E2E',Giulia:'#C4883C'};
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:900px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:1px solid #EDF4F9;font-size:13px;vertical-align:top;}tr:nth-child(even) td{background:#F7FBFD;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@media print{body{margin:0;}.no-print{display:none;}}body{font-family:Arial,sans-serif;padding:28px;color:#0D1F2D;max-width:900px;margin:0 auto;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #0D5A8E;}h2{color:#0D5A8E;margin:0 0 4px;font-size:20px;}table{width:100%;border-collapse:collapse;margin-top:4px;}th{background:#EDF4F9;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7299B0;border-bottom:1px solid #D6EAFA;}td{padding:12px 14px;border-bottom:3px solid #fff;font-size:13px;vertical-align:top;-webkit-print-color-adjust:exact;print-color-adjust:exact;}tr:nth-child(even) td{background:#F7FBFD;}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #D6EAFA;display:flex;justify-content:space-between;font-size:11px;color:#7299B0;}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#0D5A8E;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}</style></head><body>'
   +'<div class="header"><div><h2><span style="width:12px;height:12px;border-radius:50%;background:'+(dotC[persona]||'#0D5A8E')+';display:inline-block;margin-right:8px;vertical-align:middle"></span>'+persona+'</h2></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Planning Pulizie</strong><br>'+start.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'<br>'+end.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'</div></div>'
-  +'<table><thead><tr><th>Ospite</th><th>Check-in</th><th>Check-out</th><th>Appartamento</th><th>Preparazione</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
-  +'<div class="footer"><span>Visionari 3.0 \u00b7 generato il '+new Date().toLocaleDateString('it-IT')+'</span><span>'+items.length+' interventi</span></div>'
+  +legendHtml
+  +'<table><thead><tr><th>Ospite in arrivo</th><th>Check-in<div style="font-size:10px;color:#C0262D;font-weight:700;margin-top:3px">QUANDO ANDARE A PULIRE</div></th><th>Check-out</th><th>Appartamento</th><th>Preparazione</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
+  +'<div class="footer"><span>Visionari 3.0 \u00b7 generato il '+new Date().toLocaleDateString('it-IT')+'</span><span>'+nPulizie+' pulizie</span></div>'
   +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
   var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
   setTimeout(function(){if(phone)window.open('https://wa.me/'+phone,'_blank');else window.open('https://wa.me/','_blank');},600);
