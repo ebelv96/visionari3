@@ -768,6 +768,7 @@ function lavanderiaOspitiPrenotazione(apt,ciDate){
   var ev=biEventiApt(apt).filter(function(e){return e.ci&&sameDay(e.ci,ciDate);})[0];
   return ev?ev.n:0;
 }
+const TASSA_SOGGIORNO=2,TASSA_MAX_NOTTI=4;
 function calcIncasso(r){
   var lordo=parseEur(r['Prezzo Lordo (€)']);
   var piatt=normStr(r['Piattaforma']||'');
@@ -775,13 +776,18 @@ function calcIncasso(r){
   var commRate=0;
   if(piatt.indexOf('booking')!==-1)commRate=0.20;
   else if(piatt.indexOf('airbnb')!==-1)commRate=0.15;
-  var netto=lordo*(1-commRate);
+  // Tassa di soggiorno: €2 per ospite adulto a notte, massimo 4 notti (max €8 a persona); minori esclusi
+  var ci0=parseDate(r['Check-in']),co0=parseDate(r['Check-out']);
+  var notti=(ci0&&co0)?Math.max(0,Math.round((co0-ci0)/86400000)):(parseInt(r['N. Notti'])||0);
+  var adulti=parseInt(r['N. Ospiti Adulti'])||0;
+  var tassa=TASSA_SOGGIORNO*adulti*Math.min(notti,TASSA_MAX_NOTTI);
+  var netto=lordo*(1-commRate)-tassa;
   var row=getRowAddetta(apt);
   var pulizia=row?parseEur(row['Costo pulizia']):0;
   var lavBase=row?parseEur(row['Costo lavanderia']):0;
   var lavanderia=isEnea(apt)?lavBase*lavanderiaOspitiPrenotazione(apt,parseDate(r['Check-in'])):lavBase;
   var servizi=pulizia+lavanderia;
-  return{lordo:lordo,netto:netto,pulizia:pulizia,lavanderia:lavanderia,servizi:servizi,finale:netto-servizi};
+  return{lordo:lordo,netto:netto,tassa:tassa,pulizia:pulizia,lavanderia:lavanderia,servizi:servizi,finale:netto-servizi};
 }
 
 // ── CACHE LOCALE (mostra subito l'ultimo dato noto, poi aggiorna in background) ──
@@ -1144,10 +1150,10 @@ function renderIncassi(){
   };
 
   var byApt={};
-  var addApt=function(apt){if(!byApt[apt])byApt[apt]={lordo:0,netto:0,pulizia:0,lavanderia:0,servizi:0,finale:0,n:0};return byApt[apt];};
+  var addApt=function(apt){if(!byApt[apt])byApt[apt]={lordo:0,netto:0,tassa:0,pulizia:0,lavanderia:0,servizi:0,finale:0,n:0};return byApt[apt];};
   filtered.forEach(function(r){
     var ci=calcIncasso(r);var v=addApt(canonApt(r['Appartamento']));
-    v.lordo+=ci.lordo;v.netto+=ci.netto;v.pulizia+=ci.pulizia;v.lavanderia+=ci.lavanderia;v.servizi+=ci.servizi;v.finale+=ci.finale;v.n++;
+    v.lordo+=ci.lordo;v.netto+=ci.netto;v.tassa+=ci.tassa;v.pulizia+=ci.pulizia;v.lavanderia+=ci.lavanderia;v.servizi+=ci.servizi;v.finale+=ci.finale;v.n++;
   });
   // Le case con affitti compaiono anche nei mesi senza prenotazioni
   Object.keys(COSTI_FISSI).forEach(function(apt){if(incassiFilterApt==='tutti'||matchApt(apt,incassiFilterApt))addApt(canonApt(apt));});
@@ -1227,7 +1233,7 @@ function renderIncassi(){
       +'<td style="font-weight:500">'+apt+'</td>'
       +'<td style="text-align:center;color:var(--text3)">'+v.n+'</td>'
       +'<td class="val-lordo">'+fmtEur(v.lordo)+'</td>'
-      +'<td class="val-netto">'+fmtEur(v.netto)+'</td>'
+      +'<td class="val-netto">'+fmtEur(v.netto)+(v.tassa?sub('di cui tassa soggiorno '+fmtEur(v.tassa)):'')+'</td>'
       +'<td style="color:var(--amber)">'+fmtEur(v.servizi)+sub(fmtEur(v.pulizia)+' pul. + '+fmtEur(v.lavanderia)+' lav.')+'</td>'
       +'<td style="color:var(--red)">'+cfLbl+'</td>'
       +'<td class="val-finale" style="font-size:14px'+(v.totale<0?';color:var(--red)':'')+'">'+fmtEur(v.totale)+'</td>'
@@ -1260,7 +1266,7 @@ function renderIncassi(){
     +'<button class="incassi-note-toggle" onclick="toggleIncassiNote()">&#9432; Come vengono calcolati gli importi &#9660;</button>'
     +'<div id="incassi-note" class="incassi-note-box">'
     +'<strong style="color:var(--text2)">Per tutte le case</strong><br>'
-    +'Netto = lordo − commissione (Booking.com 20% · Airbnb 15% · diretta 0%)<br>'
+    +'Netto = lordo − commissione (Booking.com 20% · Airbnb 15% · diretta 0%) − tassa di soggiorno (€2 per adulto a notte, max 4 notti)<br>'
     +'Pulizie = costo pulizia + lavanderia dal foglio Pulizie (Enea: lavanderia secondo le regole della sezione Lavanderia)<br>'
     +'Incasso finale totale = netto − pulizie − affitti e spese<br>'
     +'Affitti e spese contati in tutti i mesi: Mare €1.000 · Putignani €1.855 · Piccinni €2.075 · Signorile €1.000<br>'
