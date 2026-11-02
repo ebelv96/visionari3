@@ -1485,10 +1485,16 @@ function renderDashboard(){
   +'<div class="dash-sections"><div><div class="dash-sec-title ci">&#8592; Check-in <span class="dash-count ci">'+ciList.length+'</span></div>'+(ciList.length?ciList.map(function(r){return gCard(r,'ci');}).join(''):'<div class="dash-empty">Nessun check-in</div>')+'</div>'
   +'<div><div class="dash-sec-title co">&#8594; Check-out <span class="dash-count co">'+coList.length+'</span></div>'+(coList.length?coList.map(function(r){return gCard(r,'co');}).join(''):'<div class="dash-empty">Nessun check-out</div>')+'</div></div>';
 }
+// Bottone WhatsApp dentro la pagina del PDF: su iPhone/Safari il browser blocca la seconda
+// finestra aperta in automatico, quindi il collegamento a WhatsApp deve essere un tocco dell'utente.
+function waPdfButton(tel,nome){
+  var t=(tel||'').replace(/\s+/g,'').replace(/^00/,'+').replace('+','');
+  return '<a class="no-print" href="https://wa.me/'+t+'" target="_blank" style="display:block;width:max-content;margin:14px auto 0;padding:12px 28px;background:#25D366;color:#fff;border-radius:8px;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,sans-serif">&#128172; Apri WhatsApp'+(nome?' con '+nome:'')+'</a>';
+}
 function dashLavanderia(weekKey){
   biGeneraPlanning(weekKey,true);
-  biExportPDF(weekKey);
   var lav=getLavanderiaContatto();
+  biExportPDF(weekKey,lav.tel,lav.nome);
   var tel=(lav.tel||'').replace('+','');
   setTimeout(function(){window.open('https://wa.me/'+tel,'_blank');},600);
 }
@@ -1600,7 +1606,8 @@ function generatePDF(persona,phone){
   +legendHtml
   +'<table><thead><tr><th>Ospite in arrivo</th><th>Check-in<div style="display:inline-block;font-size:10px;color:#fff;background:#C0262D;font-weight:700;margin-top:4px;padding:2px 6px;border-radius:4px">QUANDO ANDARE A PULIRE</div></th><th>Check-out</th><th>Appartamento</th><th>Preparazione</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
   +'<div class="footer"><span>Visionari 3.0 \u00b7 generato il '+new Date().toLocaleDateString('it-IT')+'</span><span>'+nPulizie+' pulizie</span></div>'
-  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
+  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button>'
+  +waPdfButton(phone,persona)+'</body></html>';
   var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
   setTimeout(function(){if(phone)window.open('https://wa.me/'+phone,'_blank');else window.open('https://wa.me/','_blank');},600);
   closePlanningModal();
@@ -1975,7 +1982,7 @@ function biToggleInviato(weekKey,checked){
   }).catch(function(e){console.error('Errore salvataggio stato biancheria',e);});
 }
 
-function biExportPDF(weekKey){
+function biExportPDF(weekKey,waTel,waNome){
   var plan=biPlanningCache[weekKey];if(!plan)return;
   var rows=plan.consegne.map(function(c){
     var lbl=c.date.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})+(c.bundlesWeekend?' (incl. sab/dom)':'');
@@ -1999,7 +2006,8 @@ function biExportPDF(weekKey){
   +'<div class="header"><div><h2>&#129530; Ordine biancheria</h2><div style="font-size:12px;color:#7299B0">Settimana '+plan.friDate.toLocaleDateString('it-IT',{day:'numeric',month:'long'})+' \u2013 '+plan.endDate.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})+'</div></div><div style="font-size:12px;color:#7299B0;text-align:right"><strong>Visionari 3.0</strong><br>generato il '+new Date().toLocaleDateString('it-IT')+'</div></div>'
   +'<table><thead><tr><th>Giorno di consegna</th><th>Luogo</th><th>Set</th><th>Tappetini</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="3">Totale settimana</td><td>'+totStr+'</td></tr></tfoot></table>'
   +'<div class="footer"><span>Visionari 3.0</span><span>generato il '+new Date().toLocaleDateString('it-IT')+'</span></div>'
-  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button></body></html>';
+  +'<button class="print-btn no-print" onclick="window.print()">&#128424;&#65039; Stampa / Salva PDF</button>'
+  +(waTel?waPdfButton(waTel,waNome):'')+'</body></html>';
   var w=window.open('','_blank');if(!w){alert('Popup bloccato.');return;}w.document.write(html);w.document.close();w.focus();
 }
 
