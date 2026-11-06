@@ -106,15 +106,33 @@ async function selectCalendarDay(page, day) {
   //        v8 (<button role="gridcell" class="rdp-day_outside">).
   const days = page
     .locator([
+      // Calendario Vikey nov 2026 (rdp v8 + classi shadcn): <td><button class="rdp-button ...">
+      //   <span aria-hidden="true">1</span><span class="rdp-vhidden">1st January (Thursday)</span>
+      // I giorni grigi del mese prima/dopo hanno la classe "day-outside".
+      '[role="grid"] td button.rdp-button:not(.day-outside) span[aria-hidden="true"]',
       '[role="grid"] td[role="gridcell"]:not([data-outside="true"]):not(.rdp-outside) button',
       '[role="grid"] button[role="gridcell"]:not(.rdp-day_outside)',
       'button.rdp-day:not(.rdp-day_outside)'
     ].join(', '))
     .filter({ hasText: dayRe });
-  if (await days.count() === 0) {
-    throw new Error('Non trovo il giorno ' + day + ' nel calendario.');
+  if (await days.count() > 0) {
+    await days.first().click();
+  } else {
+    // Piano B (calendario Vikey nov 2026): i giorni non sono <button> in una
+    // griglia ARIA. Cerchiamo il numero come testo dentro il popover del
+    // calendario (il contenitore più vicino all'intestazione che contiene "15").
+    const popover = calendarCaption(page)
+      .locator('xpath=ancestor::*[.//*[normalize-space()="15"]][1]');
+    const byText = popover.getByText(String(day), { exact: true });
+    const n = await byText.count();
+    if (n === 0) {
+      throw new Error('Non trovo il giorno ' + day + ' nel calendario.');
+    }
+    // I giorni grigi del mese PRIMA sono numeri alti (es. 28-31) e stanno
+    // all'inizio; quelli del mese DOPO sono numeri bassi (1-6) e stanno in fondo.
+    // Quindi: giorno basso -> prima occorrenza, giorno alto -> ultima.
+    await (day <= 15 ? byText.first() : byText.last()).click();
   }
-  await days.first().click();
   await page.waitForTimeout(200);
 }
 
@@ -214,6 +232,10 @@ async function run() {
     console.log('Navigo alla data di inizio (' + START.day + '/' + (START.monthIndex + 1) + '/' + START.year + ')...');
     await navigateCalendarToMonth(page, START.monthIndex, START.year);
     await selectCalendarDay(page, START.day);
+    try {
+      console.log('Dopo il clic sulla data di inizio il range è: ' +
+        (await dateRangeDisplay.textContent()).trim());
+    } catch (_) { /* solo log */ }
 
     console.log('Navigo alla data di fine (' + END.day + '/' + (END.monthIndex + 1) + '/' + END.year + ')...');
     await navigateCalendarToMonth(page, END.monthIndex, END.year);
@@ -243,10 +265,16 @@ async function run() {
     // Testo ESATTO "Esporta": la nuova modale ha il titolo "Esporta Prenotazioni"
     // che con il match parziale darebbe 2 elementi (errore strict mode).
     // .last() = quello nella modale, che sta in fondo al DOM.
-    const finalExportButton = page
+    let finalExportButton = page
       .locator('div.text-md')
       .filter({ hasText: /^\s*Esporta\s*$/ })
       .last();
+    if (await finalExportButton.count() === 0) {
+      finalExportButton = page.getByRole('button', { name: /^\s*Esporta\s*$/ }).last();
+    }
+    if (await finalExportButton.count() === 0) {
+      finalExportButton = page.getByText('Esporta', { exact: true }).last();
+    }
     await finalExportButton.waitFor({ state: 'visible', timeout: 30000 });
     await finalExportButton.click();
 
