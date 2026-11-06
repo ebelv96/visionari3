@@ -31,35 +31,66 @@ const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
+const MONTH_NAMES_IT = [
+  'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+  'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'
+];
+const CAPTION_RE = new RegExp(
+  '^\\s*(' + MONTH_NAMES.concat(MONTH_NAMES_IT).join('|') + ')\\s+\\d{4}\\s*$', 'i'
+);
+
+// Nov 2026: Vikey ha un calendario nuovo (stile shadcn) che può sostituire
+// le classi standard "rdp-*". Per questo troviamo gli elementi dal TESTO
+// e dai ruoli ARIA, non dalle classi CSS.
+
+// Intestazione del mese, es. "November 2026"
+// .last(): il calendario è un popover aggiunto in fondo alla pagina, così
+// evitiamo eventuali altri "November 2026" presenti nella pagina sotto.
+function calendarCaption(page) {
+  return page.getByText(CAPTION_RE).last();
+}
 
 async function getCalendarCaption(page) {
-  const text = (await page.locator('.rdp-caption_label').first().textContent()).trim();
-  const parts = text.split(' ');
-  const monthName = parts[0];
-  const year = parseInt(parts[1], 10);
-  return { monthIndex: MONTH_NAMES.indexOf(monthName), year };
+  const text = (await calendarCaption(page).textContent()).trim();
+  const parts = text.split(/\s+/);
+  const name = parts[0].toLowerCase();
+  let monthIndex = MONTH_NAMES.findIndex((m) => m.toLowerCase() === name);
+  if (monthIndex < 0) monthIndex = MONTH_NAMES_IT.indexOf(name);
+  return { monthIndex, year: parseInt(parts[1], 10) };
+}
+
+async function clickMonthArrow(page, forward) {
+  // 1) aria-label: "Go to next month" (v8) / "Go to the Next Month" (v9)
+  let btn = page.getByRole('button', { name: forward ? /next month/i : /previous month/i });
+  if (await btn.count() > 0) {
+    await btn.first().click();
+    return;
+  }
+  // 2) Frecce senza etichetta: sono i bottoni SENZA numeri nel contenitore
+  //    del calendario (i giorni invece hanno numeri). Prima = ‹, ultima = ›.
+  const arrows = calendarCaption(page)
+    .locator('xpath=ancestor::*[.//button[not(normalize-space())] or .//button[.//svg]][1]')
+    .locator('button')
+    .filter({ hasNotText: /\d/ });
+  if (await arrows.count() >= 2) {
+    await (forward ? arrows.last() : arrows.first()).click();
+    return;
+  }
+  throw new Error('Non trovo le frecce del calendario (' + (forward ? 'avanti' : 'indietro') + ').');
 }
 
 async function navigateCalendarToMonth(page, targetMonthIndex, targetYear) {
   for (let attempts = 0; attempts < 80; attempts++) {
     const current = await getCalendarCaption(page);
+    if (current.monthIndex < 0 || isNaN(current.year)) {
+      throw new Error('Intestazione del calendario non riconosciuta.');
+    }
     if (current.monthIndex === targetMonthIndex && current.year === targetYear) {
       return;
     }
     const diff = (targetYear - current.year) * 12 + (targetMonthIndex - current.monthIndex);
-    // Regex case-insensitive: copre sia "Go to next month" (react-day-picker v8)
-    // sia "Go to the Next Month" (v9), nel caso Vikey aggiorni la libreria.
-    const buttonName = diff > 0 ? /next month/i : /previous month/i;
-    let navButton = page.getByRole('button', { name: buttonName });
-    // Le frecce sono solo icone (‹ ›): se l'aria-label non corrisponde,
-    // fallback sulle classi di react-day-picker (v9 e v8).
-    if (await navButton.count() === 0) {
-      navButton = page.locator(diff > 0
-        ? '.rdp-button_next, .rdp-nav_button_next'
-        : '.rdp-button_previous, .rdp-nav_button_previous');
-    }
-    await navButton.first().click();
-    await page.waitForTimeout(120);
+    await clickMonthArrow(page, diff > 0);
+    await page.waitForTimeout(150);
   }
   throw new Error(
     'Non sono riuscito a raggiungere il mese ' + (targetMonthIndex + 1) + '/' + targetYear +
@@ -69,20 +100,50 @@ async function navigateCalendarToMonth(page, targetMonthIndex, targetYear) {
 
 async function selectCalendarDay(page, day) {
   const dayRe = new RegExp('^\\s*' + day + '\\s*$');
-  // Struttura attuale (react-day-picker v8): <button class="rdp-day"><span aria-hidden>1</span>
-  // Il calendario ora mostra anche i giorni del mese dopo in grigio
+  // Il calendario mostra anche i giorni del mese prima/dopo in grigio
   // (es. 1-5 dicembre sotto novembre): li escludiamo sempre.
-  let daySpan = page
-    .locator('button.rdp-day:not(.rdp-day_outside) span[aria-hidden="true"]')
+  // Copre: v9/shadcn (<td role="gridcell" data-outside> <button>),
+  //        v8 (<button role="gridcell" class="rdp-day_outside">).
+  const days = page
+    .locator([
+      '[role="grid"] td[role="gridcell"]:not([data-outside="true"]):not(.rdp-outside) button',
+      '[role="grid"] button[role="gridcell"]:not(.rdp-day_outside)',
+      'button.rdp-day:not(.rdp-day_outside)'
+    ].join(', '))
     .filter({ hasText: dayRe });
-  // Fallback per react-day-picker v9: <td class="rdp-day"><button class="rdp-day_button">1</button>
-  if (await daySpan.count() === 0) {
-    daySpan = page
-      .locator('td.rdp-day:not(.rdp-outside):not([data-outside]) button.rdp-day_button')
-      .filter({ hasText: dayRe });
+  if (await days.count() === 0) {
+    throw new Error('Non trovo il giorno ' + day + ' nel calendario.');
   }
-  await daySpan.first().click();
-  await page.waitForTimeout(150);
+  await days.first().click();
+  await page.waitForTimeout(200);
+}
+
+// In caso di errore scrive nel log quello che serve per correggere i selettori:
+// URL, testo visibile della modale e HTML del calendario.
+async function dumpDebug(page) {
+  try {
+    console.error('--- DEBUG ---');
+    console.error('URL: ' + page.url());
+    const info = await page.evaluate(() => {
+      const out = {};
+      const all = Array.from(document.querySelectorAll('body *'));
+      const title = all.find((el) => el.childElementCount === 0 &&
+        (el.textContent || '').trim() === 'Esporta Prenotazioni');
+      let modal = title;
+      for (let i = 0; modal && i < 6; i++) modal = modal.parentElement;
+      out.modalText = modal ? modal.innerText.slice(0, 2500) : '(modale non trovata)';
+      const grid = document.querySelector('[role="grid"]');
+      let cal = grid;
+      for (let i = 0; cal && i < 3; i++) cal = cal.parentElement;
+      out.calendarHtml = cal ? cal.outerHTML.slice(0, 6000) : '(calendario non trovato)';
+      return out;
+    });
+    console.error('TESTO MODALE:\n' + info.modalText);
+    console.error('HTML CALENDARIO:\n' + info.calendarHtml);
+    console.error('--- FINE DEBUG ---');
+  } catch (e) {
+    console.error('Debug non riuscito:', e.message);
+  }
 }
 
 if (!VIKEY_EMAIL || !VIKEY_PASSWORD) {
@@ -148,7 +209,7 @@ async function run() {
     await dateRangeDisplay.click();
 
     console.log('Aspetto che compaia il calendario...');
-    await page.locator('.rdp-caption_label').first().waitFor({ state: 'visible', timeout: 30000 });
+    await calendarCaption(page).waitFor({ state: 'visible', timeout: 30000 });
 
     console.log('Navigo alla data di inizio (' + START.day + '/' + (START.monthIndex + 1) + '/' + START.year + ')...');
     await navigateCalendarToMonth(page, START.monthIndex, START.year);
@@ -161,7 +222,7 @@ async function run() {
     // Il calendario resta aperto sopra la modale: lo chiudiamo cliccando
     // sul titolo (fuori dal popover), così non copre il bottone Esporta.
     // NON usiamo Escape: chiuderebbe l'intera modale.
-    const calendar = page.locator('.rdp-caption_label').first();
+    const calendar = calendarCaption(page);
     if (await calendar.isVisible()) {
       await page.getByText('Esporta Prenotazioni', { exact: true }).first().click();
       await page.waitForTimeout(300);
@@ -196,6 +257,7 @@ async function run() {
   } catch (err) {
     console.error('Errore durante l\'export:', err && err.message ? err.message : err);
     console.error(err);
+    await dumpDebug(page);
     // Screenshot di debug, utile se lo step CI lo carica come artifact
     try {
       await page.screenshot({ path: 'vikey-export-error.png', fullPage: true });
