@@ -47,8 +47,18 @@ async function navigateCalendarToMonth(page, targetMonthIndex, targetYear) {
       return;
     }
     const diff = (targetYear - current.year) * 12 + (targetMonthIndex - current.monthIndex);
-    const buttonName = diff > 0 ? 'Go to next month' : 'Go to previous month';
-    await page.getByRole('button', { name: buttonName }).click();
+    // Regex case-insensitive: copre sia "Go to next month" (react-day-picker v8)
+    // sia "Go to the Next Month" (v9), nel caso Vikey aggiorni la libreria.
+    const buttonName = diff > 0 ? /next month/i : /previous month/i;
+    let navButton = page.getByRole('button', { name: buttonName });
+    // Le frecce sono solo icone (‹ ›): se l'aria-label non corrisponde,
+    // fallback sulle classi di react-day-picker (v9 e v8).
+    if (await navButton.count() === 0) {
+      navButton = page.locator(diff > 0
+        ? '.rdp-button_next, .rdp-nav_button_next'
+        : '.rdp-button_previous, .rdp-nav_button_previous');
+    }
+    await navButton.first().click();
     await page.waitForTimeout(120);
   }
   throw new Error(
@@ -58,9 +68,19 @@ async function navigateCalendarToMonth(page, targetMonthIndex, targetYear) {
 }
 
 async function selectCalendarDay(page, day) {
-  const daySpan = page
-    .locator('button.rdp-day span[aria-hidden="true"]')
-    .filter({ hasText: new RegExp('^' + day + '$') });
+  const dayRe = new RegExp('^\\s*' + day + '\\s*$');
+  // Struttura attuale (react-day-picker v8): <button class="rdp-day"><span aria-hidden>1</span>
+  // Il calendario ora mostra anche i giorni del mese dopo in grigio
+  // (es. 1-5 dicembre sotto novembre): li escludiamo sempre.
+  let daySpan = page
+    .locator('button.rdp-day:not(.rdp-day_outside) span[aria-hidden="true"]')
+    .filter({ hasText: dayRe });
+  // Fallback per react-day-picker v9: <td class="rdp-day"><button class="rdp-day_button">1</button>
+  if (await daySpan.count() === 0) {
+    daySpan = page
+      .locator('td.rdp-day:not(.rdp-outside):not([data-outside]) button.rdp-day_button')
+      .filter({ hasText: dayRe });
+  }
   await daySpan.first().click();
   await page.waitForTimeout(150);
 }
@@ -72,7 +92,9 @@ if (!VIKEY_EMAIL || !VIKEY_PASSWORD) {
 
 async function run() {
   const browser = await chromium.launch({ headless: HEADLESS });
-  const page = await browser.newPage();
+  // Finestra più alta del default (720px): la modale "Esporta Prenotazioni"
+  // di Vikey ora ha più campi e veniva tagliata in basso.
+  const page = await browser.newPage({ viewport: { width: 1280, height: 1100 } });
 
   try {
     console.log('Apro my.vikey.it...');
@@ -117,7 +139,11 @@ async function run() {
     await listaPrenotazioni.click();
 
     console.log('Apro il selettore date...');
-    const dateRangeDisplay = page.getByText(/\d{2}-\d{2}-\d{4}\s*->\s*\d{2}-\d{2}-\d{4}/);
+    // A nov 2026 Vikey mostra il range con la freccia "→" invece di "->":
+    // accettiamo entrambe (più trattini lunghi, per sicurezza).
+    const dateRangeDisplay = page
+      .getByText(/\d{2}-\d{2}-\d{4}\s*(?:->|→|–|—)\s*\d{2}-\d{2}-\d{4}/)
+      .first();
     await dateRangeDisplay.waitFor({ state: 'visible', timeout: 30000 });
     await dateRangeDisplay.click();
 
@@ -132,8 +158,34 @@ async function run() {
     await navigateCalendarToMonth(page, END.monthIndex, END.year);
     await selectCalendarDay(page, END.day);
 
+    // Il calendario resta aperto sopra la modale: lo chiudiamo cliccando
+    // sul titolo (fuori dal popover), così non copre il bottone Esporta.
+    // NON usiamo Escape: chiuderebbe l'intera modale.
+    const calendar = page.locator('.rdp-caption_label').first();
+    if (await calendar.isVisible()) {
+      await page.getByText('Esporta Prenotazioni', { exact: true }).first().click();
+      await page.waitForTimeout(300);
+    }
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmt = (d) => pad(d.day) + '-' + pad(d.monthIndex + 1) + '-' + d.year;
+    const expected = fmt(START) + ' → ' + fmt(END);
+    try {
+      const shown = (await dateRangeDisplay.textContent()).trim();
+      console.log('Range impostato: ' + shown + ' (atteso: ' + expected + ')');
+      if (!shown.includes(fmt(START)) || !shown.includes(fmt(END))) {
+        console.warn('ATTENZIONE: il range mostrato non coincide con quello atteso.');
+      }
+    } catch (_) { /* solo log, non bloccante */ }
+
     console.log('Date selezionate. Clicco il bottone Esporta finale...');
-    const finalExportButton = page.locator('div.text-md', { hasText: 'Esporta' });
+    // Testo ESATTO "Esporta": la nuova modale ha il titolo "Esporta Prenotazioni"
+    // che con il match parziale darebbe 2 elementi (errore strict mode).
+    // .last() = quello nella modale, che sta in fondo al DOM.
+    const finalExportButton = page
+      .locator('div.text-md')
+      .filter({ hasText: /^\s*Esporta\s*$/ })
+      .last();
     await finalExportButton.waitFor({ state: 'visible', timeout: 30000 });
     await finalExportButton.click();
 
@@ -142,7 +194,8 @@ async function run() {
 
     console.log('Export completato. Vikey invierà il CSV via email a breve.');
   } catch (err) {
-    console.error('Errore durante l\'export:', err);
+    console.error('Errore durante l\'export:', err && err.message ? err.message : err);
+    console.error(err);
     // Screenshot di debug, utile se lo step CI lo carica come artifact
     try {
       await page.screenshot({ path: 'vikey-export-error.png', fullPage: true });
